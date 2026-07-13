@@ -12,8 +12,12 @@ interface AuthRequest extends Request {
 // @access  Public
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('📝 Registration attempt received');
+    console.log('📝 Body:', req.body);
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       res.status(400).json({
         success: false,
         errors: errors.array(),
@@ -23,15 +27,20 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     const { name, email, password, mobile, address, role } = req.body;
 
+    console.log('📝 Checking if user exists:', email);
+
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      console.log('❌ User already exists:', email);
       res.status(400).json({
         success: false,
         message: 'User already exists with this email',
       });
       return;
     }
+
+    console.log('✅ User does not exist. Creating user...');
 
     // Create user
     const user = await User.create({
@@ -43,8 +52,12 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       role: role || 'buyer',
     });
 
+    console.log('✅ User created successfully:', user._id);
+
     // Generate token
     const token = generateToken(user._id.toString(), user.role);
+
+    console.log('✅ Token generated');
 
     res.status(201).json({
       success: true,
@@ -53,7 +66,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
       user,
     });
   } catch (error: any) {
-    console.error('Register error:', error);
+    console.error('❌ Register error:', error);
+    console.error('❌ Error details:', error.message);
+    if (error.code === 11000) {
+      console.error('❌ Duplicate key error');
+    }
     res.status(500).json({
       success: false,
       message: 'Server error',
@@ -67,8 +84,11 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 // @access  Public
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('📝 Login attempt:', req.body.email);
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
+      console.log('❌ Validation errors:', errors.array());
       res.status(400).json({
         success: false,
         errors: errors.array(),
@@ -81,16 +101,20 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     // Check if user exists
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
+      console.log('❌ User not found:', email);
       res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
       return;
     }
+
+    console.log('✅ User found:', user._id);
 
     // Check password
     const isPasswordMatch = await user.comparePassword(password);
     if (!isPasswordMatch) {
+      console.log('❌ Password mismatch for:', email);
       res.status(401).json({
         success: false,
         message: 'Invalid credentials',
@@ -98,8 +122,12 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    console.log('✅ Password matched');
+
     // Generate token
     const token = generateToken(user._id.toString(), user.role);
+
+    console.log('✅ Login successful for:', email);
 
     res.status(200).json({
       success: true,
@@ -115,7 +143,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       },
     });
   } catch (error: any) {
-    console.error('Login error:', error);
+    console.error('❌ Login error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

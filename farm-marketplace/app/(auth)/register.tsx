@@ -42,81 +42,123 @@ export default function RegisterScreen() {
     const mobileRegex = /^[0-9]{10}$/;
     return mobileRegex.test(mobile);
   };
+const handleRegister = async () => {
+  if (!fullName || !mobile || !email || !password || !confirmPassword || !address) {
+    Alert.alert('Error', 'Please fill in all fields');
+    return;
+  }
 
-  const handleRegister = async () => {
-    if (!fullName || !mobile || !email || !password || !confirmPassword || !address) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
+  if (fullName.length < 2) {
+    Alert.alert('Error', 'Full name must be at least 2 characters');
+    return;
+  }
 
-    if (fullName.length < 2) {
-      Alert.alert('Error', 'Full name must be at least 2 characters');
-      return;
-    }
+  if (!validateMobile(mobile)) {
+    Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
+    return;
+  }
 
-    if (!validateMobile(mobile)) {
-      Alert.alert('Error', 'Please enter a valid 10-digit mobile number');
-      return;
-    }
+  if (!validateEmail(email)) {
+    Alert.alert('Error', 'Please enter a valid email address');
+    return;
+  }
 
-    if (!validateEmail(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
-      return;
-    }
+  if (password.length < 6) {
+    Alert.alert('Error', 'Password must be at least 6 characters');
+    return;
+  }
 
-    if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
-      return;
-    }
+  if (password !== confirmPassword) {
+    Alert.alert('Error', 'Passwords do not match');
+    return;
+  }
 
-    if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
-      return;
-    }
+  setIsLoading(true);
 
-    setIsLoading(true);
+  try {
+    // DEBUG: Log everything
+    console.log('========================================');
+    console.log('📝 REGISTRATION ATTEMPT');
+    console.log('📝 API Base URL:', api.defaults.baseURL);
+    console.log('📝 Data being sent:');
+    console.log('  - Name:', fullName);
+    console.log('  - Email:', email);
+    console.log('  - Mobile:', mobile);
+    console.log('  - Address:', address);
+    console.log('  - Role:', selectedRole);
+    console.log('  - Password length:', password.length);
+    console.log('========================================');
 
-    try {
-      // Call backend API instead of AsyncStorage
-      const response = await api.post('/auth/register', {
-        name: fullName,
-        email,
-        password,
-        mobile,
-        address,
+    const response = await api.post('/auth/register', {
+      name: fullName,
+      email: email,
+      password: password,
+      mobile: mobile,
+      address: address,
+      role: selectedRole,
+    });
+
+    console.log('✅ SUCCESS:', response.data);
+    console.log('========================================');
+
+    if (response.data.success) {
+      await AsyncStorage.setItem('token', response.data.token);
+      await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+      await AsyncStorage.setItem('currentUser', JSON.stringify({
+        ...response.data.user,
         role: selectedRole,
-      });
+      }));
 
-      if (response.data.success) {
-        // Store token and user data
-        await AsyncStorage.setItem('token', response.data.token);
-        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
-
-        Alert.alert(
-          'Success',
-          'Registration completed successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (selectedRole === 'farmer') {
-                  router.replace('/(farmer)');
-                } else {
-                  router.replace('/(buyer)');
-                }
-              },
+      Alert.alert(
+        'Success',
+        'Registration completed successfully!',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              if (selectedRole === 'farmer') {
+                router.replace('/(farmer)');
+              } else {
+                router.replace('/(buyer)');
+              }
             },
-          ]
-        );
-      }
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      const errorMessage = error.response?.data?.message || 'Something went wrong. Please try again.';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setIsLoading(false);
+          },
+        ]
+      );
     }
-  };
+  } catch (error: any) {
+    console.log('========================================');
+    console.log('❌ REGISTRATION FAILED');
+    console.log('❌ Error object:', error);
+    
+    if (error.response) {
+      console.log('❌ Response status:', error.response.status);
+      console.log('❌ Response data:', JSON.stringify(error.response.data, null, 2));
+      console.log('❌ Response headers:', error.response.headers);
+    } else if (error.request) {
+      console.log('❌ No response received');
+      console.log('❌ Request:', error.request);
+      console.log('❌ URL attempted:', error.config?.url);
+      console.log('❌ Base URL:', api.defaults.baseURL);
+    } else {
+      console.log('❌ Error message:', error.message);
+    }
+    console.log('========================================');
+
+    let errorMessage = 'Something went wrong. Please try again.';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+
+    Alert.alert('Registration Failed', errorMessage);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const navigateToLogin = () => {
     router.back();

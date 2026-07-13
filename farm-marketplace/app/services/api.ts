@@ -1,28 +1,8 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
 
-// REPLACE THIS WITH YOUR ACTUAL IP ADDRESS
-// Run 'ipconfig' (Windows) or 'ifconfig' (Mac/Linux) to find it
-const YOUR_COMPUTER_IP = ' 172.17.3.100'; // CHANGE THIS TO YOUR IP
-
-// Get the correct base URL based on the platform
-const getBaseUrl = () => {
-  // For Android emulator - use computer's IP
-  if (Platform.OS === 'android') {
-    return `http://${YOUR_COMPUTER_IP}:5000/api`;
-  }
-  
-  // For iOS simulator
-  if (Platform.OS === 'ios') {
-    return 'http://localhost:5000/api';
-  }
-  
-  // Default fallback
-  return 'http://localhost:5000/api';
-};
-
-const BASE_URL = getBaseUrl();
+// Use your computer's IP - confirmed working in phone browser
+const BASE_URL = 'http://172.17.3.100:5000/api';
 
 console.log('📡 API Base URL:', BASE_URL);
 
@@ -31,10 +11,9 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000, // Increased timeout
+  timeout: 15000,
 });
 
-// Add token to requests if available
 api.interceptors.request.use(
   async (config) => {
     try {
@@ -47,25 +26,19 @@ api.interceptors.request.use(
       return config;
     }
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor for handling errors
 api.interceptors.response.use(
   (response) => {
+    console.log('✅ API Response:', response.status);
     return response;
   },
   (error) => {
     if (error.response) {
-      console.error('API Error:', error.response.status, error.response.data);
+      console.error('❌ API Error:', error.response.status, error.response.data);
     } else if (error.request) {
-      console.error('No response from server. URL:', error.config?.url);
-      console.error('Make sure backend is running on port 5000');
-      console.error('Check if firewall is blocking the connection');
-    } else {
-      console.error('Request error:', error.message);
+      console.error('❌ No response. URL:', error.config?.url);
     }
     return Promise.reject(error);
   }
