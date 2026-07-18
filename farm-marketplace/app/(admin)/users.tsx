@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   TextInput,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
+import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../services/api';
@@ -26,6 +26,118 @@ interface User {
 }
 
 export default function ManageUsersScreen() {
+  const colors = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingBottom: Layout.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: Layout.spacing.xs,
+  },
+  refreshButton: {
+    padding: Layout.spacing.xs,
+  },
+  headerTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  searchContainer: {
+    padding: Layout.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.lighterGray,
+    borderRadius: Layout.borderRadius.md,
+    paddingHorizontal: Layout.spacing.md,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: Layout.spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    color: colors.black,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Layout.spacing.xl,
+  },
+  loadingText: {
+    marginTop: Layout.spacing.md,
+    color: colors.gray,
+  },
+  noUsersText: {
+    fontSize: Typography.fontSize.md,
+    color: colors.gray,
+    marginTop: Layout.spacing.md,
+  },
+  listContainer: {
+    padding: Layout.spacing.md,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: Layout.borderRadius.md,
+    padding: Layout.spacing.lg,
+    marginBottom: Layout.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  userEmail: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.gray,
+    marginTop: 2,
+  },
+  userMobile: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    marginTop: 2,
+  },
+  roleBadge: {
+    paddingHorizontal: Layout.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Layout.borderRadius.xs,
+    alignSelf: 'flex-start',
+    marginTop: Layout.spacing.sm,
+  },
+  roleBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  deleteButton: {
+    padding: Layout.spacing.sm,
+  },
+}), [colors]);
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -139,21 +251,21 @@ export default function ManageUsersScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.replace('/(admin)')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.admin} />
+          <Ionicons name="arrow-back" size={24} color={colors.admin} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Manage Users</Text>
         <TouchableOpacity onPress={fetchUsers} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={20} color={Colors.admin} />
+          <Ionicons name="refresh" size={20} color={colors.admin} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
-          <Ionicons name="search" size={20} color={Colors.gray} style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={colors.gray} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search users..."
-            placeholderTextColor={Colors.gray}
+            placeholderTextColor={colors.gray}
             value={search}
             onChangeText={setSearch}
           />
@@ -162,12 +274,12 @@ export default function ManageUsersScreen() {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={Colors.admin} />
+          <ActivityIndicator size="large" color={colors.admin} />
           <Text style={styles.loadingText}>Fetching users...</Text>
         </View>
       ) : filteredUsers.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Ionicons name="people-outline" size={60} color={Colors.gray} />
+          <Ionicons name="people-outline" size={60} color={colors.gray} />
           <Text style={styles.noUsersText}>No users found</Text>
         </View>
       ) : (
@@ -183,114 +295,3 @@ export default function ManageUsersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  refreshButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  searchContainer: {
-    padding: Layout.spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.md,
-    height: 44,
-  },
-  searchIcon: {
-    marginRight: Layout.spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: Typography.fontSize.sm,
-    color: Colors.black,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Layout.spacing.xl,
-  },
-  loadingText: {
-    marginTop: Layout.spacing.md,
-    color: Colors.gray,
-  },
-  noUsersText: {
-    fontSize: Typography.fontSize.md,
-    color: Colors.gray,
-    marginTop: Layout.spacing.md,
-  },
-  listContainer: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  userEmail: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.gray,
-    marginTop: 2,
-  },
-  userMobile: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-    marginTop: 2,
-  },
-  roleBadge: {
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Layout.borderRadius.xs,
-    alignSelf: 'flex-start',
-    marginTop: Layout.spacing.sm,
-  },
-  roleBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  deleteButton: {
-    padding: Layout.spacing.sm,
-  },
-}) as any;

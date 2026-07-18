@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,20 +14,164 @@ import {
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
+import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../services/api';
+import ThemeToggle from '../../components/ThemeToggle';
 
 type Role = 'farmer' | 'buyer' | 'admin';
 
 export default function LoginScreen() {
+  const colors = useColors();
   const [selectedRole, setSelectedRole] = useState<Role>('farmer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      paddingHorizontal: Layout.spacing.xl,
+      paddingTop: Layout.spacing.xxl * 2,
+      paddingBottom: Layout.spacing.xl,
+    },
+    headerContainer: {
+      marginBottom: Layout.spacing.xxl,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    title: {
+      fontSize: Typography.fontSize.huge,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.black,
+      marginBottom: Layout.spacing.sm,
+    },
+    subtitle: {
+      fontSize: Typography.fontSize.md,
+      color: colors.gray,
+    },
+    roleContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.lighterGray,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.xs,
+      marginBottom: Layout.spacing.xl,
+    },
+    roleButton: {
+      flex: 1,
+      paddingVertical: Layout.spacing.sm,
+      borderRadius: Layout.borderRadius.sm,
+      alignItems: 'center',
+    },
+    roleButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    roleButtonText: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.gray,
+    },
+    roleButtonTextActive: {
+      color: colors.white,
+    },
+    inputContainer: {
+      marginBottom: Layout.spacing.lg,
+    },
+    label: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.black,
+      marginBottom: Layout.spacing.sm,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.lighterGray,
+      borderRadius: Layout.borderRadius.md,
+      paddingHorizontal: Layout.spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    inputIcon: {
+      marginRight: Layout.spacing.md,
+    },
+    input: {
+      flex: 1,
+      height: 50,
+      fontSize: Typography.fontSize.md,
+      color: colors.black,
+    },
+    eyeIcon: {
+      padding: Layout.spacing.sm,
+    },
+    optionsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: Layout.spacing.xxl,
+    },
+    rememberContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    checkbox: {
+      width: 20,
+      height: 20,
+      borderRadius: Layout.borderRadius.xs,
+      borderWidth: 2,
+      borderColor: colors.primary,
+      marginRight: Layout.spacing.sm,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    checkboxActive: {
+      backgroundColor: colors.primary,
+    },
+    rememberText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.gray,
+    },
+    forgotText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.primary,
+      fontWeight: Typography.fontWeight.semibold,
+    },
+    loginButton: {
+      backgroundColor: colors.primary,
+      borderRadius: Layout.borderRadius.md,
+      paddingVertical: Layout.spacing.md,
+      alignItems: 'center',
+      marginBottom: Layout.spacing.lg,
+    },
+    loginButtonText: {
+      fontSize: Typography.fontSize.lg,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.white,
+    },
+    registerContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    registerText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.gray,
+    },
+    registerLink: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.primary,
+    },
+  }), [colors]);
 
   const ADMIN_EMAIL = 'admin@farm.com';
   const ADMIN_PASSWORD = 'admin123';
@@ -119,8 +263,13 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Welcome Back</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>Welcome Back</Text>
+              <Text style={styles.subtitle}>Sign in to continue</Text>
+            </View>
+            <ThemeToggle />
+          </View>
         </View>
 
         <View style={styles.roleContainer}>
@@ -148,11 +297,11 @@ export default function LoginScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your email"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -164,11 +313,11 @@ export default function LoginScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your password"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -180,7 +329,7 @@ export default function LoginScreen() {
               <Ionicons
                 name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                 size={20}
-                color={Colors.gray}
+                color={colors.gray}
               />
             </TouchableOpacity>
           </View>
@@ -192,7 +341,7 @@ export default function LoginScreen() {
             onPress={() => setRememberMe(!rememberMe)}
           >
             <View style={[styles.checkbox, rememberMe && styles.checkboxActive]}>
-              {rememberMe && <Ionicons name="checkmark" size={14} color={Colors.white} />}
+              {rememberMe && <Ionicons name="checkmark" size={14} color={colors.white} />}
             </View>
             <Text style={styles.rememberText}>Remember Me</Text>
           </TouchableOpacity>
@@ -207,7 +356,7 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={Colors.white} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.loginButtonText}>Login</Text>
           )}
@@ -225,140 +374,3 @@ export default function LoginScreen() {
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingTop: Layout.spacing.xxl * 2,
-    paddingBottom: Layout.spacing.xl,
-  },
-  headerContainer: {
-    marginBottom: Layout.spacing.xxl,
-  },
-  title: {
-    fontSize: Typography.fontSize.huge,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-    marginBottom: Layout.spacing.sm,
-  },
-  subtitle: {
-    fontSize: Typography.fontSize.md,
-    color: Colors.gray,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.xs,
-    marginBottom: Layout.spacing.xl,
-  },
-  roleButton: {
-    flex: 1,
-    paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.borderRadius.sm,
-    alignItems: 'center',
-  },
-  roleButtonActive: {
-    backgroundColor: Colors.primary,
-  },
-  roleButtonText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.gray,
-  },
-  roleButtonTextActive: {
-    color: Colors.white,
-  },
-  inputContainer: {
-    marginBottom: Layout.spacing.lg,
-  },
-  label: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.black,
-    marginBottom: Layout.spacing.sm,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  inputIcon: {
-    marginRight: Layout.spacing.md,
-  },
-  input: {
-    flex: 1,
-    height: 50,
-    fontSize: Typography.fontSize.md,
-    color: Colors.black,
-  },
-  eyeIcon: {
-    padding: Layout.spacing.sm,
-  },
-  optionsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Layout.spacing.xxl,
-  },
-  rememberContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: Layout.borderRadius.xs,
-    borderWidth: 2,
-    borderColor: Colors.primary,
-    marginRight: Layout.spacing.sm,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  checkboxActive: {
-    backgroundColor: Colors.primary,
-  },
-  rememberText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.gray,
-  },
-  forgotText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.primary,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  loginButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.md,
-    alignItems: 'center',
-    marginBottom: Layout.spacing.lg,
-  },
-  loginButtonText: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.white,
-  },
-  registerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  registerText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.gray,
-  },
-  registerLink: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.primary,
-  },
-});

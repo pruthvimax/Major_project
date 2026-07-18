@@ -45,6 +45,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "cloudinaryCloudName": "dclx9vzjp",
+      "cloudinaryApiKey": "374796258128269",
+      "cloudinaryApiSecret": "rlfihV-6NmxL3dELWGBJ9OhcZx8"
     }
   }
 }

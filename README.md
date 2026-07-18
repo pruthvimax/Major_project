@@ -1,146 +1,153 @@
-# 🌾 Blockchain-Based Farm Marketplace
+# Blockchain-Based Farm Marketplace
 
-A cross-platform mobile application connecting Farmers and Buyers directly using Blockchain for secure transactions and product ownership verification. Built with React Native (Expo) for the frontend and Node.js for the backend.
+Cross-platform mobile app that connects farmers and buyers directly, with blockchain-backed product registration and escrow payments. Frontend: React Native (Expo). Backend: Node.js / Express / MongoDB.
 
----
-
-## 📱 Project Overview
-
-The **Blockchain-Based Farm Marketplace** is a final year major project designed to revolutionize agricultural trade by:
-
-- **Direct Connection**: Eliminating middlemen by connecting farmers directly with buyers
-- **Secure Transactions**: Using blockchain technology for transparent and tamper-proof transactions
-- **Product Verification**: Ensuring product authenticity and ownership tracking
-- **Real-time Tracking**: Order tracking from farm to table
+**Repository:** [https://github.com/vaishaldsouza/Major_project](https://github.com/vaishaldsouza/Major_project)
 
 ---
 
-## 🏗️ Project Structure
+## Project structure
 
-
-
-
-
-
----
-
-## 🚀 Tech Stack
-
-### Frontend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| React Native | 0.74.3 | Mobile framework |
-| Expo | 51.0.0 | Development platform |
-| Expo Router | 3.5.0 | File-based navigation |
-| TypeScript | 5.3.3 | Type safety |
-| Axios | 1.6.0 | HTTP client |
-| AsyncStorage | 1.23.1 | Local storage |
-
-### Backend
-| Technology | Version | Purpose |
-|------------|---------|---------|
-| Node.js | 20.x | Runtime |
-| Express.js | 4.18.2 | API framework |
-| MongoDB | 7.6.3 | Database |
-| Mongoose | 7.6.3 | ODM |
-| JWT | 9.0.2 | Authentication |
-| TypeScript | 5.2.2 | Type safety |
-
-### Blockchain (Planned)
-- Ethereum
-- Solidity
-- Hardhat
-- Ethers.js
+```
+Major_project/
+├── farm-marketplace/   # Expo React Native app
+├── backend/            # Express API + MongoDB
+├── blockchain/         # Hardhat + Solidity contracts
+├── .gitignore
+└── README.md
+```
 
 ---
 
-## ✨ Features
+## Features
 
-### ✅ Completed Features
+### Authentication
+- Multi-role registration and login (Farmer, Buyer, Admin)
+- JWT auth and bcrypt password hashing
 
-#### Authentication
-- Multi-role registration (Farmer, Buyer)
-- Multi-role login (Farmer, Buyer, Admin)
-- JWT token-based authentication
-- Secure password hashing (bcrypt)
-- Form validation
-- Password visibility toggle
+### Dashboards
+- **Farmer:** products, orders, on-chain listing
+- **Buyer:** browse, checkout, orders, order tracking
+- **Admin:** users, products, orders, system settings
 
-#### User Dashboards
-- **Farmer Dashboard**: Product management, order tracking
-- **Buyer Dashboard**: Browse products, order management
-- **Admin Dashboard**: User management, system overview
+### UI
+- **Dark / light mode** with persisted preference (AsyncStorage)
+- Theme toggle on home and auth screens; dark mode switch in admin settings
 
-#### Backend API
-- User management (CRUD)
-- Product management (CRUD)
-- Order management (CRUD)
+### Payments & media
+- Cash, bank transfer, Razorpay, and blockchain escrow options
+- Cloudinary image upload for product photos
+- Push notification token registration
+
+### Backend API
+- Users, products, orders, payments, reviews
 - Role-based access control
-- MongoDB integration
-
-### 🚧 Planned Features
-
-#### Blockchain Integration
-- Product ownership verification
-- Secure transactions
-- Smart contracts
-- Transaction history
-- Wallet integration
-
-#### Advanced Features
-- Real-time order tracking
-- Push notifications
-- Product image upload
-- Search and filtering
-- Rating and reviews
-- Payment gateway
+- Blockchain relayer integration
 
 ---
 
-## 📦 Installation
+## Tech stack
 
-### Prerequisites
+| Layer | Stack |
+|-------|--------|
+| Mobile | React Native, Expo ~54, Expo Router, TypeScript |
+| API | Node.js, Express, MongoDB, Mongoose, JWT |
+| Chain | Ethereum, Solidity, Hardhat, Ethers.js |
 
-- Node.js (v18 or v20)
-- npm or yarn
-- MongoDB Atlas account (or local MongoDB)
-- Expo CLI
-- Android Studio (for Android emulator)
-- iOS Simulator (for Mac users)
+---
 
-### 1. Clone the Repository
+## Prerequisites
+
+- Node.js 18 or 20
+- npm
+- MongoDB Atlas (or local MongoDB)
+- Expo Go / Android Studio / iOS Simulator
+- (Optional) Hardhat local node for blockchain features
+
+---
+
+## Setup
+
+### 1. Clone
 
 ```bash
-git clone <your-repository-url>
-cd MAJOR_PROJECT
+git clone https://github.com/vaishaldsouza/Major_project.git
+cd Major_project
+```
 
+### 2. Backend
+
+```bash
 cd backend
+cp .env.example .env
+# Edit .env — set MONGODB_URI, JWT_SECRET, and optional Razorpay / Ethereum keys
 npm install
+npm run dev
+```
 
+Server defaults to `http://localhost:5000`.
+
+### 3. Mobile app
+
+```bash
+cd farm-marketplace
+cp .env.example .env
+# Set EXPO_PUBLIC_API_URL to your machine IP, e.g. http://192.168.x.x:5000/api
+# Also update BASE_URL in app/services/api.ts if you are not using Expo env yet
+npm install
+npx expo start
+```
+
+### 4. Blockchain (optional)
+
+```bash
+cd blockchain
+npm install
+npx hardhat node
+# In another terminal: deploy scripts as documented under blockchain/
+```
 
 ---
 
-## How to Use This README
+## Environment variables
 
-1. **Copy the entire content** above
-2. **Replace placeholders**:
-   - `[Your Name]` with your actual name
-   - `[your-email@example.com]` with your email
-   - `[Your LinkedIn]` with your LinkedIn URL
-   - `[Your GitHub]` with your GitHub URL
-   - `<your-repository-url>` with your GitHub repo URL
+### Backend (`backend/.env`)
 
-3. **Save as `README.md`** in the `MAJOR_PROJECT/` folder
+Copy from [`backend/.env.example`](backend/.env.example):
 
-4. **Update the "Last Updated" date**
+| Variable | Purpose |
+|----------|---------|
+| `PORT` | API port (default `5000`) |
+| `MONGODB_URI` | MongoDB connection string |
+| `JWT_SECRET` / `JWT_EXPIRE` | Auth token config |
+| `ETHEREUM_NODE_URL` / `ETHEREUM_PRIVATE_KEY` | Blockchain relayer |
+| `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | Online payments (optional) |
 
-This README provides a complete overview of your project, including:
-- Project description
-- Tech stack
-- Installation guide
-- API documentation
-- Database schema
-- Troubleshooting tips
-- Roadmap
+### Frontend (`farm-marketplace/.env`)
 
-Perfect for your final year project submission! 🎉
+Copy from [`farm-marketplace/.env.example`](farm-marketplace/.env.example). Keep real secrets out of git — `.env` files are gitignored.
+
+---
+
+## Dark / light mode
+
+- Tap the moon/sun icon in the header (dashboards and login/register)
+- Or use **Appearance → Dark Mode** in Admin Settings
+- Preference is stored in AsyncStorage and restored on next launch
+
+---
+
+## Scripts
+
+| Location | Command | Description |
+|----------|---------|-------------|
+| `backend` | `npm run dev` | Start API with nodemon |
+| `backend` | `npm run build` | Compile TypeScript |
+| `farm-marketplace` | `npx expo start` | Start Expo dev server |
+| `blockchain` | `npx hardhat test` | Run contract tests |
+
+---
+
+## License
+
+ISC — academic / final-year project use.

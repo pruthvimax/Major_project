@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,14 +14,16 @@ import {
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
+import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../services/api';
+import ThemeToggle from '../../components/ThemeToggle';
 
 type Role = 'farmer' | 'buyer';
 
 export default function RegisterScreen() {
+  const colors = useColors();
   const [selectedRole, setSelectedRole] = useState<Role>('farmer');
   const [fullName, setFullName] = useState('');
   const [mobile, setMobile] = useState('');
@@ -32,6 +34,120 @@ export default function RegisterScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  const styles = useMemo(() => StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContainer: {
+      flexGrow: 1,
+      paddingHorizontal: Layout.spacing.xl,
+      paddingTop: Layout.spacing.lg,
+      paddingBottom: Layout.spacing.xl,
+    },
+    backButton: {
+      marginBottom: Layout.spacing.md,
+    },
+    headerContainer: {
+      marginBottom: Layout.spacing.xl,
+    },
+    headerRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+    },
+    title: {
+      fontSize: Typography.fontSize.xxl,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.black,
+      marginBottom: Layout.spacing.sm,
+    },
+    subtitle: {
+      fontSize: Typography.fontSize.md,
+      color: colors.gray,
+    },
+    roleContainer: {
+      flexDirection: 'row',
+      backgroundColor: colors.lighterGray,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.xs,
+      marginBottom: Layout.spacing.xl,
+    },
+    roleButton: {
+      flex: 1,
+      paddingVertical: Layout.spacing.sm,
+      borderRadius: Layout.borderRadius.sm,
+      alignItems: 'center',
+    },
+    roleButtonActive: {
+      backgroundColor: colors.primary,
+    },
+    roleButtonText: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.gray,
+    },
+    roleButtonTextActive: {
+      color: colors.white,
+    },
+    inputContainer: {
+      marginBottom: Layout.spacing.md,
+    },
+    label: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.black,
+      marginBottom: Layout.spacing.sm,
+    },
+    inputWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.lighterGray,
+      borderRadius: Layout.borderRadius.md,
+      paddingHorizontal: Layout.spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    inputIcon: {
+      marginRight: Layout.spacing.md,
+    },
+    input: {
+      flex: 1,
+      height: 50,
+      fontSize: Typography.fontSize.md,
+      color: colors.black,
+    },
+    eyeIcon: {
+      padding: Layout.spacing.sm,
+    },
+    registerButton: {
+      backgroundColor: colors.primary,
+      borderRadius: Layout.borderRadius.md,
+      paddingVertical: Layout.spacing.md,
+      alignItems: 'center',
+      marginTop: Layout.spacing.sm,
+      marginBottom: Layout.spacing.md,
+    },
+    registerButtonText: {
+      fontSize: Typography.fontSize.lg,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.white,
+    },
+    loginContainer: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+    },
+    loginText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.gray,
+    },
+    loginLink: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.primary,
+    },
+  }), [colors]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -178,12 +294,17 @@ export default function RegisterScreen() {
         showsVerticalScrollIndicator={false}
       >
         <TouchableOpacity style={styles.backButton} onPress={navigateToLogin}>
-          <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
 
         <View style={styles.headerContainer}>
-          <Text style={styles.title}>Create Account</Text>
-          <Text style={styles.subtitle}>Register as a {selectedRole}</Text>
+          <View style={styles.headerRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.subtitle}>Register as a {selectedRole}</Text>
+            </View>
+            <ThemeToggle />
+          </View>
         </View>
 
         <View style={styles.roleContainer}>
@@ -211,11 +332,11 @@ export default function RegisterScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Full Name</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="person-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your full name"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={fullName}
               onChangeText={setFullName}
             />
@@ -225,11 +346,11 @@ export default function RegisterScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Mobile Number</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="call-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="call-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter 10-digit mobile number"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={mobile}
               onChangeText={setMobile}
               keyboardType="phone-pad"
@@ -241,11 +362,11 @@ export default function RegisterScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Email</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="mail-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="mail-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your email"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -257,11 +378,11 @@ export default function RegisterScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Password</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter password (min 6 characters)"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -273,7 +394,7 @@ export default function RegisterScreen() {
               <Ionicons
                 name={showPassword ? 'eye-outline' : 'eye-off-outline'}
                 size={20}
-                color={Colors.gray}
+                color={colors.gray}
               />
             </TouchableOpacity>
           </View>
@@ -282,11 +403,11 @@ export default function RegisterScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Confirm Password</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="lock-closed-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="lock-closed-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Confirm your password"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
               secureTextEntry={!showConfirmPassword}
@@ -298,7 +419,7 @@ export default function RegisterScreen() {
               <Ionicons
                 name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'}
                 size={20}
-                color={Colors.gray}
+                color={colors.gray}
               />
             </TouchableOpacity>
           </View>
@@ -307,11 +428,11 @@ export default function RegisterScreen() {
         <View style={styles.inputContainer}>
           <Text style={styles.label}>Address</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="location-outline" size={20} color={Colors.gray} style={styles.inputIcon} />
+            <Ionicons name="location-outline" size={20} color={colors.gray} style={styles.inputIcon} />
             <TextInput
               style={styles.input}
               placeholder="Enter your address"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={address}
               onChangeText={setAddress}
               multiline
@@ -325,7 +446,7 @@ export default function RegisterScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color={Colors.white} />
+            <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={styles.registerButtonText}>Register</Text>
           )}
@@ -342,111 +463,3 @@ export default function RegisterScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
-  scrollContainer: {
-    flexGrow: 1,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingTop: Layout.spacing.lg,
-    paddingBottom: Layout.spacing.xl,
-  },
-  backButton: {
-    marginBottom: Layout.spacing.md,
-  },
-  headerContainer: {
-    marginBottom: Layout.spacing.xl,
-  },
-  title: {
-    fontSize: Typography.fontSize.xxl,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-    marginBottom: Layout.spacing.sm,
-  },
-  subtitle: {
-    fontSize: Typography.fontSize.md,
-    color: Colors.gray,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    backgroundColor: Colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.xs,
-    marginBottom: Layout.spacing.xl,
-  },
-  roleButton: {
-    flex: 1,
-    paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.borderRadius.sm,
-    alignItems: 'center',
-  },
-  roleButtonActive: {
-    backgroundColor: Colors.primary,
-  },
-  roleButtonText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.gray,
-  },
-  roleButtonTextActive: {
-    color: Colors.white,
-  },
-  inputContainer: {
-    marginBottom: Layout.spacing.md,
-  },
-  label: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.black,
-    marginBottom: Layout.spacing.sm,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  inputIcon: {
-    marginRight: Layout.spacing.md,
-  },
-  input: {
-    flex: 1,
-    height: 50,
-    fontSize: Typography.fontSize.md,
-    color: Colors.black,
-  },
-  eyeIcon: {
-    padding: Layout.spacing.sm,
-  },
-  registerButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.md,
-    alignItems: 'center',
-    marginTop: Layout.spacing.sm,
-    marginBottom: Layout.spacing.md,
-  },
-  registerButtonText: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.white,
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  loginText: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.gray,
-  },
-  loginLink: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.primary,
-  },
-});

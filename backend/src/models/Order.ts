@@ -7,6 +7,13 @@ export interface IOrderItem {
   unit: string;
 }
 
+export interface ITrackingEvent {
+  status: string;
+  message: string;
+  location?: string;
+  timestamp: Date;
+}
+
 export interface IOrder extends Document {
   orderNumber: string;
   buyer: mongoose.Types.ObjectId;
@@ -15,7 +22,9 @@ export interface IOrder extends Document {
   totalAmount: number;
   status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
   paymentStatus: 'pending' | 'paid' | 'failed';
-  paymentMethod: 'cash' | 'bank_transfer' | 'blockchain';
+  paymentMethod: 'cash' | 'bank_transfer' | 'blockchain' | 'razorpay';
+  razorpayOrderId?: string;
+  razorpayPaymentId?: string;
   blockchainTxHash?: string;
   blockchainOrderId?: number | null;
   shippingAddress: {
@@ -25,6 +34,8 @@ export interface IOrder extends Document {
     pincode: string;
     country: string;
   };
+  trackingEvents: ITrackingEvent[];
+  estimatedDelivery?: Date;
   deliveryDate?: Date;
   notes?: string;
   createdAt: Date;
@@ -88,9 +99,11 @@ const OrderSchema = new Schema<IOrder>(
     },
     paymentMethod: {
       type: String,
-      enum: ['cash', 'bank_transfer', 'blockchain'],
+      enum: ['cash', 'bank_transfer', 'blockchain', 'razorpay'],
       required: true,
     },
+    razorpayOrderId: { type: String, default: '' },
+    razorpayPaymentId: { type: String, default: '' },
     blockchainTxHash: {
       type: String,
       default: '',
@@ -122,6 +135,15 @@ const OrderSchema = new Schema<IOrder>(
         default: 'India',
       },
     },
+    trackingEvents: [
+      {
+        status: { type: String, required: true },
+        message: { type: String, required: true },
+        location: { type: String, default: '' },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
+    estimatedDelivery: { type: Date },
     deliveryDate: {
       type: Date,
     },

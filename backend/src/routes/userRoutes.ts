@@ -6,6 +6,7 @@ import {
   getFarmers,
   getBuyers,
   deleteUser,
+  updatePushToken,
 } from '../controllers/userController';
 import { protect, restrictTo } from '../middleware/auth';
 
@@ -18,6 +19,7 @@ router.get('/farmers', getFarmers);
 router.get('/buyers', restrictTo('admin'), getBuyers);
 router.get('/profile', getUser);
 router.put('/profile', updateProfile);
+router.put('/push-token', updatePushToken);
 router.get('/:id', getUser);
 router.delete('/:id', restrictTo('admin'), deleteUser);
 

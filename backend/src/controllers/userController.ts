@@ -153,3 +153,47 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
     });
   }
 };
+
+// @desc    Update push notification token
+// @route   PUT /api/users/push-token
+// @access  Private
+export const updatePushToken = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { pushToken } = req.body;
+    const userId = req.user?._id;
+
+    if (!pushToken) {
+      res.status(400).json({
+        success: false,
+        message: 'Push token is required',
+      });
+      return;
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { pushToken },
+      { new: true }
+    );
+
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Push token updated successfully',
+      user,
+    });
+  } catch (error: any) {
+    console.error('Update push token error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
+  }
+};

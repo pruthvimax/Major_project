@@ -1,10 +1,12 @@
 import { useEffect } from 'react';
-
 import { router } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import useColors from '../constants/Colors';
 
 export default function Index() {
+  const colors = useColors();
+
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -14,13 +16,12 @@ export default function Index() {
       const userData = await AsyncStorage.getItem('currentUser');
       if (userData) {
         const user = JSON.parse(userData);
-        // Navigate based on role
         if (user.role === 'farmer') {
-          router.replace('/(farmer)/dashboard');
+          router.replace('/(farmer)');
         } else if (user.role === 'buyer') {
-          router.replace('/(buyer)/dashboard');
+          router.replace('/(buyer)');
         } else if (user.role === 'admin') {
-          router.replace('/(admin)/dashboard');
+          router.replace('/(admin)');
         }
       } else {
         router.replace('/(auth)/login');
@@ -32,8 +33,8 @@ export default function Index() {
   };
 
   return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color="#2E7D32" />
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 }
@@ -43,6 +44,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
   },
 });

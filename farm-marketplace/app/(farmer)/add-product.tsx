@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,15 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
-  SafeAreaView,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import Colors from '../../constants/Colors';
+import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../services/api';
@@ -26,6 +26,188 @@ import { uploadImageToCloudinary } from '../services/cloudinary';
 const CATEGORIES = ['vegetables', 'fruits', 'grains', 'dairy'];
 
 export default function AddProductScreen() {
+  const colors = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingBottom: Layout.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: Layout.spacing.xs,
+  },
+  headerTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  scrollContent: {
+    padding: Layout.spacing.md,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: Layout.borderRadius.md,
+    padding: Layout.spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    marginBottom: Layout.spacing.xxl,
+  },
+  label: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.black,
+    marginBottom: Layout.spacing.xs,
+  },
+  input: {
+    backgroundColor: colors.lighterGray,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: Layout.borderRadius.sm,
+    height: 48,
+    paddingHorizontal: Layout.spacing.md,
+    fontSize: Typography.fontSize.sm,
+    color: colors.black,
+    marginBottom: Layout.spacing.md,
+  },
+  textArea: {
+    height: 90,
+    paddingTop: Layout.spacing.sm,
+    textAlignVertical: 'top',
+  },
+  categoryContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: Layout.spacing.md,
+  },
+  categoryTab: {
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.xs,
+    borderRadius: Layout.borderRadius.xl,
+    backgroundColor: colors.lighterGray,
+    marginRight: Layout.spacing.xs,
+    marginBottom: Layout.spacing.xs,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  categoryTabActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  categoryText: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.gray,
+  },
+  categoryTextActive: {
+    color: colors.white,
+  },
+  inputRow: {
+    flexDirection: 'row',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: Layout.spacing.xl,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: Layout.spacing.md,
+  },
+  switchLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: colors.black,
+  },
+  switchDesc: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    marginTop: 2,
+  },
+  submitBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: Layout.borderRadius.md,
+    paddingVertical: Layout.spacing.md,
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    fontSize: Typography.fontSize.md,
+  },
+  previewContainer: {
+    marginBottom: Layout.spacing.md,
+  },
+  previewLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: 'bold',
+    color: colors.black,
+    marginBottom: Layout.spacing.xs,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: Layout.borderRadius.sm,
+    resizeMode: 'cover',
+  },
+  pickerButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Layout.spacing.md,
+  },
+  pickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: Layout.borderRadius.sm,
+    paddingVertical: Layout.spacing.sm,
+    flex: 0.48,
+  },
+  pickerBtnText: {
+    color: colors.primary,
+    fontWeight: 'bold',
+    fontSize: Typography.fontSize.xs,
+    marginLeft: 6,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Layout.spacing.xs,
+  },
+  removeImageBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  removeImageText: {
+    color: '#C62828',
+    fontWeight: 'bold',
+    fontSize: Typography.fontSize.xs,
+    marginLeft: 4,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: colors.white,
+    fontWeight: 'bold',
+    fontSize: Typography.fontSize.md,
+    marginLeft: 8,
+  },
+}), [colors]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('vegetables');
@@ -183,7 +365,7 @@ export default function AddProductScreen() {
       >
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+            <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Add New Product</Text>
           <View style={{ width: 24 }} />
@@ -196,7 +378,7 @@ export default function AddProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. Fresh Tomatoes"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={name}
               onChangeText={setName}
             />
@@ -206,7 +388,7 @@ export default function AddProductScreen() {
             <TextInput
               style={[styles.input, styles.textArea]}
               placeholder="Describe the product (freshness, harvesting date, etc.)"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -244,7 +426,7 @@ export default function AddProductScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="Price"
-                  placeholderTextColor={Colors.gray}
+                  placeholderTextColor={colors.gray}
                   value={price}
                   onChangeText={setPrice}
                   keyboardType="numeric"
@@ -255,7 +437,7 @@ export default function AddProductScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. kg, piece, bundle"
-                  placeholderTextColor={Colors.gray}
+                  placeholderTextColor={colors.gray}
                   value={unit}
                   onChangeText={setUnit}
                 />
@@ -267,7 +449,7 @@ export default function AddProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. 50"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={quantity}
               onChangeText={setQuantity}
               keyboardType="numeric"
@@ -278,7 +460,7 @@ export default function AddProductScreen() {
             <TextInput
               style={styles.input}
               placeholder="e.g. Mangalore, Karnataka"
-              placeholderTextColor={Colors.gray}
+              placeholderTextColor={colors.gray}
               value={address}
               onChangeText={setAddress}
             />
@@ -287,11 +469,11 @@ export default function AddProductScreen() {
             <Text style={styles.label}>Product Image</Text>
             <View style={styles.pickerButtonsRow}>
               <TouchableOpacity style={styles.pickerBtn} onPress={takePhoto}>
-                <Ionicons name="camera" size={18} color={Colors.primary} />
+                <Ionicons name="camera" size={18} color={colors.primary} />
                 <Text style={styles.pickerBtnText}>Take Photo</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.pickerBtn} onPress={pickImage}>
-                <Ionicons name="images" size={18} color={Colors.primary} />
+                <Ionicons name="images" size={18} color={colors.primary} />
                 <Text style={styles.pickerBtnText}>From Gallery</Text>
               </TouchableOpacity>
             </View>
@@ -314,7 +496,7 @@ export default function AddProductScreen() {
                 <TextInput
                   style={styles.input}
                   placeholder="e.g. https://images.unsplash.com/... or direct image link"
-                  placeholderTextColor={Colors.gray}
+                  placeholderTextColor={colors.gray}
                   value={imageUrl}
                   onChangeText={setImageUrl}
                   autoCapitalize="none"
@@ -338,14 +520,14 @@ export default function AddProductScreen() {
               <Switch
                 value={isOrganic}
                 onValueChange={setIsOrganic}
-                trackColor={{ false: '#767577', true: Colors.primary }}
+                trackColor={{ false: '#767577', true: colors.primary }}
               />
             </View>
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleAddProduct} disabled={isLoading}>
               {isLoading ? (
                 <View style={styles.loadingRow}>
-                  <ActivityIndicator color={Colors.white} />
+                  <ActivityIndicator color={colors.white} />
                   <Text style={styles.loadingText}>
                     {isUploading ? 'Uploading Image...' : 'Securing On-Chain...'}
                   </Text>
@@ -361,184 +543,3 @@ export default function AddProductScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  scrollContent: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Layout.spacing.xxl,
-  },
-  label: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.black,
-    marginBottom: Layout.spacing.xs,
-  },
-  input: {
-    backgroundColor: Colors.lighterGray,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Layout.borderRadius.sm,
-    height: 48,
-    paddingHorizontal: Layout.spacing.md,
-    fontSize: Typography.fontSize.sm,
-    color: Colors.black,
-    marginBottom: Layout.spacing.md,
-  },
-  textArea: {
-    height: 90,
-    paddingTop: Layout.spacing.sm,
-    textAlignVertical: 'top',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: Layout.spacing.md,
-  },
-  categoryTab: {
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.xs,
-    borderRadius: Layout.borderRadius.xl,
-    backgroundColor: Colors.lighterGray,
-    marginRight: Layout.spacing.xs,
-    marginBottom: Layout.spacing.xs,
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  categoryTabActive: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
-  },
-  categoryText: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.gray,
-  },
-  categoryTextActive: {
-    color: Colors.white,
-  },
-  inputRow: {
-    flexDirection: 'row',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.xl,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: Layout.spacing.md,
-  },
-  switchLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: Colors.black,
-  },
-  switchDesc: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-    marginTop: 2,
-  },
-  submitBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.md,
-    alignItems: 'center',
-  },
-  submitBtnText: {
-    color: Colors.white,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-  },
-  previewContainer: {
-    marginBottom: Layout.spacing.md,
-  },
-  previewLabel: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: 'bold',
-    color: Colors.black,
-    marginBottom: Layout.spacing.xs,
-  },
-  imagePreview: {
-    width: '100%',
-    height: 150,
-    borderRadius: Layout.borderRadius.sm,
-    resizeMode: 'cover',
-  },
-  pickerButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.md,
-  },
-  pickerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.white,
-    borderWidth: 1,
-    borderColor: Colors.primary,
-    borderRadius: Layout.borderRadius.sm,
-    paddingVertical: Layout.spacing.sm,
-    flex: 0.48,
-  },
-  pickerBtnText: {
-    color: Colors.primary,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.xs,
-    marginLeft: 6,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Layout.spacing.xs,
-  },
-  removeImageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  removeImageText: {
-    color: '#C62828',
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.xs,
-    marginLeft: 4,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: Colors.white,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-    marginLeft: 8,
-  },
-}) as any;

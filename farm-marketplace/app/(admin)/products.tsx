@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   TextInput,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
+import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../services/api';
@@ -31,6 +31,114 @@ interface Product {
 }
 
 export default function ManageProductsScreen() {
+  const colors = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingBottom: Layout.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: Layout.spacing.xs,
+  },
+  refreshButton: {
+    padding: Layout.spacing.xs,
+  },
+  headerTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  searchContainer: {
+    padding: Layout.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  searchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.lighterGray,
+    borderRadius: Layout.borderRadius.md,
+    paddingHorizontal: Layout.spacing.md,
+    height: 44,
+  },
+  searchIcon: {
+    marginRight: Layout.spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    color: colors.black,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Layout.spacing.xl,
+  },
+  loadingText: {
+    marginTop: Layout.spacing.md,
+    color: colors.gray,
+  },
+  noProductsText: {
+    fontSize: Typography.fontSize.md,
+    color: colors.gray,
+    marginTop: Layout.spacing.md,
+  },
+  listContainer: {
+    padding: Layout.spacing.md,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: Layout.borderRadius.md,
+    padding: Layout.spacing.lg,
+    marginBottom: Layout.spacing.md,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  productName: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+    marginBottom: 4,
+  },
+  productDetail: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    marginVertical: 1,
+  },
+  priceText: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.primary,
+    marginTop: 6,
+  },
+  unitText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    fontWeight: 'normal',
+  },
+  deleteButton: {
+    padding: Layout.spacing.sm,
+  },
+}), [colors]);
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,21 +243,21 @@ export default function ManageProductsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.replace('/(admin)')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.admin} />
+          <Ionicons name="arrow-back" size={24} color={colors.admin} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Manage Products</Text>
         <TouchableOpacity onPress={fetchProducts} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={20} color={Colors.admin} />
+          <Ionicons name="refresh" size={20} color={colors.admin} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.searchContainer}>
         <View style={styles.searchWrapper}>
-          <Ionicons name="search" size={20} color={Colors.gray} style={styles.searchIcon} />
+          <Ionicons name="search" size={20} color={colors.gray} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search products..."
-            placeholderTextColor={Colors.gray}
+            placeholderTextColor={colors.gray}
             value={search}
             onChangeText={setSearch}
           />
@@ -158,12 +266,12 @@ export default function ManageProductsScreen() {
 
       {loading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={Colors.admin} />
+          <ActivityIndicator size="large" color={colors.admin} />
           <Text style={styles.loadingText}>Fetching products...</Text>
         </View>
       ) : filteredProducts.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Ionicons name="cube-outline" size={60} color={Colors.gray} />
+          <Ionicons name="cube-outline" size={60} color={colors.gray} />
           <Text style={styles.noProductsText}>No products found</Text>
         </View>
       ) : (
@@ -179,110 +287,3 @@ export default function ManageProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  refreshButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  searchContainer: {
-    padding: Layout.spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.md,
-    height: 44,
-  },
-  searchIcon: {
-    marginRight: Layout.spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: Typography.fontSize.sm,
-    color: Colors.black,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Layout.spacing.xl,
-  },
-  loadingText: {
-    marginTop: Layout.spacing.md,
-    color: Colors.gray,
-  },
-  noProductsText: {
-    fontSize: Typography.fontSize.md,
-    color: Colors.gray,
-    marginTop: Layout.spacing.md,
-  },
-  listContainer: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  cardInfo: {
-    flex: 1,
-  },
-  productName: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-    marginBottom: 4,
-  },
-  productDetail: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-    marginVertical: 1,
-  },
-  priceText: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.primary,
-    marginTop: 6,
-  },
-  unitText: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-    fontWeight: 'normal',
-  },
-  deleteButton: {
-    padding: Layout.spacing.sm,
-  },
-}) as any;
