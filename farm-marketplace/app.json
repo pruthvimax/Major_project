@@ -48,8 +48,7 @@
     },
     "extra": {
       "cloudinaryCloudName": "dclx9vzjp",
-      "cloudinaryApiKey": "374796258128269",
-      "cloudinaryApiSecret": "rlfihV-6NmxL3dELWGBJ9OhcZx8"
+      "cloudinaryUploadPreset": "farm_marketplace_unsigned"
     }
   }
 }

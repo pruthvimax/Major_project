@@ -127,6 +127,26 @@ Copy from [`backend/.env.example`](backend/.env.example):
 
 Copy from [`farm-marketplace/.env.example`](farm-marketplace/.env.example). Keep real secrets out of git — `.env` files are gitignored.
 
+| Variable | Purpose |
+|----------|---------|
+| `EXPO_PUBLIC_API_URL` | Backend API base URL |
+| `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name (public OK) |
+| `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | **Unsigned** upload preset name |
+
+Image uploads use an unsigned preset so the API secret never ships in the mobile app.
+
+---
+
+## Security: leaked Cloudinary credentials
+
+If GitGuardian (or similar) reports exposed Cloudinary keys:
+
+1. **Rotate / disable the leaked key** in [Cloudinary Console → Settings → API Keys](https://console.cloudinary.com/settings/api-keys) ([rotation guide](https://cloudinary.com/documentation/ts_how_to_rotate_api_keys_in_the_console)).
+2. Create an **unsigned** upload preset (Settings → Upload → Upload presets).
+3. Put only `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` and `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET` in `farm-marketplace/.env`.
+4. Never commit API secrets or put them in `app.json` / client source.
+5. If the leak was on a fork or upstream (`pruthvimax/Major_project`), open a PR or ask the owner to pull the same fix — rotating the key is still required even if history still contains the old secret.
+
 ---
 
 ## Dark / light mode
