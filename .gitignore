@@ -1,17 +1,18 @@
-# Dependency directories
+# Dependencies
 node_modules/
 
-# Production builds
+# Production / build outputs
 dist/
 build/
 web-build/
+coverage/
+.nyc_output/
 
-# Local env files
+# Environment & secrets — never commit real credentials
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
+!**/.env.example
 
 # Logs
 npm-debug.log*
@@ -19,7 +20,7 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
-# Editor directories and files
+# Editor / OS
 .idea/
 .vscode/
 *.suo
@@ -28,11 +29,26 @@ yarn-error.log*
 *.sln
 *.sw?
 .DS_Store
+Thumbs.db
 
-# Blockchain/Hardhat build artifacts
+# Blockchain / Hardhat
 blockchain/artifacts/
 blockchain/cache/
 blockchain/typechain-types/
+blockchain/coverage/
+blockchain/coverage.json
 
-# Expo/React Native build artifacts
+# Expo / React Native
 farm-marketplace/.expo/
+farm-marketplace/android/
+farm-marketplace/ios/
+farm-marketplace/expo-env.d.ts
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# TypeScript
+*.tsbuildinfo

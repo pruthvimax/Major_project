@@ -20,6 +20,8 @@ export interface IProduct extends Document {
   isAvailable: boolean;
   blockchainTxHash?: string;
   blockchainId?: number | null;
+  averageRating: number;
+  reviewCount: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -93,6 +95,14 @@ const ProductSchema = new Schema<IProduct>(
     blockchainId: {
       type: Number,
       default: null,
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
     },
   },
   {

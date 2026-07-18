@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import { purchaseProductOnChain, confirmDeliveryOnChain, cancelOrderOnChain } from '../services/blockchainService';
+import { sendPushNotification } from '../services/notificationService';
 
 interface AuthRequest extends Request {
   user?: any;
@@ -81,6 +82,9 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       }
     }
 
+    const estimatedDelivery = new Date();
+    estimatedDelivery.setDate(estimatedDelivery.getDate() + 5); // Default: 5 days
+
     const order = await Order.create({
       buyer: req.user?._id,
       farmer: farmerId,
@@ -91,6 +95,15 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       notes,
       blockchainTxHash,
       blockchainOrderId,
+      estimatedDelivery,
+      trackingEvents: [
+        {
+          status: 'pending',
+          message: 'Order placed successfully. Waiting for farmer confirmation.',
+          location: '',
+          timestamp: new Date(),
+        },
+      ],
     });
 
     // Populate order details
@@ -98,6 +111,15 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       .populate('buyer', 'name email mobile')
       .populate('farmer', 'name email mobile')
       .populate('items.product', 'name price unit images');
+
+    // Trigger Push Notification to Farmer
+    if (order.farmer) {
+      sendPushNotification(
+        order.farmer.toString(),
+        'New Order Received 🌾',
+        `A buyer has placed a new order (${order.orderNumber}) for a total of ₹${order.totalAmount}.`
+      ).catch((err) => console.error('Error sending farmer notification:', err));
+    }
 
     res.status(201).json({
       success: true,
@@ -275,12 +297,45 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
         }
       }
     }
+
+    // Auto-append a tracking event for each status transition
+    const trackingMessages: Record<string, string> = {
+      confirmed: 'Your order has been confirmed by the farmer and is being prepared.',
+      processing: 'Your order is being packed and prepared for dispatch.',
+      shipped: 'Your order has been dispatched and is on its way.',
+      delivered: 'Your order has been delivered successfully. Enjoy your fresh produce!',
+      cancelled: 'Your order has been cancelled.',
+    };
+    order.trackingEvents.push({
+      status,
+      message: trackingMessages[status] || `Order status updated to ${status}.`,
+      location: req.body.location || '',
+      timestamp: new Date(),
+    });
+
     await order.save();
 
     const updatedOrder = await Order.findById(order._id)
       .populate('buyer', 'name email mobile')
       .populate('farmer', 'name email mobile')
       .populate('items.product', 'name price unit images');
+
+    // Trigger Push Notification to Buyer
+    if (order.buyer) {
+      const statusTitle: Record<string, string> = {
+        confirmed: 'Order Confirmed! ✅',
+        processing: 'Order Processing! ⚙️',
+        shipped: 'Order Shipped! 🚚',
+        delivered: 'Order Delivered! 🎉',
+        cancelled: 'Order Cancelled ❌',
+      };
+      const title = statusTitle[status] || 'Order Status Update';
+      const body = `Your order ${order.orderNumber} is now ${status}.`;
+
+      sendPushNotification(order.buyer.toString(), title, body).catch((err) =>
+        console.error('Error sending buyer status notification:', err)
+      );
+    }
 
     res.status(200).json({
       success: true,
@@ -349,6 +404,25 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       }
     }
     await order.save();
+
+    // Trigger Push Notifications on Cancel
+    if (order.farmer && order.buyer) {
+      const cancellerRole = req.user?.role === 'admin' ? 'Administrator' : 'Buyer';
+      
+      // Notify Farmer
+      sendPushNotification(
+        order.farmer.toString(),
+        'Order Cancelled ❌',
+        `Order ${order.orderNumber} has been cancelled by the ${cancellerRole.toLowerCase()}.`
+      ).catch((err) => console.error('Error sending cancellation notification to farmer:', err));
+
+      // Notify Buyer
+      sendPushNotification(
+        order.buyer.toString(),
+        'Order Cancelled ❌',
+        `Your order ${order.orderNumber} has been successfully cancelled.`
+      ).catch((err) => console.error('Error sending cancellation notification to buyer:', err));
+    }
 
     res.status(200).json({
       success: true,

@@ -1,14 +1,29 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+import CryptoJS from 'crypto-js';
 
-// NOTE: These are fallback public Cloudinary credentials for testing.
-// You should update these to your own Cloudinary Cloud Name and Unsigned Upload Preset in production.
-const CLOUDINARY_CLOUD_NAME = 'dq7kxlmvy'; 
-const UPLOAD_PRESET = 'farm_preset';       
+// Get Cloudinary credentials from app.json
+const CLOUDINARY_CLOUD_NAME = Constants.expoConfig?.extra?.cloudinaryCloudName || 'dclx9vzjp';
+const CLOUDINARY_API_KEY = Constants.expoConfig?.extra?.cloudinaryApiKey || '374796258128269';
+const CLOUDINARY_API_SECRET = Constants.expoConfig?.extra?.cloudinaryApiSecret || 'rlfihV-6NmxL3dELWGBJ9OhcZx8';
+
+/**
+ * Generate Cloudinary signature for signed uploads
+ * Signature = SHA1("timestamp=" + timestamp + "&" + sorted_params + API_SECRET)
+ */
+const generateSignature = (timestamp: number, params: Record<string, string>): string => {
+  // Sort parameters alphabetically and concatenate
+  const sortedParams = Object.keys(params).sort().map(key => `${key}=${params[key]}`).join('&');
+  const toSign = `timestamp=${timestamp}${sortedParams ? '&' + sortedParams : ''}${CLOUDINARY_API_SECRET}`;
+  
+  return CryptoJS.SHA1(toSign).toString();
+};
 
 export const uploadImageToCloudinary = async (imageUri: string): Promise<string> => {
   try {
     const formData = new FormData();
+    const timestamp = Math.floor(Date.now() / 1000);
     
     if (Platform.OS === 'web') {
       // For web browser file uploads, resolve local blob URI to a Blob object
@@ -27,7 +42,13 @@ export const uploadImageToCloudinary = async (imageUri: string): Promise<string>
       } as any);
     }
 
-    formData.append('upload_preset', UPLOAD_PRESET);
+    // Add signed upload parameters
+    formData.append('api_key', CLOUDINARY_API_KEY);
+    formData.append('timestamp', timestamp.toString());
+    
+    // Generate signature
+    const signature = generateSignature(timestamp, {});
+    formData.append('signature', signature);
 
     const response = await axios.post(
       `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,

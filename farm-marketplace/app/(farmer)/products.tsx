@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  SafeAreaView,
   Platform,
   Image,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import Colors from '../../constants/Colors';
+import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../services/api';
@@ -35,6 +35,210 @@ interface Product {
 }
 
 export default function MyProductsScreen() {
+  const colors = useColors();
+  const styles = useMemo(() => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Layout.spacing.lg,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingBottom: Layout.spacing.md,
+    backgroundColor: colors.card,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  backButton: {
+    padding: Layout.spacing.xs,
+  },
+  headerTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  centerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Layout.spacing.xl,
+  },
+  loadingText: {
+    marginTop: Layout.spacing.md,
+    color: colors.gray,
+  },
+  noProductsTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+    marginTop: Layout.spacing.md,
+  },
+  noProductsDesc: {
+    color: colors.gray,
+    textAlign: 'center',
+    marginTop: Layout.spacing.xs,
+    marginBottom: Layout.spacing.lg,
+  },
+  addBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: Layout.borderRadius.md,
+    paddingHorizontal: Layout.spacing.xl,
+    paddingVertical: Layout.spacing.sm,
+  },
+  addBtnText: {
+    color: colors.white,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  listContainer: {
+    padding: Layout.spacing.md,
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: Layout.borderRadius.md,
+    padding: Layout.spacing.lg,
+    marginBottom: Layout.spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: '120%',
+    height: 160,
+    marginLeft: '-10%',
+    marginTop: '-10%',
+    marginBottom: Layout.spacing.md,
+    resizeMode: 'cover',
+  },
+  placeholderImage: {
+    width: '120%',
+    height: 120,
+    marginLeft: '-10%',
+    marginTop: '-10%',
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Layout.spacing.md,
+  },
+  placeholderText: {
+    fontSize: 10,
+    color: '#2E7D32',
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    paddingBottom: Layout.spacing.sm,
+    marginBottom: Layout.spacing.md,
+  },
+  productName: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  categoryText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    marginTop: 2,
+  },
+  organicBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: Layout.spacing.sm,
+    paddingVertical: 2,
+    borderRadius: Layout.borderRadius.xs,
+  },
+  organicText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  description: {
+    fontSize: Typography.fontSize.sm,
+    color: colors.gray,
+    lineHeight: 18,
+    marginBottom: Layout.spacing.md,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: Layout.spacing.sm,
+  },
+  infoText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+  },
+  blockchainDetails: {
+    backgroundColor: '#E8F5E9',
+    borderRadius: Layout.borderRadius.sm,
+    padding: Layout.spacing.md,
+    marginVertical: Layout.spacing.sm,
+  },
+  blockchainHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  blockchainTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#2E7D32',
+    marginLeft: 4,
+  },
+  blockchainDetailText: {
+    fontSize: 10,
+    color: '#555',
+    marginVertical: 1,
+  },
+  blockchainValue: {
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: Layout.spacing.sm,
+    marginTop: Layout.spacing.sm,
+  },
+  price: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.black,
+  },
+  unit: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    fontWeight: 'normal',
+  },
+  deleteBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#C62828',
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: 6,
+    borderRadius: Layout.borderRadius.sm,
+  },
+  deleteBtnText: {
+    color: '#C62828',
+    fontWeight: 'bold',
+    fontSize: Typography.fontSize.xs,
+    marginLeft: 4,
+  },
+}), [colors]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -110,7 +314,7 @@ export default function MyProductsScreen() {
         <Image source={{ uri: item.images[0] }} style={styles.productImage} />
       ) : (
         <View style={styles.placeholderImage}>
-          <Ionicons name="leaf-outline" size={40} color={Colors.primary} />
+          <Ionicons name="leaf-outline" size={40} color={colors.primary} />
           <Text style={styles.placeholderText}>Farm Fresh Produce</Text>
         </View>
       )}
@@ -184,7 +388,7 @@ export default function MyProductsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.replace('/(farmer)')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={Colors.primary} />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Products</Text>
         <View style={{ width: 24 }} />
@@ -192,12 +396,12 @@ export default function MyProductsScreen() {
 
       {loading && !refreshing ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
+          <ActivityIndicator size="large" color={colors.primary} />
           <Text style={styles.loadingText}>Fetching products...</Text>
         </View>
       ) : products.length === 0 ? (
         <View style={styles.centerContainer}>
-          <Ionicons name="cube-outline" size={60} color={Colors.gray} />
+          <Ionicons name="cube-outline" size={60} color={colors.gray} />
           <Text style={styles.noProductsTitle}>No Products Listed</Text>
           <Text style={styles.noProductsDesc}>Add fresh produce to start listing items on the marketplace.</Text>
           <TouchableOpacity
@@ -222,206 +426,3 @@ export default function MyProductsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: Colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Layout.spacing.xl,
-  },
-  loadingText: {
-    marginTop: Layout.spacing.md,
-    color: Colors.gray,
-  },
-  noProductsTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-    marginTop: Layout.spacing.md,
-  },
-  noProductsDesc: {
-    color: Colors.gray,
-    textAlign: 'center',
-    marginTop: Layout.spacing.xs,
-    marginBottom: Layout.spacing.lg,
-  },
-  addBtn: {
-    backgroundColor: Colors.primary,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.sm,
-  },
-  addBtnText: {
-    color: Colors.white,
-    fontWeight: Typography.fontWeight.bold,
-  },
-  listContainer: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: Colors.white,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: Colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    overflow: 'hidden',
-  },
-  productImage: {
-    width: '120%',
-    height: 160,
-    marginLeft: '-10%',
-    marginTop: '-10%',
-    marginBottom: Layout.spacing.md,
-    resizeMode: 'cover',
-  },
-  placeholderImage: {
-    width: '120%',
-    height: 120,
-    marginLeft: '-10%',
-    marginTop: '-10%',
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Layout.spacing.md,
-  },
-  placeholderText: {
-    fontSize: 10,
-    color: '#2E7D32',
-    fontWeight: 'bold',
-    marginTop: 4,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-    paddingBottom: Layout.spacing.sm,
-    marginBottom: Layout.spacing.md,
-  },
-  productName: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  categoryText: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-    marginTop: 2,
-  },
-  organicBadge: {
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Layout.borderRadius.xs,
-  },
-  organicText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#2E7D32',
-  },
-  description: {
-    fontSize: Typography.fontSize.sm,
-    color: Colors.gray,
-    lineHeight: 18,
-    marginBottom: Layout.spacing.md,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.sm,
-  },
-  infoText: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-  },
-  blockchainDetails: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: Layout.borderRadius.sm,
-    padding: Layout.spacing.md,
-    marginVertical: Layout.spacing.sm,
-  },
-  blockchainHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  blockchainTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#2E7D32',
-    marginLeft: 4,
-  },
-  blockchainDetailText: {
-    fontSize: 10,
-    color: '#555',
-    marginVertical: 1,
-  },
-  blockchainValue: {
-    fontWeight: '700',
-    color: '#2E7D32',
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingTop: Layout.spacing.sm,
-    marginTop: Layout.spacing.sm,
-  },
-  price: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: Colors.black,
-  },
-  unit: {
-    fontSize: Typography.fontSize.xs,
-    color: Colors.gray,
-    fontWeight: 'normal',
-  },
-  deleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#C62828',
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: 6,
-    borderRadius: Layout.borderRadius.sm,
-  },
-  deleteBtnText: {
-    color: '#C62828',
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.xs,
-    marginLeft: 4,
-  },
-}) as any;

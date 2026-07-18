@@ -1,22 +1,9 @@
-export default {
-  primary: '#2E7D32',
-  primaryLight: '#4CAF50',
-  primaryDark: '#1B5E20',
-  secondary: '#1976D2',
-  admin: '#7B1FA2',
-  background: '#F5F5F5',
-  white: '#FFFFFF',
-  black: '#1A1A1A',
-  gray: '#666666',
-  lightGray: '#E0E0E0',
-  lighterGray: '#F5F5F5',
-  error: '#D32F2F',
-  success: '#388E3C',
-  warning: '#F57C00',
-  info: '#1976D2',
-  text: '#1A1A1A',
-  textSecondary: '#666666',
-  border: '#E0E0E0',
-  shadow: '#000000',
-  transparent: 'transparent',
+import { useTheme } from '../context/ThemeContext';
+import { lightColors, darkColors } from './ThemeColors';
+
+const useColors = () => {
+  const { isDark } = useTheme();
+  return isDark ? darkColors : lightColors;
 };
+
+export default useColors;

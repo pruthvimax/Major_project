@@ -10,6 +10,7 @@ export interface IUser extends Document {
   role: 'farmer' | 'buyer' | 'admin';
   isVerified: boolean;
   profileImage?: string;
+  pushToken?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -61,6 +62,10 @@ const UserSchema = new Schema<IUser>(
       default: false,
     },
     profileImage: {
+      type: String,
+      default: '',
+    },
+    pushToken: {
       type: String,
       default: '',
     },
