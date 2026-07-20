@@ -1,8 +1,9 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Use your computer's IP - confirmed working in phone browser
-const BASE_URL = 'http://172.17.2.82:5000/api';
+// Use your computer's LAN IP. Run `ipconfig` and use the IPv4 address for your
+// active network adapter (the one your phone shares with your PC).
+const BASE_URL = 'http://192.168.137.86:5000/api';
 
 console.log('📡 API Base URL:', BASE_URL);
 

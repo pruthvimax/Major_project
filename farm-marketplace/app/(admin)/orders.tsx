@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
-import api from '../services/api';
+import api from '../../services/api';
 
 interface OrderItem {
   product: {
