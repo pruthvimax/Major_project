@@ -20,8 +20,8 @@ import * as ImagePicker from 'expo-image-picker';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
-import api from '../services/api';
-import { uploadImageToCloudinary } from '../services/cloudinary';
+import api from '../../services/api';
+import { uploadImageToCloudinary } from '../../services/cloudinary';
 
 const CATEGORIES = ['vegetables', 'fruits', 'grains', 'dairy'];
 
