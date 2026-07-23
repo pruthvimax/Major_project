@@ -277,7 +277,7 @@ export default function BuyerDashboard() {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.actionContainer}>
+        <View style={[styles.actionContainer, { marginTop: Layout.spacing.lg }]}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonSecondary]}
             onPress={() => router.push('/(buyer)/orders')}
