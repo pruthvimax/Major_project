@@ -154,6 +154,38 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
+// @desc    Suspend / unsuspend user
+// @route   PUT /api/users/:id/suspend
+// @access  Private/Admin
+export const suspendUser = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { suspended } = req.body;
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    if (user.role === 'admin') {
+      res.status(400).json({ success: false, message: 'Cannot suspend admin accounts' });
+      return;
+    }
+
+    user.isSuspended = typeof suspended === 'boolean' ? suspended : !user.isSuspended;
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: user.isSuspended ? 'User suspended' : 'User unsuspended',
+      user,
+    });
+  } catch (error: any) {
+    console.error('Suspend user error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
 // @desc    Update push notification token
 // @route   PUT /api/users/push-token
 // @access  Private

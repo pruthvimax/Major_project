@@ -16,6 +16,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import EmptyState from '../../components/EmptyState';
 
 interface Product {
   _id: string;
@@ -24,6 +25,8 @@ interface Product {
   price: number;
   unit: string;
   quantity: number;
+  isApproved?: boolean;
+  isBlocked?: boolean;
   farmer: {
     name: string;
     email: string;
@@ -151,7 +154,7 @@ export default function ManageProductsScreen() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/products');
+      const response = await api.get('/products?all=true');
       if (response.data.success) {
         setProducts(response.data.products);
         setFilteredProducts(response.data.products);
@@ -184,6 +187,20 @@ export default function ManageProductsScreen() {
       if (onOk) onOk();
     } else {
       // native alert
+    }
+  };
+
+  const handleModerate = async (productId: string, action: 'approve' | 'block') => {
+    try {
+      setLoading(true);
+      const response = await api.put(`/products/${productId}/${action}`);
+      if (response.data.success) {
+        showAlert('Success', response.data.message);
+        fetchProducts();
+      }
+    } catch (error: any) {
+      showAlert('Error', error.response?.data?.message || `Failed to ${action} product`);
+      setLoading(false);
     }
   };
 
@@ -228,14 +245,31 @@ export default function ManageProductsScreen() {
         <Text style={styles.priceText}>
           ₹{item.price} <Text style={styles.unitText}>/ {item.unit}</Text>
         </Text>
+        <Text style={styles.productDetail}>
+          {item.isBlocked ? 'BLOCKED' : item.isApproved === false ? 'PENDING' : 'APPROVED'}
+        </Text>
       </View>
 
-      <TouchableOpacity
-        style={styles.deleteButton}
-        onPress={() => handleDeleteProduct(item._id)}
-      >
-        <Ionicons name="trash-outline" size={20} color="#C62828" />
-      </TouchableOpacity>
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity
+          style={[styles.deleteButton, { marginRight: 6 }]}
+          onPress={() => handleModerate(item._id, 'approve')}
+        >
+          <Ionicons name="checkmark-circle-outline" size={20} color="#2E7D32" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteButton, { marginRight: 6 }]}
+          onPress={() => handleModerate(item._id, 'block')}
+        >
+          <Ionicons name="ban-outline" size={20} color="#F57C00" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteProduct(item._id)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#C62828" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -270,10 +304,11 @@ export default function ManageProductsScreen() {
           <Text style={styles.loadingText}>Fetching products...</Text>
         </View>
       ) : filteredProducts.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Ionicons name="cube-outline" size={60} color={colors.gray} />
-          <Text style={styles.noProductsText}>No products found</Text>
-        </View>
+        <EmptyState 
+          icon="cube-outline" 
+          title="No products found" 
+          description={search ? 'Try a different search term' : 'No products listed yet'} 
+        />
       ) : (
         <FlatList
           data={filteredProducts}

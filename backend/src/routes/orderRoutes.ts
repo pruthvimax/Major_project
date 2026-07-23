@@ -8,6 +8,8 @@ import {
   updateOrderStatus,
   cancelOrder,
   updatePaymentStatus,
+  resolveDispute,
+  flagDispute,
 } from '../controllers/orderController';
 import { protect, restrictTo } from '../middleware/auth';
 
@@ -28,7 +30,9 @@ router.get('/:id', getOrder);
 
 // Order actions
 router.put('/:id/status', restrictTo('farmer', 'admin'), updateOrderStatus);
-router.put('/:id/cancel', restrictTo('buyer', 'admin'), cancelOrder);
+router.put('/:id/cancel', restrictTo('buyer', 'admin', 'farmer'), cancelOrder);
 router.put('/:id/payment', restrictTo('buyer', 'admin'), updatePaymentStatus);
+router.put('/:id/dispute', protect, flagDispute);
+router.put('/:id/resolve-dispute', restrictTo('admin'), resolveDispute);
 
 export default router;

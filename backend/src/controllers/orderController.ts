@@ -1,27 +1,61 @@
 import { Request, Response } from 'express';
 import Order from '../models/Order';
 import Product from '../models/Product';
-import { purchaseProductOnChain, confirmDeliveryOnChain, cancelOrderOnChain } from '../services/blockchainService';
+import Cart from '../models/Cart';
+import { createEscrow, releaseEscrow, refundEscrow } from '../services/escrowService';
+import { getUserWalletAddress } from '../services/blockchainService';
 import { sendPushNotification } from '../services/notificationService';
 
 interface AuthRequest extends Request {
   user?: any;
 }
 
+const STATUS_FLOW: Record<string, string[]> = {
+  pending: ['accepted', 'cancelled'],
+  accepted: ['packed', 'cancelled'],
+  packed: ['shipped'],
+  shipped: ['delivered'],
+  delivered: [],
+  cancelled: [],
+};
+
+const TRACKING_MESSAGES: Record<string, string> = {
+  accepted: 'Your order has been accepted by the farmer and is being prepared.',
+  packed: 'Your order has been packed and is ready for dispatch.',
+  shipped: 'Your order has been dispatched and is on its way.',
+  delivered: 'Your order has been delivered successfully. Enjoy your fresh produce!',
+  cancelled: 'Your order has been cancelled.',
+};
+
+const STATUS_TITLES: Record<string, string> = {
+  accepted: 'Order Accepted! ✅',
+  packed: 'Order Packed! 📦',
+  shipped: 'Order Shipped! 🚚',
+  delivered: 'Order Delivered! 🎉',
+  cancelled: 'Order Cancelled ❌',
+};
+
 // @desc    Create order
 // @route   POST /api/orders
 // @access  Private/Buyer
 export const createOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { items, shippingAddress, paymentMethod, notes } = req.body;
+    const { items, shippingAddress, paymentMethod, notes, clearCart: shouldClearCart } = req.body;
 
-    // Validate items and calculate total
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ success: false, message: 'Order items are required' });
+      return;
+    }
+
     let totalAmount = 0;
     const orderItems = [];
     let farmerId: any = null;
+    let farmerEmail = '';
+    let firstBlockchainId: number | null = null;
+    let firstProductId: string | undefined;
 
     for (const item of items) {
-      const product = await Product.findById(item.productId);
+      const product = await Product.findById(item.productId).populate('farmer', 'email');
       if (!product) {
         res.status(404).json({
           success: false,
@@ -30,7 +64,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         return;
       }
 
-      if (!product.isAvailable) {
+      if (!product.isAvailable || product.isBlocked || !product.isApproved) {
         res.status(400).json({
           success: false,
           message: `Product ${product.name} is not available`,
@@ -46,8 +80,24 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         return;
       }
 
+      const productFarmerId = product.farmer._id
+        ? product.farmer._id.toString()
+        : product.farmer.toString();
+
       if (!farmerId) {
-        farmerId = product.farmer;
+        farmerId = product.farmer._id || product.farmer;
+        farmerEmail = (product.farmer as any).email || '';
+      } else if (farmerId.toString() !== productFarmerId) {
+        res.status(400).json({
+          success: false,
+          message: 'All items in one order must be from the same farmer. Checkout separately per farmer.',
+        });
+        return;
+      }
+
+      if (!firstBlockchainId && product.blockchainId) {
+        firstBlockchainId = product.blockchainId;
+        firstProductId = product._id.toString();
       }
 
       const itemTotal = product.price * item.quantity;
@@ -60,30 +110,35 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         unit: product.unit,
       });
 
-      // Reduce product quantity
       product.quantity -= item.quantity;
+      if (product.quantity === 0) product.isAvailable = false;
       await product.save();
     }
 
-    // Process on-chain payment if paymentMethod is blockchain
     let blockchainTxHash = '';
-    let blockchainOrderId = null;
+    let blockchainOrderId: number | null = null;
+    let escrowStatus: any = 'none';
+    let buyerWalletAddress = '';
+    let farmerWalletAddress = farmerEmail ? getUserWalletAddress(farmerEmail) : '';
+    let verificationStatus: any = 'unverified';
 
-    if (paymentMethod === 'blockchain' && orderItems.length > 0) {
-      const firstProduct = await Product.findById(orderItems[0].product);
-      if (firstProduct && firstProduct.blockchainId) {
-        const purchaseResult = await purchaseProductOnChain(
-          firstProduct.blockchainId,
-          req.user?.email || '',
-          totalAmount
-        );
-        blockchainTxHash = purchaseResult.txHash;
-        blockchainOrderId = purchaseResult.blockchainOrderId;
-      }
+    if (paymentMethod === 'blockchain' && firstBlockchainId) {
+      const escrow = await createEscrow({
+        onChainProductId: firstBlockchainId,
+        buyerEmail: req.user?.email || '',
+        amount: totalAmount,
+        userId: req.user?._id.toString(),
+        productId: firstProductId,
+      });
+      blockchainTxHash = escrow.txHash;
+      blockchainOrderId = escrow.blockchainOrderId;
+      escrowStatus = escrow.escrowStatus;
+      buyerWalletAddress = escrow.buyerWallet;
+      if (escrow.txHash) verificationStatus = 'verified';
     }
 
     const estimatedDelivery = new Date();
-    estimatedDelivery.setDate(estimatedDelivery.getDate() + 5); // Default: 5 days
+    estimatedDelivery.setDate(estimatedDelivery.getDate() + 5);
 
     const order = await Order.create({
       buyer: req.user?._id,
@@ -95,6 +150,10 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       notes,
       blockchainTxHash,
       blockchainOrderId,
+      buyerWalletAddress,
+      farmerWalletAddress,
+      escrowStatus,
+      verificationStatus,
       estimatedDelivery,
       trackingEvents: [
         {
@@ -106,13 +165,15 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       ],
     });
 
-    // Populate order details
+    if (shouldClearCart) {
+      await Cart.findOneAndUpdate({ buyer: req.user?._id }, { items: [] });
+    }
+
     const populatedOrder = await Order.findById(order._id)
       .populate('buyer', 'name email mobile')
       .populate('farmer', 'name email mobile')
       .populate('items.product', 'name price unit images');
 
-    // Trigger Push Notification to Farmer
     if (order.farmer) {
       sendPushNotification(
         order.farmer.toString(),
@@ -136,7 +197,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
   }
 };
 
-// @desc    Get all orders (Admin) - Fixed unused req parameter
+// @desc    Get all orders (Admin)
 export const getOrders = async (_req: Request, res: Response): Promise<void> => {
   try {
     const orders = await Order.find()
@@ -152,16 +213,11 @@ export const getOrders = async (_req: Request, res: Response): Promise<void> => 
     });
   } catch (error: any) {
     console.error('Get orders error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 // @desc    Get user orders (Buyer)
-// @route   GET /api/orders/buyer
-// @access  Private/Buyer
 export const getBuyerOrders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const orders = await Order.find({ buyer: req.user?._id })
@@ -177,16 +233,11 @@ export const getBuyerOrders = async (req: AuthRequest, res: Response): Promise<v
     });
   } catch (error: any) {
     console.error('Get buyer orders error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 // @desc    Get farmer orders
-// @route   GET /api/orders/farmer
-// @access  Private/Farmer
 export const getFarmerOrders = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const orders = await Order.find({ farmer: req.user?._id })
@@ -202,16 +253,11 @@ export const getFarmerOrders = async (req: AuthRequest, res: Response): Promise<
     });
   } catch (error: any) {
     console.error('Get farmer orders error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 // @desc    Get single order
-// @route   GET /api/orders/:id
-// @access  Private
 export const getOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const order = await Order.findById(req.params.id)
@@ -220,44 +266,37 @@ export const getOrder = async (req: Request, res: Response): Promise<void> => {
       .populate('items.product', 'name price unit images category');
 
     if (!order) {
-      res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      res.status(404).json({ success: false, message: 'Order not found' });
       return;
     }
 
-    res.status(200).json({
-      success: true,
-      order,
-    });
+    res.status(200).json({ success: true, order });
   } catch (error: any) {
     console.error('Get order error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// @desc    Update order status
-// @route   PUT /api/orders/:id/status
-// @access  Private/Farmer or Admin
+// @desc    Update order status (Farmer accept/reject/progress)
 export const updateOrderStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { status } = req.body;
-    const order = await Order.findById(req.params.id);
+    let { status } = req.body;
+    // Backward-compat aliases
+    if (status === 'confirmed') status = 'accepted';
+    if (status === 'processing') status = 'packed';
+    if (status === 'rejected') status = 'cancelled';
+
+    const order = await Order.findById(req.params.id).populate('farmer', 'email');
 
     if (!order) {
-      res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      res.status(404).json({ success: false, message: 'Order not found' });
       return;
     }
 
-    // Check authorization
-    const isFarmer = order.farmer.toString() === req.user?._id.toString();
+    const farmerId = (order.farmer as any)._id
+      ? (order.farmer as any)._id.toString()
+      : order.farmer.toString();
+    const isFarmer = farmerId === req.user?._id.toString();
     const isAdmin = req.user?.role === 'admin';
 
     if (!isFarmer && !isAdmin) {
@@ -268,17 +307,7 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    // Validate status transition
-    const validTransitions: Record<string, string[]> = {
-      pending: ['confirmed', 'cancelled'],
-      confirmed: ['processing', 'cancelled'],
-      processing: ['shipped'],
-      shipped: ['delivered'],
-      delivered: [],
-      cancelled: [],
-    };
-
-    if (!validTransitions[order.status].includes(status)) {
+    if (!STATUS_FLOW[order.status]?.includes(status)) {
       res.status(400).json({
         success: false,
         message: `Invalid status transition from ${order.status} to ${status}`,
@@ -286,29 +315,59 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
-    order.status = status;
-    if (status === 'delivered') {
-      order.deliveryDate = new Date();
-      if (order.blockchainOrderId) {
-        const txHash = await confirmDeliveryOnChain(order.blockchainOrderId);
-        if (txHash) {
-          order.blockchainTxHash = txHash;
-          order.paymentStatus = 'paid';
+    // Farmer reject/cancel before accepted — restore stock + refund escrow
+    if (status === 'cancelled') {
+      for (const item of order.items) {
+        const product = await Product.findById(item.product);
+        if (product) {
+          product.quantity += item.quantity;
+          product.isAvailable = true;
+          await product.save();
+        }
+      }
+
+      if (order.blockchainOrderId && order.escrowStatus === 'locked') {
+        const refund = await refundEscrow({
+          blockchainOrderId: order.blockchainOrderId,
+          amount: order.totalAmount,
+          userId: req.user?._id.toString(),
+          orderId: order._id.toString(),
+          buyerEmail: undefined,
+        });
+        if (refund.txHash) {
+          order.blockchainTxHash = refund.txHash;
+          order.escrowStatus = refund.escrowStatus;
         }
       }
     }
 
-    // Auto-append a tracking event for each status transition
-    const trackingMessages: Record<string, string> = {
-      confirmed: 'Your order has been confirmed by the farmer and is being prepared.',
-      processing: 'Your order is being packed and prepared for dispatch.',
-      shipped: 'Your order has been dispatched and is on its way.',
-      delivered: 'Your order has been delivered successfully. Enjoy your fresh produce!',
-      cancelled: 'Your order has been cancelled.',
-    };
+    order.status = status;
+
+    if (status === 'delivered') {
+      order.deliveryDate = new Date();
+      order.verificationStatus = 'verified';
+      if (order.blockchainOrderId && order.escrowStatus === 'locked') {
+        const farmerEmail = (order.farmer as any).email || '';
+        const release = await releaseEscrow({
+          blockchainOrderId: order.blockchainOrderId,
+          amount: order.totalAmount,
+          userId: req.user?._id.toString(),
+          orderId: order._id.toString(),
+          farmerEmail,
+        });
+        if (release.txHash) {
+          order.blockchainTxHash = release.txHash;
+          order.escrowStatus = release.escrowStatus;
+          order.paymentStatus = 'paid';
+        }
+      } else if (order.paymentMethod !== 'blockchain') {
+        order.paymentStatus = 'paid';
+      }
+    }
+
     order.trackingEvents.push({
       status,
-      message: trackingMessages[status] || `Order status updated to ${status}.`,
+      message: TRACKING_MESSAGES[status] || `Order status updated to ${status}.`,
       location: req.body.location || '',
       timestamp: new Date(),
     });
@@ -320,21 +379,13 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       .populate('farmer', 'name email mobile')
       .populate('items.product', 'name price unit images');
 
-    // Trigger Push Notification to Buyer
     if (order.buyer) {
-      const statusTitle: Record<string, string> = {
-        confirmed: 'Order Confirmed! ✅',
-        processing: 'Order Processing! ⚙️',
-        shipped: 'Order Shipped! 🚚',
-        delivered: 'Order Delivered! 🎉',
-        cancelled: 'Order Cancelled ❌',
-      };
-      const title = statusTitle[status] || 'Order Status Update';
-      const body = `Your order ${order.orderNumber} is now ${status}.`;
-
-      sendPushNotification(order.buyer.toString(), title, body).catch((err) =>
-        console.error('Error sending buyer status notification:', err)
-      );
+      const title = STATUS_TITLES[status] || 'Order Status Update';
+      sendPushNotification(
+        order.buyer.toString(),
+        title,
+        `Your order ${order.orderNumber} is now ${status}.`
+      ).catch((err) => console.error('Error sending buyer status notification:', err));
     }
 
     res.status(200).json({
@@ -344,30 +395,24 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     });
   } catch (error: any) {
     console.error('Update order status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// @desc    Cancel order
-// @route   PUT /api/orders/:id/cancel
-// @access  Private
+// @desc    Cancel order (buyer before confirmation / admin)
 export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const order = await Order.findById(req.params.id);
+    const order = await Order.findById(req.params.id).populate('buyer', 'email');
 
     if (!order) {
-      res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      res.status(404).json({ success: false, message: 'Order not found' });
       return;
     }
 
-    // Only buyer or admin can cancel
-    const isBuyer = order.buyer.toString() === req.user?._id.toString();
+    const buyerId = (order.buyer as any)._id
+      ? (order.buyer as any)._id.toString()
+      : order.buyer.toString();
+    const isBuyer = buyerId === req.user?._id.toString();
     const isAdmin = req.user?.role === 'admin';
 
     if (!isBuyer && !isAdmin) {
@@ -378,8 +423,16 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Can only cancel pending or confirmed orders
-    if (order.status !== 'pending' && order.status !== 'confirmed') {
+    // Buyer can cancel only before farmer accepts
+    if (isBuyer && !isAdmin && order.status !== 'pending') {
+      res.status(400).json({
+        success: false,
+        message: 'You can only cancel orders before farmer confirmation',
+      });
+      return;
+    }
+
+    if (order.status === 'shipped' || order.status === 'delivered' || order.status === 'cancelled') {
       res.status(400).json({
         success: false,
         message: `Cannot cancel order with status: ${order.status}`,
@@ -387,38 +440,51 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Restore product quantities
     for (const item of order.items) {
       const product = await Product.findById(item.product);
       if (product) {
         product.quantity += item.quantity;
+        product.isAvailable = true;
         await product.save();
       }
     }
 
     order.status = 'cancelled';
-    if (order.blockchainOrderId) {
-      const txHash = await cancelOrderOnChain(order.blockchainOrderId);
-      if (txHash) {
-        order.blockchainTxHash = txHash;
+
+    if (order.blockchainOrderId && order.escrowStatus === 'locked') {
+      const buyerEmail = (order.buyer as any).email || req.user?.email || '';
+      const refund = await refundEscrow({
+        blockchainOrderId: order.blockchainOrderId,
+        amount: order.totalAmount,
+        userId: req.user?._id.toString(),
+        orderId: order._id.toString(),
+        buyerEmail,
+      });
+      if (refund.txHash) {
+        order.blockchainTxHash = refund.txHash;
+        order.escrowStatus = refund.escrowStatus;
       }
     }
+
+    order.trackingEvents.push({
+      status: 'cancelled',
+      message: req.body.reason || 'Order cancelled.',
+      location: '',
+      timestamp: new Date(),
+    });
+
     await order.save();
 
-    // Trigger Push Notifications on Cancel
     if (order.farmer && order.buyer) {
       const cancellerRole = req.user?.role === 'admin' ? 'Administrator' : 'Buyer';
-      
-      // Notify Farmer
       sendPushNotification(
         order.farmer.toString(),
         'Order Cancelled ❌',
         `Order ${order.orderNumber} has been cancelled by the ${cancellerRole.toLowerCase()}.`
       ).catch((err) => console.error('Error sending cancellation notification to farmer:', err));
 
-      // Notify Buyer
       sendPushNotification(
-        order.buyer.toString(),
+        buyerId,
         'Order Cancelled ❌',
         `Your order ${order.orderNumber} has been successfully cancelled.`
       ).catch((err) => console.error('Error sending cancellation notification to buyer:', err));
@@ -431,30 +497,21 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
     });
   } catch (error: any) {
     console.error('Cancel order error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
-    });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
 // @desc    Update payment status
-// @route   PUT /api/orders/:id/payment
-// @access  Private
 export const updatePaymentStatus = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { paymentStatus, blockchainTxHash } = req.body;
     const order = await Order.findById(req.params.id);
 
     if (!order) {
-      res.status(404).json({
-        success: false,
-        message: 'Order not found',
-      });
+      res.status(404).json({ success: false, message: 'Order not found' });
       return;
     }
 
-    // Check authorization
     const isBuyer = order.buyer.toString() === req.user?._id.toString();
     const isAdmin = req.user?.role === 'admin';
 
@@ -466,12 +523,8 @@ export const updatePaymentStatus = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
-    if (paymentStatus) {
-      order.paymentStatus = paymentStatus;
-    }
-    if (blockchainTxHash) {
-      order.blockchainTxHash = blockchainTxHash;
-    }
+    if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (blockchainTxHash) order.blockchainTxHash = blockchainTxHash;
 
     await order.save();
 
@@ -482,9 +535,69 @@ export const updatePaymentStatus = async (req: AuthRequest, res: Response): Prom
     });
   } catch (error: any) {
     console.error('Update payment status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Resolve dispute (Admin)
+export const resolveDispute = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { resolution, status } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      res.status(404).json({ success: false, message: 'Order not found' });
+      return;
+    }
+
+    order.verificationStatus = 'resolved';
+    order.disputeReason = resolution || order.disputeReason;
+    if (status && STATUS_FLOW[order.status]?.includes(status)) {
+      order.status = status;
+    }
+
+    order.trackingEvents.push({
+      status: 'resolved',
+      message: resolution || 'Dispute resolved by administrator.',
+      location: '',
+      timestamp: new Date(),
     });
+
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Dispute resolved',
+      order,
+    });
+  } catch (error: any) {
+    console.error('Resolve dispute error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Flag dispute
+export const flagDispute = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { reason } = req.body;
+    const order = await Order.findById(req.params.id);
+
+    if (!order) {
+      res.status(404).json({ success: false, message: 'Order not found' });
+      return;
+    }
+
+    order.verificationStatus = 'disputed';
+    order.disputeReason = reason || 'Dispute raised';
+    await order.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Dispute flagged',
+      order,
+    });
+  } catch (error: any) {
+    console.error('Flag dispute error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

@@ -18,8 +18,12 @@ export interface IProduct extends Document {
   };
   isOrganic: boolean;
   isAvailable: boolean;
+  isApproved: boolean;
+  isBlocked: boolean;
   blockchainTxHash?: string;
   blockchainId?: number | null;
+  verificationStatus: 'unverified' | 'verified' | 'rejected';
+  farmerWalletAddress?: string;
   averageRating: number;
   reviewCount: number;
   createdAt: Date;
@@ -88,6 +92,14 @@ const ProductSchema = new Schema<IProduct>(
       type: Boolean,
       default: true,
     },
+    isApproved: {
+      type: Boolean,
+      default: true,
+    },
+    isBlocked: {
+      type: Boolean,
+      default: false,
+    },
     blockchainTxHash: {
       type: String,
       default: '',
@@ -95,6 +107,15 @@ const ProductSchema = new Schema<IProduct>(
     blockchainId: {
       type: Number,
       default: null,
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'verified', 'rejected'],
+      default: 'unverified',
+    },
+    farmerWalletAddress: {
+      type: String,
+      default: '',
     },
     averageRating: {
       type: Number,

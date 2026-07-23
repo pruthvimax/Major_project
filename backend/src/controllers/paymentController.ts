@@ -92,11 +92,11 @@ export const verifyRazorpayPaymentHandler = async (req: AuthRequest, res: Respon
     // Mark as paid and store payment ID
     order.paymentStatus = 'paid';
     order.razorpayPaymentId = razorpayPaymentId;
-    order.status = 'confirmed';
+    order.status = 'accepted';
 
     // Add tracking event
     order.trackingEvents.push({
-      status: 'confirmed',
+      status: 'accepted',
       message: 'Payment received via Razorpay. Order confirmed.',
       location: '',
       timestamp: new Date(),

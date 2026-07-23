@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Product from '../models/Product';
-import { listProductOnChain } from '../services/blockchainService';
+import { listProductOnChain, getUserWalletAddress } from '../services/blockchainService';
+import { recordTransaction } from '../services/transactionService';
 
 interface AuthRequest extends Request {
   user?: any;
@@ -23,7 +24,7 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<vo
       isOrganic,
     } = req.body;
 
-    // List product on blockchain relayer
+    const farmerWallet = getUserWalletAddress(req.user?.email || '');
     const blockchainResult = await listProductOnChain(req.user?.email || '', name, price);
     const blockchainTxHash = blockchainResult.txHash;
     const blockchainId = blockchainResult.blockchainId;
@@ -41,7 +42,25 @@ export const createProduct = async (req: AuthRequest, res: Response): Promise<vo
       isOrganic: isOrganic || false,
       blockchainTxHash,
       blockchainId,
+      farmerWalletAddress: farmerWallet,
+      verificationStatus: blockchainTxHash ? 'verified' : 'unverified',
+      isApproved: true,
+      isBlocked: false,
     });
+
+    if (blockchainTxHash) {
+      await recordTransaction({
+        txHash: blockchainTxHash,
+        from: farmerWallet,
+        to: 'marketplace',
+        amount: price,
+        type: 'product_listing',
+        userId: req.user?._id,
+        productId: product._id,
+        status: 'confirmed',
+        metadata: { blockchainId, name },
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -65,7 +84,14 @@ export const getProducts = async (req: Request, res: Response): Promise<void> =>
   try {
     const { category, farmer, search, minPrice, maxPrice, organic } = req.query;
     
-    const filter: any = { isAvailable: true };
+    const filter: any = { isAvailable: true, isBlocked: false, isApproved: true };
+
+    // Admin can request all products via ?all=true
+    if (req.query.all === 'true') {
+      delete filter.isAvailable;
+      delete filter.isBlocked;
+      delete filter.isApproved;
+    }
 
     if (category) filter.category = category;
     if (farmer) filter.farmer = farmer;
@@ -227,5 +253,51 @@ export const getFarmerProducts = async (req: AuthRequest, res: Response): Promis
       success: false,
       message: 'Server error',
     });
+  }
+};
+
+// @desc    Admin approve product
+// @route   PUT /api/products/:id/approve
+// @access  Private/Admin
+export const approveProduct = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { isApproved: true, isBlocked: false, verificationStatus: 'verified' },
+      { new: true }
+    );
+
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Product approved', product });
+  } catch (error: any) {
+    console.error('Approve product error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// @desc    Admin block product
+// @route   PUT /api/products/:id/block
+// @access  Private/Admin
+export const blockProduct = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { isBlocked: true, isAvailable: false, verificationStatus: 'rejected' },
+      { new: true }
+    );
+
+    if (!product) {
+      res.status(404).json({ success: false, message: 'Product not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Product blocked', product });
+  } catch (error: any) {
+    console.error('Block product error:', error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };

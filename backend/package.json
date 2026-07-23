@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "seed:admin": "ts-node src/scripts/seedAdmin.ts"
   },
   "keywords": [
     "blockchain",

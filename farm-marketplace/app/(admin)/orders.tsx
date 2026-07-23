@@ -52,205 +52,205 @@ interface Order {
 export default function ManageOrdersScreen() {
   const colors = useColors();
   const styles = useMemo(() => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  refreshButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  searchContainer: {
-    padding: Layout.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.lighterGray,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.md,
-    height: 44,
-  },
-  searchIcon: {
-    marginRight: Layout.spacing.sm,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: Typography.fontSize.sm,
-    color: colors.black,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Layout.spacing.xl,
-  },
-  loadingText: {
-    marginTop: Layout.spacing.md,
-    color: colors.gray,
-  },
-  noOrdersText: {
-    fontSize: Typography.fontSize.md,
-    color: colors.gray,
-    marginTop: Layout.spacing.md,
-  },
-  listContainer: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: Layout.spacing.sm,
-    marginBottom: Layout.spacing.md,
-  },
-  orderNumber: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  orderDate: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Layout.borderRadius.xs,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  partyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.md,
-    backgroundColor: colors.lighterGray,
-    padding: Layout.spacing.sm,
-    borderRadius: Layout.borderRadius.sm,
-  },
-  partyText: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-  },
-  partyName: {
-    fontWeight: 'bold',
-    color: colors.black,
-  },
-  itemsSection: {
-    marginBottom: Layout.spacing.md,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 3,
-  },
-  itemText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.black,
-    flex: 1,
-    marginRight: Layout.spacing.md,
-  },
-  itemPrice: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '500',
-    color: colors.black,
-  },
-  paymentInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: Layout.spacing.sm,
-    marginBottom: Layout.spacing.sm,
-  },
-  paymentMethodLabel: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-  },
-  paymentMethodValue: {
-    fontWeight: 'bold',
-    color: colors.black,
-  },
-  totalPrice: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.admin,
-  },
-  blockchainDetails: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: Layout.borderRadius.sm,
-    padding: Layout.spacing.sm,
-    marginVertical: Layout.spacing.sm,
-  },
-  blockchainHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  blockchainTitle: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#2E7D32',
-    marginLeft: 4,
-  },
-  blockchainDetailText: {
-    fontSize: 10,
-    color: '#555',
-    marginVertical: 1,
-  },
-  blockchainValue: {
-    fontWeight: '700',
-    color: '#2E7D32',
-  },
-  cancelBtn: {
-    borderWidth: 1,
-    borderColor: '#C62828',
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.sm,
-    alignItems: 'center',
-    marginTop: Layout.spacing.md,
-  },
-  cancelBtnText: {
-    color: '#C62828',
-    fontWeight: Typography.fontWeight.bold,
-    fontSize: Typography.fontSize.sm,
-  },
-}), [colors]);
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: Layout.spacing.lg,
+      paddingTop: Platform.OS === 'android' ? 40 : 20,
+      paddingBottom: Layout.spacing.md,
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      padding: Layout.spacing.xs,
+    },
+    refreshButton: {
+      padding: Layout.spacing.xs,
+    },
+    headerTitle: {
+      fontSize: Typography.fontSize.lg,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.black,
+    },
+    searchContainer: {
+      padding: Layout.spacing.md,
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    searchWrapper: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.lighterGray,
+      borderRadius: Layout.borderRadius.md,
+      paddingHorizontal: Layout.spacing.md,
+      height: 44,
+    },
+    searchIcon: {
+      marginRight: Layout.spacing.sm,
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: Typography.fontSize.sm,
+      color: colors.black,
+    },
+    centerContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: Layout.spacing.xl,
+    },
+    loadingText: {
+      marginTop: Layout.spacing.md,
+      color: colors.gray,
+    },
+    noOrdersText: {
+      fontSize: Typography.fontSize.md,
+      color: colors.gray,
+      marginTop: Layout.spacing.md,
+    },
+    listContainer: {
+      padding: Layout.spacing.md,
+    },
+    card: {
+      backgroundColor: colors.card,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.lg,
+      marginBottom: Layout.spacing.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'flex-start',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingBottom: Layout.spacing.sm,
+      marginBottom: Layout.spacing.md,
+    },
+    orderNumber: {
+      fontSize: Typography.fontSize.md,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.black,
+    },
+    orderDate: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.gray,
+      marginTop: 2,
+    },
+    statusBadge: {
+      paddingHorizontal: Layout.spacing.sm,
+      paddingVertical: 4,
+      borderRadius: Layout.borderRadius.xs,
+    },
+    statusText: {
+      fontSize: 10,
+      fontWeight: '700',
+    },
+    partyRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: Layout.spacing.md,
+      backgroundColor: colors.lighterGray,
+      padding: Layout.spacing.sm,
+      borderRadius: Layout.borderRadius.sm,
+    },
+    partyText: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.gray,
+    },
+    partyName: {
+      fontWeight: 'bold',
+      color: colors.black,
+    },
+    itemsSection: {
+      marginBottom: Layout.spacing.md,
+    },
+    itemRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginVertical: 3,
+    },
+    itemText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.black,
+      flex: 1,
+      marginRight: Layout.spacing.md,
+    },
+    itemPrice: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: '500',
+      color: colors.black,
+    },
+    paymentInfoRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: Layout.spacing.sm,
+      marginBottom: Layout.spacing.sm,
+    },
+    paymentMethodLabel: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.gray,
+    },
+    paymentMethodValue: {
+      fontWeight: 'bold',
+      color: colors.black,
+    },
+    totalPrice: {
+      fontSize: Typography.fontSize.md,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.admin,
+    },
+    blockchainDetails: {
+      backgroundColor: '#E8F5E9',
+      borderRadius: Layout.borderRadius.sm,
+      padding: Layout.spacing.sm,
+      marginVertical: Layout.spacing.sm,
+    },
+    blockchainHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 4,
+    },
+    blockchainTitle: {
+      fontSize: 10,
+      fontWeight: '700',
+      color: '#2E7D32',
+      marginLeft: 4,
+    },
+    blockchainDetailText: {
+      fontSize: 10,
+      color: '#555',
+      marginVertical: 1,
+    },
+    blockchainValue: {
+      fontWeight: '700',
+      color: '#2E7D32',
+    },
+    cancelBtn: {
+      borderWidth: 1,
+      borderColor: '#C62828',
+      borderRadius: Layout.borderRadius.md,
+      paddingVertical: Layout.spacing.sm,
+      alignItems: 'center',
+      marginTop: Layout.spacing.md,
+    },
+    cancelBtnText: {
+      color: '#C62828',
+      fontWeight: Typography.fontWeight.bold,
+      fontSize: Typography.fontSize.sm,
+    },
+  }), [colors]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);

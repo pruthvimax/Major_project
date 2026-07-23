@@ -93,21 +93,18 @@ export default function FarmerDashboard() {
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.card,
+      backgroundColor: colors.primary + '10',
       borderRadius: Layout.borderRadius.lg,
       padding: Layout.spacing.lg,
       alignItems: 'center',
       marginHorizontal: Layout.spacing.xs,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
+      borderWidth: 1,
+      borderColor: colors.primary + '30',
     },
     statNumber: {
       fontSize: Typography.fontSize.xxl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.primary,
       marginTop: Layout.spacing.sm,
     },
     statLabel: {
@@ -143,12 +140,34 @@ export default function FarmerDashboard() {
   }), [colors]);
 
   useEffect(() => {
-    getUserName();
-    fetchStats();
+    validateRoleAndLoad();
     registerForPushNotificationsAsync().then((token) => {
       if (token) savePushToken(token);
     });
   }, []);
+
+  const validateRoleAndLoad = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('currentUser');
+      const token = await AsyncStorage.getItem('token');
+      if (!userData || !token) {
+        router.replace('/(auth)/login');
+        return;
+      }
+      const user = JSON.parse(userData);
+      if (user.role !== 'farmer') {
+        // Stale session — role mismatch, redirect to login
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
+        router.replace('/(auth)/login');
+        return;
+      }
+      setUserName(user.name || 'Farmer');
+      fetchStats();
+    } catch (error) {
+      console.error('Role validation error:', error);
+      router.replace('/(auth)/login');
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -183,7 +202,7 @@ export default function FarmerDashboard() {
   const handleLogout = () => {
     const performLogout = async () => {
       try {
-        await AsyncStorage.removeItem('currentUser');
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/(auth)/login');
       } catch (error) {
         console.error('Logout error:', error);
@@ -262,6 +281,16 @@ export default function FarmerDashboard() {
           >
             <Ionicons name="list-outline" size={24} color={colors.white} />
             <Text style={styles.actionButtonText}>View Products</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.actionContainer, { marginTop: Layout.spacing.lg }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonPrimary]}
+            onPress={() => router.push('/(farmer)/orders')}
+          >
+            <Ionicons name="receipt-outline" size={24} color={colors.white} />
+            <Text style={styles.actionButtonText}>Manage Orders</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

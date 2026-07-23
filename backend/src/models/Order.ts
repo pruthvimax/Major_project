@@ -14,19 +14,40 @@ export interface ITrackingEvent {
   timestamp: Date;
 }
 
+export type OrderStatus =
+  | 'pending'
+  | 'accepted'
+  | 'packed'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled';
+
+export type EscrowStatus =
+  | 'none'
+  | 'pending'
+  | 'locked'
+  | 'released'
+  | 'refunded'
+  | 'failed';
+
 export interface IOrder extends Document {
   orderNumber: string;
   buyer: mongoose.Types.ObjectId;
   farmer: mongoose.Types.ObjectId;
   items: IOrderItem[];
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: OrderStatus;
   paymentStatus: 'pending' | 'paid' | 'failed';
   paymentMethod: 'cash' | 'bank_transfer' | 'blockchain' | 'razorpay';
   razorpayOrderId?: string;
   razorpayPaymentId?: string;
   blockchainTxHash?: string;
   blockchainOrderId?: number | null;
+  buyerWalletAddress?: string;
+  farmerWalletAddress?: string;
+  escrowStatus: EscrowStatus;
+  verificationStatus: 'unverified' | 'verified' | 'disputed' | 'resolved';
+  disputeReason?: string;
   shippingAddress: {
     address: string;
     city: string;
@@ -89,7 +110,7 @@ const OrderSchema = new Schema<IOrder>(
     },
     status: {
       type: String,
-      enum: ['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+      enum: ['pending', 'accepted', 'packed', 'shipped', 'delivered', 'cancelled'],
       default: 'pending',
     },
     paymentStatus: {
@@ -111,6 +132,23 @@ const OrderSchema = new Schema<IOrder>(
     blockchainOrderId: {
       type: Number,
       default: null,
+    },
+    buyerWalletAddress: { type: String, default: '' },
+    farmerWalletAddress: { type: String, default: '' },
+    escrowStatus: {
+      type: String,
+      enum: ['none', 'pending', 'locked', 'released', 'refunded', 'failed'],
+      default: 'none',
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'verified', 'disputed', 'resolved'],
+      default: 'unverified',
+    },
+    disputeReason: {
+      type: String,
+      maxlength: [500, 'Dispute reason cannot exceed 500 characters'],
+      default: '',
     },
     shippingAddress: {
       address: {

@@ -9,6 +9,8 @@ export interface IUser extends Document {
   address: string;
   role: 'farmer' | 'buyer' | 'admin';
   isVerified: boolean;
+  isSuspended: boolean;
+  walletAddress?: string;
   profileImage?: string;
   pushToken?: string;
   createdAt: Date;
@@ -60,6 +62,14 @@ const UserSchema = new Schema<IUser>(
     isVerified: {
       type: Boolean,
       default: false,
+    },
+    isSuspended: {
+      type: Boolean,
+      default: false,
+    },
+    walletAddress: {
+      type: String,
+      default: '',
     },
     profileImage: {
       type: String,

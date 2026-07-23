@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthContextType, User } from '../types/auth.types';
+import api from '../services/api';
+import { AuthContextType, User, RegisterData } from '../types/auth.types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -15,8 +16,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loadStoredUser = async () => {
     try {
       const userData = await AsyncStorage.getItem('currentUser');
-      if (userData) {
+      const token = await AsyncStorage.getItem('token');
+      
+      // Clear old localStorage-based auth data
+      const oldFarmers = await AsyncStorage.getItem('farmers');
+      const oldBuyers = await AsyncStorage.getItem('buyers');
+      if (oldFarmers || oldBuyers) {
+        await AsyncStorage.multiRemove(['farmers', 'buyers']);
+        console.log('Cleared old auth data');
+      }
+      
+      if (userData && token) {
         setUser(JSON.parse(userData));
+      } else {
+        // Clear inconsistent data
+        if (userData || token) {
+          await AsyncStorage.multiRemove(['currentUser', 'token']);
+        }
       }
     } catch (error) {
       console.error('Error loading user:', error);
@@ -28,49 +44,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string, role: 'farmer' | 'buyer' | 'admin') => {
     setIsLoading(true);
     try {
-      // For admin
-      if (role === 'admin') {
-        if (email === 'admin@farm.com' && password === 'admin123') {
-          const adminUser: User = {
-            id: 'admin_1',
-            name: 'Admin',
-            email,
-            mobile: '0000000000',
-            address: 'Admin Address',
-            role: 'admin',
-          };
-          await AsyncStorage.setItem('currentUser', JSON.stringify(adminUser));
-          setUser(adminUser);
-          return;
-        }
-        throw new Error('Invalid admin credentials');
-      }
-
-      // For farmer or buyer
-      const storageKey = role === 'farmer' ? 'farmers' : 'buyers';
-      const storedData = await AsyncStorage.getItem(storageKey);
-      const users = storedData ? JSON.parse(storedData) : [];
-
-      const foundUser = users.find(
-        (u: any) => u.email === email && u.password === password
-      );
-
-      if (foundUser) {
-        const loggedUser: User = {
-          id: foundUser.id,
-          name: foundUser.name,
-          email: foundUser.email,
-          mobile: foundUser.mobile,
-          address: foundUser.address,
-          role: role,
+      const response = await api.post('/auth/login', { email, password });
+      
+      if (response.data.success) {
+        const { token, user: apiUser } = response.data;
+        
+        // Store token
+        await AsyncStorage.setItem('token', token);
+        
+        // Map backend user to frontend User type
+        const mappedUser: User = {
+          id: apiUser._id,
+          name: apiUser.name,
+          email: apiUser.email,
+          mobile: apiUser.mobile,
+          address: typeof apiUser.address === 'string' ? apiUser.address : JSON.stringify(apiUser.address || {}),
+          role: apiUser.role,
         };
-        await AsyncStorage.setItem('currentUser', JSON.stringify(loggedUser));
-        setUser(loggedUser);
+        
+        await AsyncStorage.setItem('currentUser', JSON.stringify(mappedUser));
+        setUser(mappedUser);
       } else {
-        throw new Error('Invalid credentials');
+        throw new Error(response.data.message || 'Login failed');
       }
-    } catch (error) {
-      throw error;
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Login failed';
+      throw new Error(message);
     } finally {
       setIsLoading(false);
     }
@@ -79,6 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const logout = async () => {
     try {
       await AsyncStorage.removeItem('currentUser');
+      await AsyncStorage.removeItem('token');
       setUser(null);
     } catch (error) {
       console.error('Logout error:', error);
@@ -86,40 +86,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const register = async (userData: Partial<User>, role: 'farmer' | 'buyer') => {
+  const register = async (userData: RegisterData, role: 'farmer' | 'buyer') => {
     setIsLoading(true);
     try {
-      const storageKey = role === 'farmer' ? 'farmers' : 'buyers';
-      const storedData = await AsyncStorage.getItem(storageKey);
-      const users = storedData ? JSON.parse(storedData) : [];
-
-      // Check if email exists
-      if (users.find((u: any) => u.email === userData.email)) {
-        throw new Error('Email already registered');
-      }
-
-      const newUser = {
-        id: Date.now().toString(),
+      const response = await api.post('/auth/register', {
         ...userData,
-        createdAt: new Date().toISOString(),
-      };
-
-      users.push(newUser);
-      await AsyncStorage.setItem(storageKey, JSON.stringify(users));
-
-      // Auto-login after registration
-      const loggedUser: User = {
-        id: newUser.id,
-        name: newUser.name || '',
-        email: newUser.email || '',
-        mobile: newUser.mobile || '',
-        address: newUser.address || '',
-        role: role,
-      };
-      await AsyncStorage.setItem('currentUser', JSON.stringify(loggedUser));
-      setUser(loggedUser);
-    } catch (error) {
-      throw error;
+        role,
+      });
+      
+      if (response.data.success) {
+        const { token, user: apiUser } = response.data;
+        
+        // Store token
+        await AsyncStorage.setItem('token', token);
+        
+        // Map backend user to frontend User type
+        const mappedUser: User = {
+          id: apiUser._id,
+          name: apiUser.name,
+          email: apiUser.email,
+          mobile: apiUser.mobile,
+          address: typeof apiUser.address === 'string' ? apiUser.address : JSON.stringify(apiUser.address || {}),
+          role: apiUser.role,
+        };
+        
+        await AsyncStorage.setItem('currentUser', JSON.stringify(mappedUser));
+        setUser(mappedUser);
+      } else {
+        throw new Error(response.data.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || error.message || 'Registration failed';
+      throw new Error(message);
     } finally {
       setIsLoading(false);
     }

@@ -1,19 +1,7 @@
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import api from './api';
-
-// Configure how notifications are shown when the app is in the foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
 
 /**
  * Returns true if the app is running inside Expo Go.
@@ -22,6 +10,24 @@ Notifications.setNotificationHandler({
  */
 function isRunningInExpoGo(): boolean {
   return Constants.appOwnership === 'expo';
+}
+
+// Configure how notifications are shown when the app is in the foreground
+if (Platform.OS !== 'web' && !isRunningInExpoGo()) {
+  try {
+    const Notifications = require('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  } catch (error) {
+    console.error('[Notifications] Failed to initialize expo-notifications:', error);
+  }
 }
 
 /**
@@ -52,6 +58,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
   }
 
   try {
+    const Notifications = require('expo-notifications');
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
@@ -99,3 +106,4 @@ export async function savePushToken(token: string): Promise<void> {
     console.error('[Notifications] Failed to save push token to backend:', error);
   }
 }
+

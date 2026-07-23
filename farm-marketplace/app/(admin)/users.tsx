@@ -16,6 +16,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import EmptyState from '../../components/EmptyState';
 
 interface User {
   _id: string;
@@ -23,6 +24,7 @@ interface User {
   email: string;
   mobile: string;
   role: 'farmer' | 'buyer' | 'admin';
+  isSuspended?: boolean;
 }
 
 export default function ManageUsersScreen() {
@@ -186,6 +188,22 @@ export default function ManageUsersScreen() {
     }
   };
 
+  const handleSuspendUser = async (user: User) => {
+    try {
+      setLoading(true);
+      const response = await api.put(`/users/${user._id}/suspend`, {
+        suspended: !user.isSuspended,
+      });
+      if (response.data.success) {
+        showAlert('Success', response.data.message);
+        fetchUsers();
+      }
+    } catch (error: any) {
+      showAlert('Error', error.response?.data?.message || 'Failed to update user');
+      setLoading(false);
+    }
+  };
+
   const handleDeleteUser = async (userId: string) => {
     const deleteAction = async () => {
       try {
@@ -232,17 +250,30 @@ export default function ManageUsersScreen() {
             ]}
           >
             {item.role.toUpperCase()}
+            {item.isSuspended ? ' · SUSPENDED' : ''}
           </Text>
         </View>
       </View>
 
       {item.role !== 'admin' && (
-        <TouchableOpacity
-          style={styles.deleteButton}
-          onPress={() => handleDeleteUser(item._id)}
-        >
-          <Ionicons name="trash-outline" size={20} color="#C62828" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity
+            style={[styles.deleteButton, { marginRight: 8 }]}
+            onPress={() => handleSuspendUser(item)}
+          >
+            <Ionicons
+              name={item.isSuspended ? 'lock-open-outline' : 'ban-outline'}
+              size={20}
+              color={item.isSuspended ? '#2E7D32' : '#F57C00'}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeleteUser(item._id)}
+          >
+            <Ionicons name="trash-outline" size={20} color="#C62828" />
+          </TouchableOpacity>
+        </View>
       )}
     </View>
   );
@@ -278,10 +309,11 @@ export default function ManageUsersScreen() {
           <Text style={styles.loadingText}>Fetching users...</Text>
         </View>
       ) : filteredUsers.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Ionicons name="people-outline" size={60} color={colors.gray} />
-          <Text style={styles.noUsersText}>No users found</Text>
-        </View>
+        <EmptyState 
+          icon="people-outline" 
+          title="No users found" 
+          description={search ? 'Try a different search term' : 'No users registered yet'} 
+        />
       ) : (
         <FlatList
           data={filteredUsers}

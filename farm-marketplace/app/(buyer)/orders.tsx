@@ -34,7 +34,7 @@ interface Order {
   _id: string;
   orderNumber: string;
   totalAmount: number;
-  status: 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  status: 'pending' | 'accepted' | 'packed' | 'shipped' | 'delivered' | 'cancelled' | 'confirmed' | 'processing';
   paymentStatus: 'pending' | 'paid' | 'failed';
   paymentMethod: 'cash' | 'bank_transfer' | 'blockchain';
   blockchainTxHash?: string;
@@ -471,8 +471,12 @@ export default function OrdersScreen() {
         return '#2E7D32';
       case 'pending':
         return '#EF6C00';
+      case 'accepted':
       case 'confirmed':
+        return '#1976D2';
+      case 'packed':
       case 'processing':
+        return '#7B1FA2';
       case 'shipped':
         return '#0277BD';
       case 'cancelled':
@@ -571,7 +575,7 @@ export default function OrdersScreen() {
             <Text style={styles.trackBtnText}>Track Order</Text>
           </TouchableOpacity>
         )}
-        {(item.status === 'pending' || item.status === 'confirmed') && (
+        {(item.status === 'pending') && (
           <TouchableOpacity
             style={styles.cancelBtn}
             onPress={() => handleCancelOrder(item._id)}

@@ -173,9 +173,6 @@ export default function LoginScreen() {
     },
   }), [colors]);
 
-  const ADMIN_EMAIL = 'admin@farm.com';
-  const ADMIN_PASSWORD = 'admin123';
-
   const showAlert = (title: string, message: string) => {
     if (Platform.OS === 'web') {
       window.alert(`${title}: ${message}`);
@@ -194,18 +191,22 @@ export default function LoginScreen() {
 
     try {
       if (selectedRole === 'admin') {
-        // Admin login - still local for now
-        if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-          const adminData = {
-            id: 'admin_1',
-            email: ADMIN_EMAIL,
-            role: 'admin',
-            name: 'Admin',
-          };
-          await AsyncStorage.setItem('currentUser', JSON.stringify(adminData));
+        // Admin login via backend API — same flow as farmer/buyer
+        const response = await api.post('/auth/login', { email, password });
+
+        if (response.data.success) {
+          const user = response.data.user;
+
+          if (user.role !== 'admin') {
+            showAlert('Error', `This account is registered as ${user.role}, not admin`);
+            setIsLoading(false);
+            return;
+          }
+
+          await AsyncStorage.setItem('token', response.data.token);
+          await AsyncStorage.setItem('user', JSON.stringify(user));
+          await AsyncStorage.setItem('currentUser', JSON.stringify(user));
           router.replace('/(admin)');
-        } else {
-          showAlert('Error', 'Invalid admin credentials');
         }
       } else {
         // Farmer/Buyer login - call backend API

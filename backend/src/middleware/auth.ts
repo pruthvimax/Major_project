@@ -42,6 +42,14 @@ export const protect = async (
         return;
       }
 
+      if (user.isSuspended) {
+        res.status(403).json({
+          success: false,
+          message: 'Your account has been suspended. Contact support.',
+        });
+        return;
+      }
+
       req.user = user;
       next();
     } catch (error) {

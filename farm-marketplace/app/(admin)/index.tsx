@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,13 +17,21 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import ThemeToggle from '../../components/ThemeToggle';
+import { StatCardSkeleton } from '../../components/SkeletonLoader';
 
 export default function AdminDashboard() {
   const colors = useColors();
   const [userName, setUserName] = useState('Admin');
-  const [usersCount, setUsersCount] = useState(0);
-  const [productsCount, setProductsCount] = useState(0);
-  const [ordersCount, setOrdersCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [cards, setCards] = useState({
+    totalFarmers: 0,
+    totalBuyers: 0,
+    totalProducts: 0,
+    totalOrders: 0,
+    revenue: 0,
+    blockchainTransactions: 0,
+  });
+  const [activities, setActivities] = useState<any[]>([]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -86,35 +95,56 @@ export default function AdminDashboard() {
       fontWeight: Typography.fontWeight.semibold,
       color: colors.admin,
     },
-    statsContainer: {
+    statsGrid: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: Layout.spacing.lg,
+      flexWrap: 'wrap',
+      marginHorizontal: -4,
+      marginBottom: Layout.spacing.md,
     },
     statCard: {
-      flex: 1,
-      backgroundColor: colors.card,
+      width: '33.33%',
+      padding: 4,
+    },
+    statInner: {
       borderRadius: Layout.borderRadius.lg,
       padding: Layout.spacing.md,
       alignItems: 'center',
-      marginHorizontal: Layout.spacing.xs,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
+      minHeight: 110,
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     statNumber: {
-      fontSize: Typography.fontSize.xl,
+      fontSize: Typography.fontSize.md,
       fontWeight: Typography.fontWeight.bold,
       color: colors.black,
       marginTop: Layout.spacing.xs,
     },
     statLabel: {
-      fontSize: Typography.fontSize.xs,
+      fontSize: 10,
       color: colors.gray,
-      marginTop: Layout.spacing.xs,
+      marginTop: 2,
+      textAlign: 'center',
     },
+    sectionTitle: {
+      fontSize: Typography.fontSize.md,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.black,
+      marginBottom: Layout.spacing.sm,
+      marginTop: Layout.spacing.sm,
+    },
+    activityCard: {
+      backgroundColor: colors.card,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.md,
+      marginBottom: Layout.spacing.xs,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderLeftWidth: 4,
+      borderLeftColor: colors.primary,
+    },
+    activityText: { color: colors.black, fontSize: 13, fontWeight: '600' },
+    activityMeta: { color: colors.gray, fontSize: 11, marginTop: 2 },
     actionContainer: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -129,44 +159,74 @@ export default function AdminDashboard() {
       flexDirection: 'row',
       justifyContent: 'center',
     },
-    actionButtonPrimary: {
-      backgroundColor: colors.admin,
-    },
-    actionButtonSecondary: {
-      backgroundColor: colors.primary,
-    },
-    actionButtonTertiary: {
-      backgroundColor: colors.secondary,
-    },
-    actionButtonQuaternary: {
-      backgroundColor: colors.primaryDark,
-    },
+    actionButtonPrimary: { backgroundColor: colors.admin },
+    actionButtonSecondary: { backgroundColor: colors.primary },
+    actionButtonTertiary: { backgroundColor: colors.secondary },
+    actionButtonQuaternary: { backgroundColor: colors.primaryDark },
     actionButtonText: {
       color: colors.white,
-      fontSize: Typography.fontSize.md,
+      fontSize: Typography.fontSize.sm,
       fontWeight: Typography.fontWeight.semibold,
       marginLeft: Layout.spacing.sm,
     },
   }), [colors]);
 
   useEffect(() => {
-    getUserName();
-    fetchCounts();
+    validateRoleAndLoad();
   }, []);
 
-  const fetchCounts = async () => {
+  const validateRoleAndLoad = async () => {
     try {
-      const [usersRes, productsRes, ordersRes] = await Promise.all([
-        api.get('/users'),
-        api.get('/products'),
-        api.get('/orders'),
-      ]);
-
-      if (usersRes.data.success) setUsersCount(usersRes.data.users.length);
-      if (productsRes.data.success) setProductsCount(productsRes.data.products.length);
-      if (ordersRes.data.success) setOrdersCount(ordersRes.data.orders.length);
+      const userData = await AsyncStorage.getItem('currentUser');
+      const token = await AsyncStorage.getItem('token');
+      if (!userData || !token) {
+        router.replace('/(auth)/login');
+        return;
+      }
+      const user = JSON.parse(userData);
+      if (user.role !== 'admin') {
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
+        router.replace('/(auth)/login');
+        return;
+      }
+      setUserName(user.name || 'Admin');
+      fetchAnalytics();
     } catch (error) {
-      console.error('Error fetching admin counts:', error);
+      console.error('Role validation error:', error);
+      router.replace('/(auth)/login');
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/analytics');
+      if (res.data.success) {
+        setCards(res.data.analytics.cards);
+        setActivities(res.data.analytics.latestActivities || []);
+      }
+    } catch (error) {
+      console.error('Error fetching admin analytics:', error);
+      // Fallback to basic counts
+      try {
+        const [usersRes, productsRes, ordersRes] = await Promise.all([
+          api.get('/users'),
+          api.get('/products?all=true'),
+          api.get('/orders'),
+        ]);
+        const users = usersRes.data.users || [];
+        setCards((prev) => ({
+          ...prev,
+          totalFarmers: users.filter((u: any) => u.role === 'farmer').length,
+          totalBuyers: users.filter((u: any) => u.role === 'buyer').length,
+          totalProducts: productsRes.data.products?.length || 0,
+          totalOrders: ordersRes.data.orders?.length || 0,
+        }));
+      } catch (e) {
+        console.error(e);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,7 +245,7 @@ export default function AdminDashboard() {
   const handleLogout = () => {
     const performLogout = async () => {
       try {
-        await AsyncStorage.removeItem('currentUser');
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/(auth)/login');
       } catch (error) {
         console.error('Logout error:', error);
@@ -193,28 +253,23 @@ export default function AdminDashboard() {
     };
 
     if (Platform.OS === 'web') {
-      const confirmLogout = window.confirm('Are you sure you want to logout?');
-      if (confirmLogout) {
-        performLogout();
-      }
+      if (window.confirm('Are you sure you want to logout?')) performLogout();
     } else {
-      Alert.alert(
-        'Logout',
-        'Are you sure you want to logout?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: 'Logout',
-            style: 'destructive',
-            onPress: performLogout,
-          },
-        ]
-      );
+      Alert.alert('Logout', 'Are you sure you want to logout?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Logout', style: 'destructive', onPress: performLogout },
+      ]);
     }
   };
+
+  const statItems = [
+    { icon: 'people-outline' as const, value: cards.totalFarmers, label: 'Farmers', color: colors.primary, bgColor: colors.primary + '15' },
+    { icon: 'person-outline' as const, value: cards.totalBuyers, label: 'Buyers', color: colors.secondary, bgColor: colors.secondary + '15' },
+    { icon: 'cube-outline' as const, value: cards.totalProducts, label: 'Products', color: colors.admin, bgColor: colors.admin + '15' },
+    { icon: 'receipt-outline' as const, value: cards.totalOrders, label: 'Orders', color: colors.warning, bgColor: colors.warning + '15' },
+    { icon: 'cash-outline' as const, value: `₹${(cards.revenue / 1000).toFixed(1)}k`, label: 'Revenue', color: colors.success, bgColor: colors.success + '15' },
+    { icon: 'link-outline' as const, value: cards.blockchainTransactions, label: 'Chain Tx', color: colors.info, bgColor: colors.info + '15' },
+  ];
 
   return (
     <View style={styles.container}>
@@ -237,38 +292,53 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="people-outline" size={32} color={colors.admin} />
-            <Text style={styles.statNumber}>{usersCount}</Text>
-            <Text style={styles.statLabel}>Total Users</Text>
+        {loading ? (
+          <View style={{ flexDirection: 'row', marginBottom: 16 }}>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="cube-outline" size={32} color={colors.admin} />
-            <Text style={styles.statNumber}>{productsCount}</Text>
-            <Text style={styles.statLabel}>Products</Text>
+        ) : (
+          <View style={styles.statsGrid}>
+            {statItems.map((item) => (
+              <View key={item.label} style={styles.statCard}>
+                <View style={[styles.statInner, { backgroundColor: item.bgColor }]}>
+                  <Ionicons name={item.icon} size={24} color={item.color} />
+                  <Text style={[styles.statNumber, { color: item.color }]}>{item.value}</Text>
+                  <Text style={styles.statLabel}>{item.label}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="receipt-outline" size={32} color={colors.admin} />
-            <Text style={styles.statNumber}>{ordersCount}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
-          </View>
-        </View>
+        )}
 
-        <View style={styles.actionContainer}>
+        <Text style={styles.sectionTitle}>Latest Activities</Text>
+        {activities.slice(0, 5).map((a, idx) => (
+          <View key={idx} style={styles.activityCard}>
+            <Text style={styles.activityText}>{a.message}</Text>
+            <Text style={styles.activityMeta}>
+              {a.type} · {new Date(a.createdAt).toLocaleString()}
+            </Text>
+          </View>
+        ))}
+        {activities.length === 0 && !loading && (
+          <Text style={styles.activityMeta}>No recent activity</Text>
+        )}
+
+        <View style={[styles.actionContainer, { marginTop: 16 }]}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonPrimary]}
             onPress={() => router.push('/(admin)/users')}
           >
-            <Ionicons name="people-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>Manage Users</Text>
+            <Ionicons name="people-outline" size={20} color={colors.white} />
+            <Text style={styles.actionButtonText}>Users</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonSecondary]}
             onPress={() => router.push('/(admin)/products')}
           >
-            <Ionicons name="cube-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>Manage Products</Text>
+            <Ionicons name="cube-outline" size={20} color={colors.white} />
+            <Text style={styles.actionButtonText}>Products</Text>
           </TouchableOpacity>
         </View>
 
@@ -277,14 +347,24 @@ export default function AdminDashboard() {
             style={[styles.actionButton, styles.actionButtonTertiary]}
             onPress={() => router.push('/(admin)/orders')}
           >
-            <Ionicons name="receipt-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>Manage Orders</Text>
+            <Ionicons name="receipt-outline" size={20} color={colors.white} />
+            <Text style={styles.actionButtonText}>Orders</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonQuaternary]}
+            onPress={() => router.push('/(admin)/analytics')}
+          >
+            <Ionicons name="bar-chart-outline" size={20} color={colors.white} />
+            <Text style={styles.actionButtonText}>Analytics</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.actionContainer}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: colors.gray }]}
             onPress={() => router.push('/(admin)/settings')}
           >
-            <Ionicons name="settings-outline" size={24} color={colors.white} />
+            <Ionicons name="settings-outline" size={20} color={colors.white} />
             <Text style={styles.actionButtonText}>Settings</Text>
           </TouchableOpacity>
         </View>

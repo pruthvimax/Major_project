@@ -42,6 +42,18 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
     console.log('✅ User does not exist. Creating user...');
 
+    // Admin registration requires secret key
+    if (role === 'admin') {
+      const adminSecret = process.env.ADMIN_SECRET || 'admin_secret_key_123';
+      if (req.body.adminSecret !== adminSecret) {
+        res.status(403).json({
+          success: false,
+          message: 'Invalid admin secret key',
+        });
+        return;
+      }
+    }
+
     // Create user
     const user = await User.create({
       name,
@@ -123,6 +135,14 @@ export const login = async (req: Request, res: Response): Promise<void> => {
     }
 
     console.log('✅ Password matched');
+
+    if (user.isSuspended) {
+      res.status(403).json({
+        success: false,
+        message: 'Your account has been suspended. Contact support.',
+      });
+      return;
+    }
 
     // Generate token
     const token = generateToken(user._id.toString(), user.role);

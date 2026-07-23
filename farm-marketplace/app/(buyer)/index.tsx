@@ -17,9 +17,11 @@ import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import ThemeToggle from '../../components/ThemeToggle';
 import { registerForPushNotificationsAsync, savePushToken } from '../../services/notifications';
+import { useCart } from '../../context/CartContext';
 
 export default function BuyerDashboard() {
   const colors = useColors();
+  const { summary } = useCart();
   const [userName, setUserName] = useState('Buyer');
   const [ordersCount, setOrdersCount] = useState(0);
 
@@ -92,21 +94,18 @@ export default function BuyerDashboard() {
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.card,
+      backgroundColor: colors.secondary + '10',
       borderRadius: Layout.borderRadius.lg,
       padding: Layout.spacing.lg,
       alignItems: 'center',
       marginHorizontal: Layout.spacing.xs,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
+      borderWidth: 1,
+      borderColor: colors.secondary + '30',
     },
     statNumber: {
       fontSize: Typography.fontSize.xxl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.secondary,
       marginTop: Layout.spacing.sm,
     },
     statLabel: {
@@ -142,12 +141,33 @@ export default function BuyerDashboard() {
   }), [colors]);
 
   useEffect(() => {
-    getUserName();
-    fetchStats();
+    validateRoleAndLoad();
     registerForPushNotificationsAsync().then((token) => {
       if (token) savePushToken(token);
     });
   }, []);
+
+  const validateRoleAndLoad = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('currentUser');
+      const token = await AsyncStorage.getItem('token');
+      if (!userData || !token) {
+        router.replace('/(auth)/login');
+        return;
+      }
+      const user = JSON.parse(userData);
+      if (user.role !== 'buyer') {
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
+        router.replace('/(auth)/login');
+        return;
+      }
+      setUserName(user.name || 'Buyer');
+      fetchStats();
+    } catch (error) {
+      console.error('Role validation error:', error);
+      router.replace('/(auth)/login');
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -175,7 +195,7 @@ export default function BuyerDashboard() {
   const handleLogout = () => {
     const performLogout = async () => {
       try {
-        await AsyncStorage.removeItem('currentUser');
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/(auth)/login');
       } catch (error) {
         console.error('Logout error:', error);
@@ -229,14 +249,14 @@ export default function BuyerDashboard() {
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Ionicons name="cart-outline" size={32} color={colors.secondary} />
+            <Ionicons name="receipt-outline" size={32} color={colors.secondary} />
             <Text style={styles.statNumber}>{ordersCount}</Text>
             <Text style={styles.statLabel}>Orders</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="heart-outline" size={32} color={colors.secondary} />
-            <Text style={styles.statNumber}>0</Text>
-            <Text style={styles.statLabel}>Wishlist</Text>
+            <Ionicons name="cart-outline" size={32} color={colors.secondary} />
+            <Text style={styles.statNumber}>{summary.itemCount}</Text>
+            <Text style={styles.statLabel}>Cart Items</Text>
           </View>
         </View>
 
@@ -250,9 +270,19 @@ export default function BuyerDashboard() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/(buyer)/orders')}
+            onPress={() => router.push('/(buyer)/cart')}
           >
             <Ionicons name="cart-outline" size={24} color={colors.white} />
+            <Text style={styles.actionButtonText}>My Cart</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.actionContainer, { marginTop: Layout.spacing.lg }]}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonSecondary]}
+            onPress={() => router.push('/(buyer)/orders')}
+          >
+            <Ionicons name="receipt-outline" size={24} color={colors.white} />
             <Text style={styles.actionButtonText}>My Orders</Text>
           </TouchableOpacity>
         </View>

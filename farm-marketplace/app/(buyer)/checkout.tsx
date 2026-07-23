@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,11 +19,13 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { useCart } from '../../context/CartContext';
 
 type PaymentMethod = 'cash' | 'bank_transfer' | 'blockchain' | 'razorpay';
 
 export default function CheckoutScreen() {
   const colors = useColors();
+  const { items: cartItems, summary: cartSummary, clearCart, refreshCart } = useCart();
   const styles = useMemo(() => StyleSheet.create({
   container: {
     flex: 1,
@@ -243,12 +245,13 @@ export default function CheckoutScreen() {
   },
 }), [colors]);
   const params = useLocalSearchParams();
+  const fromCart = params.fromCart === '1';
   const productId = params.productId as string;
   const productName = params.name as string;
-  const productPrice = parseFloat(params.price as string);
+  const productPrice = parseFloat((params.price as string) || '0');
   const productUnit = params.unit as string;
   const farmerName = params.farmerName as string;
-  const maxQty = parseInt(params.availableQuantity as string, 10);
+  const maxQty = parseInt((params.availableQuantity as string) || '1', 10);
 
   const [quantity, setQuantity] = useState(1);
   const [address, setAddress] = useState('');
@@ -258,6 +261,35 @@ export default function CheckoutScreen() {
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('blockchain');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (fromCart) refreshCart();
+  }, [fromCart, refreshCart]);
+
+  const cartOrderGroups = useMemo(() => {
+    if (!fromCart) return [];
+    const groups: Record<string, { farmerId: string; farmerName: string; items: any[] }> = {};
+    for (const item of cartItems) {
+      const product: any = typeof item.product === 'string' ? null : item.product;
+      if (!product) continue;
+      const farmerId = product.farmer?._id || product.farmer?.email || 'unknown';
+      if (!groups[farmerId]) {
+        groups[farmerId] = {
+          farmerId,
+          farmerName: product.farmer?.name || 'Farmer',
+          items: [],
+        };
+      }
+      groups[farmerId].items.push({
+        productId: product._id,
+        quantity: item.quantity,
+        name: product.name,
+        price: item.price,
+        unit: item.unit,
+      });
+    }
+    return Object.values(groups);
+  }, [fromCart, cartItems]);
 
   const incrementQty = () => {
     if (quantity < maxQty) {
@@ -280,6 +312,17 @@ export default function CheckoutScreen() {
     }
   };
 
+  const placeSingleOrder = async (orderItems: { productId: string; quantity: number }[], clearAfter: boolean) => {
+    const response = await api.post('/orders', {
+      items: orderItems,
+      shippingAddress: { address, city, state, pincode, country: 'India' },
+      paymentMethod,
+      notes,
+      clearCart: clearAfter,
+    });
+    return response.data;
+  };
+
   const handlePlaceOrder = async () => {
     if (!address || !city || !state || !pincode) {
       showAlert('Error', 'Please fill in all shipping address fields');
@@ -291,28 +334,39 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (fromCart && cartOrderGroups.length === 0) {
+      showAlert('Error', 'Your cart is empty');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const response = await api.post('/orders', {
-        items: [{ productId, quantity }],
-        shippingAddress: { address, city, state, pincode, country: 'India' },
-        paymentMethod,
-        notes,
-      });
+      let lastOrder: any = null;
 
-      if (response.data.success) {
-        const order = response.data.order;
+      if (fromCart) {
+        // One order per farmer (marketplace rule)
+        for (let i = 0; i < cartOrderGroups.length; i++) {
+          const group = cartOrderGroups[i];
+          const data = await placeSingleOrder(
+            group.items.map((it) => ({ productId: it.productId, quantity: it.quantity })),
+            i === cartOrderGroups.length - 1
+          );
+          if (data.success) lastOrder = data.order;
+        }
+        await clearCart();
+      } else {
+        const data = await placeSingleOrder([{ productId, quantity }], false);
+        if (data.success) lastOrder = data.order;
+      }
 
+      if (lastOrder) {
         if (paymentMethod === 'razorpay') {
-          // Initiate Razorpay order then open UPI deep link
           try {
-            const payRes = await api.post('/payments/razorpay/create', { orderId: order._id });
+            const payRes = await api.post('/payments/razorpay/create', { orderId: lastOrder._id });
             if (payRes.data.success) {
               const { razorpayOrderId, amount, keyId } = payRes.data.payment;
-
-              // UPI Intent deep link — works on Android devices with UPI apps
-              const upiUrl = `upi://pay?pa=pay_${keyId}@razorpay&pn=FarmMarketplace&tr=${razorpayOrderId}&am=${(amount / 100).toFixed(2)}&cu=INR&tn=Order ${order.orderNumber}`;
+              const upiUrl = `upi://pay?pa=pay_${keyId}@razorpay&pn=FarmMarketplace&tr=${razorpayOrderId}&am=${(amount / 100).toFixed(2)}&cu=INR&tn=Order ${lastOrder.orderNumber}`;
               const supported = await Linking.canOpenURL(upiUrl);
 
               if (supported) {
@@ -323,9 +377,8 @@ export default function CheckoutScreen() {
                   () => router.replace('/(buyer)/orders')
                 );
               } else {
-                // Fallback: auto-verify with mock signature for dev
                 await api.post('/payments/razorpay/verify', {
-                  orderId: order._id,
+                  orderId: lastOrder._id,
                   razorpayOrderId,
                   razorpayPaymentId: `pay_mock_${Date.now()}`,
                   razorpaySignature: 'mock_signature',
@@ -340,9 +393,11 @@ export default function CheckoutScreen() {
             showAlert('Payment Error', 'Could not initiate payment. Please try another method.');
           }
         } else {
-          let successMessage = 'Your order has been placed successfully!';
-          if (paymentMethod === 'blockchain' && order.blockchainTxHash) {
-            successMessage += `\n\n⛓️ Escrow Transaction Verified!\nTx: ${order.blockchainTxHash.substring(0, 20)}...`;
+          let successMessage = fromCart
+            ? `${cartOrderGroups.length} order(s) placed successfully!`
+            : 'Your order has been placed successfully!';
+          if (paymentMethod === 'blockchain' && lastOrder.blockchainTxHash) {
+            successMessage += `\n\n⛓️ Escrow Transaction Verified!\nTx: ${lastOrder.blockchainTxHash.substring(0, 20)}...`;
           }
           showAlert('Success', successMessage, () => router.replace('/(buyer)/orders'));
         }
@@ -356,7 +411,7 @@ export default function CheckoutScreen() {
     }
   };
 
-  const totalPrice = productPrice * quantity;
+  const totalPrice = fromCart ? cartSummary.totalAmount : productPrice * quantity;
 
   return (
     <SafeAreaView style={styles.container}>
@@ -376,26 +431,42 @@ export default function CheckoutScreen() {
           {/* Order Summary */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Order Summary</Text>
-            <View style={styles.itemCard}>
-              <View style={styles.itemHeader}>
-                <Text style={styles.itemName}>{productName}</Text>
-                <Text style={styles.itemSeller}>Farmer: {farmerName}</Text>
-              </View>
-
-              <View style={styles.quantityRow}>
-                <Text style={styles.qtyLabel}>Quantity:</Text>
-                <View style={styles.qtySelector}>
-                  <TouchableOpacity onPress={decrementQty} style={styles.qtyBtn}>
-                    <Ionicons name="remove" size={16} color={colors.black} />
-                  </TouchableOpacity>
-                  <Text style={styles.qtyText}>{quantity}</Text>
-                  <TouchableOpacity onPress={incrementQty} style={styles.qtyBtn}>
-                    <Ionicons name="add" size={16} color={colors.black} />
-                  </TouchableOpacity>
+            {fromCart ? (
+              cartOrderGroups.map((group) => (
+                <View key={group.farmerId} style={[styles.itemCard, { marginBottom: 8 }]}>
+                  <Text style={styles.itemSeller}>Farmer: {group.farmerName}</Text>
+                  {group.items.map((it) => (
+                    <View key={it.productId} style={{ marginTop: 8 }}>
+                      <Text style={styles.itemName}>{it.name}</Text>
+                      <Text style={{ color: colors.gray, fontSize: 13 }}>
+                        {it.quantity} {it.unit} × ₹{it.price} = ₹{(it.quantity * it.price).toFixed(2)}
+                      </Text>
+                    </View>
+                  ))}
                 </View>
-                <Text style={styles.maxQty}>Max: {maxQty}</Text>
+              ))
+            ) : (
+              <View style={styles.itemCard}>
+                <View style={styles.itemHeader}>
+                  <Text style={styles.itemName}>{productName}</Text>
+                  <Text style={styles.itemSeller}>Farmer: {farmerName}</Text>
+                </View>
+
+                <View style={styles.quantityRow}>
+                  <Text style={styles.qtyLabel}>Quantity:</Text>
+                  <View style={styles.qtySelector}>
+                    <TouchableOpacity onPress={decrementQty} style={styles.qtyBtn}>
+                      <Ionicons name="remove" size={16} color={colors.black} />
+                    </TouchableOpacity>
+                    <Text style={styles.qtyText}>{quantity}</Text>
+                    <TouchableOpacity onPress={incrementQty} style={styles.qtyBtn}>
+                      <Ionicons name="add" size={16} color={colors.black} />
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.maxQty}>Max: {maxQty}</Text>
+                </View>
               </View>
-            </View>
+            )}
           </View>
 
           {/* Shipping Address */}
@@ -564,7 +635,11 @@ export default function CheckoutScreen() {
           {/* Pricing Details & Checkout Button */}
           <View style={styles.totalCard}>
             <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>Price ({quantity} x ₹{productPrice})</Text>
+              <Text style={styles.pricingLabel}>
+                {fromCart
+                  ? `Subtotal (${cartSummary.itemCount} items)`
+                  : `Price (${quantity} x ₹${productPrice})`}
+              </Text>
               <Text style={styles.pricingValue}>₹{totalPrice.toFixed(2)}</Text>
             </View>
             <View style={styles.pricingRow}>

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Platform,
   Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -17,6 +18,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { useCart } from '../../context/CartContext';
 
 interface Product {
   _id: string;
@@ -44,6 +46,7 @@ const CATEGORIES = ['all', 'vegetables', 'fruits', 'grains', 'dairy', 'organic']
 
 export default function BrowseScreen() {
   const colors = useColors();
+  const { addToCart, summary } = useCart();
   const styles = useMemo(() => StyleSheet.create({
   container: {
     flex: 1,
@@ -292,8 +295,19 @@ export default function BrowseScreen() {
   buyButton: {
     backgroundColor: colors.secondary,
     borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.xl,
+    paddingHorizontal: Layout.spacing.md,
     paddingVertical: Layout.spacing.sm,
+  },
+  cartButton: {
+    backgroundColor: colors.primary,
+    borderRadius: Layout.borderRadius.md,
+    paddingHorizontal: Layout.spacing.md,
+    paddingVertical: Layout.spacing.sm,
+    marginRight: Layout.spacing.xs,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 }), [colors]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -301,6 +315,7 @@ export default function BrowseScreen() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [addingId, setAddingId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -360,6 +375,24 @@ export default function BrowseScreen() {
         availableQuantity: product.quantity.toString(),
       },
     });
+  };
+
+  const handleAddToCart = async (product: Product) => {
+    try {
+      setAddingId(product._id);
+      const result = await addToCart(product._id, 1);
+      if (result.success) {
+        if (Platform.OS === 'web') {
+          window.alert('Added to cart');
+        } else {
+          Alert.alert('Cart', 'Added to cart');
+        }
+      } else {
+        Alert.alert('Cart', result.message);
+      }
+    } finally {
+      setAddingId(null);
+    }
   };
 
   const renderProductCard = ({ item }: { item: Product }) => (
@@ -430,15 +463,28 @@ export default function BrowseScreen() {
         <Text style={styles.price}>
           ₹{item.price} <Text style={styles.unit}>/ {item.unit}</Text>
         </Text>
-        <TouchableOpacity
-          style={styles.buyButton}
-          onPress={() => handleBuy(item)}
-          disabled={item.quantity <= 0}
-        >
-          <Text style={styles.buyButtonText}>
-            {item.quantity > 0 ? 'Buy Now' : 'Out of Stock'}
-          </Text>
-        </TouchableOpacity>
+        <View style={styles.actionRow}>
+          <TouchableOpacity
+            style={styles.cartButton}
+            onPress={() => handleAddToCart(item)}
+            disabled={item.quantity <= 0 || addingId === item._id}
+          >
+            {addingId === item._id ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Text style={styles.buyButtonText}>Add</Text>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.buyButton}
+            onPress={() => handleBuy(item)}
+            disabled={item.quantity <= 0}
+          >
+            <Text style={styles.buyButtonText}>
+              {item.quantity > 0 ? 'Buy' : 'Out'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -450,8 +496,29 @@ export default function BrowseScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.secondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Browse Marketplace</Text>
-        <TouchableOpacity onPress={fetchProducts} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={20} color={colors.secondary} />
+        <TouchableOpacity onPress={() => router.push('/(buyer)/cart')} style={styles.refreshButton}>
+          <View>
+            <Ionicons name="cart-outline" size={22} color={colors.secondary} />
+            {summary.itemCount > 0 && (
+              <View
+                style={{
+                  position: 'absolute',
+                  right: -6,
+                  top: -4,
+                  backgroundColor: colors.primary,
+                  borderRadius: 8,
+                  minWidth: 16,
+                  height: 16,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700' }}>
+                  {summary.itemCount}
+                </Text>
+              </View>
+            )}
+          </View>
         </TouchableOpacity>
       </View>
 

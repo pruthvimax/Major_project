@@ -6,6 +6,8 @@ import {
   updateProduct,
   deleteProduct,
   getFarmerProducts,
+  approveProduct,
+  blockProduct,
 } from '../controllers/productController';
 import { protect, restrictTo } from '../middleware/auth';
 
@@ -23,5 +25,9 @@ router.get('/farmer/my-products', restrictTo('farmer'), getFarmerProducts);
 router.post('/', restrictTo('farmer'), createProduct);
 router.put('/:id', restrictTo('farmer'), updateProduct);
 router.delete('/:id', restrictTo('farmer', 'admin'), deleteProduct);
+
+// Admin moderation
+router.put('/:id/approve', restrictTo('admin'), approveProduct);
+router.put('/:id/block', restrictTo('admin'), blockProduct);
 
 export default router;
