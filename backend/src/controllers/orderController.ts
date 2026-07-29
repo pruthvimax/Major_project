@@ -140,6 +140,8 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     const estimatedDelivery = new Date();
     estimatedDelivery.setDate(estimatedDelivery.getDate() + 5);
 
+    const initialHistory = [{ status: 'pending', timestamp: new Date() }];
+
     const order = await Order.create({
       buyer: req.user?._id,
       farmer: farmerId,
@@ -155,6 +157,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
       escrowStatus,
       verificationStatus,
       estimatedDelivery,
+      statusHistory: initialHistory,
       trackingEvents: [
         {
           status: 'pending',
@@ -342,6 +345,9 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
     }
 
     order.status = status;
+    if (!order.statusHistory.some((entry: any) => entry.status === status)) {
+      order.statusHistory.push({ status, timestamp: new Date() });
+    }
 
     if (status === 'delivered') {
       order.deliveryDate = new Date();
@@ -423,11 +429,10 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
       return;
     }
 
-    // Buyer can cancel only before farmer accepts
-    if (isBuyer && !isAdmin && order.status !== 'pending') {
+    if (isBuyer && !isAdmin && !['pending', 'accepted'].includes(order.status)) {
       res.status(400).json({
         success: false,
-        message: 'You can only cancel orders before farmer confirmation',
+        message: 'You can only cancel orders while they are pending or accepted.',
       });
       return;
     }
@@ -450,6 +455,12 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
     }
 
     order.status = 'cancelled';
+    order.cancellationReason = req.body.reason || 'Cancelled by buyer';
+    order.cancelledBy = isAdmin ? 'admin' : 'buyer';
+    order.cancelledAt = new Date();
+    if (!order.statusHistory.some((entry: any) => entry.status === 'cancelled')) {
+      order.statusHistory.push({ status: 'cancelled', timestamp: new Date() });
+    }
 
     if (order.blockchainOrderId && order.escrowStatus === 'locked') {
       const buyerEmail = (order.buyer as any).email || req.user?.email || '';

@@ -29,6 +29,9 @@ interface Order {
   paymentMethod: string;
   escrowStatus?: string;
   blockchainTxHash?: string;
+  cancellationReason?: string;
+  cancelledBy?: 'buyer' | 'admin';
+  cancelledAt?: string;
   buyer: { name: string; email: string; mobile?: string };
   items: { product: { name: string }; quantity: number; price: number; unit: string }[];
   createdAt: string;
@@ -105,6 +108,7 @@ export default function FarmerOrdersScreen() {
           marginTop: 8,
         },
         itemLine: { color: colors.black, fontSize: 13, marginTop: 4 },
+        cancelledNote: { color: '#C62828', fontSize: 12, marginTop: 8, fontWeight: '600' },
         actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
         btn: {
           flexDirection: 'row',
@@ -185,6 +189,11 @@ export default function FarmerOrdersScreen() {
           </Text>
         ))}
         <Text style={styles.amount}>₹{item.totalAmount.toFixed(2)}</Text>
+        {item.status === 'cancelled' && (
+          <Text style={styles.cancelledNote}>
+            Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}{item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
+          </Text>
+        )}
 
         <View style={styles.actions}>
           {item.status === 'pending' && (

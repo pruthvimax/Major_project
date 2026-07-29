@@ -78,6 +78,30 @@ describe("FarmMarketplace", function () {
     });
   });
 
+  describe("Traceability", function () {
+    it("should expose product and order details for traceability", async function () {
+      const price = ethers.parseEther("1");
+      await farmMarketplace.connect(relayer).listProduct(farmer.address, "Organic Tomatoes", price);
+
+      const productDetails = await farmMarketplace.getProductDetails(1);
+      expect(productDetails.id).to.equal(1);
+      expect(productDetails.farmer).to.equal(farmer.address);
+      expect(productDetails.name).to.equal("Organic Tomatoes");
+      expect(productDetails.currentOwner).to.equal(farmer.address);
+      expect(productDetails.price).to.equal(price);
+      expect(productDetails.isListed).to.be.true;
+
+      await farmMarketplace.connect(relayer).purchaseProduct(1, buyer.address, { value: price });
+
+      const orderDetails = await farmMarketplace.getOrderDetails(1);
+      expect(orderDetails.orderId).to.equal(1);
+      expect(orderDetails.productId).to.equal(1);
+      expect(orderDetails.buyer).to.equal(buyer.address);
+      expect(orderDetails.escrowAmount).to.equal(price);
+      expect(orderDetails.status).to.equal(0);
+    });
+  });
+
   describe("Delivery Confirmation", function () {
     const price = ethers.parseEther("1");
 

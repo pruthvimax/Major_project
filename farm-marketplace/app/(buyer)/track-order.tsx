@@ -31,6 +31,9 @@ interface TrackingData {
   paymentMethod: string;
   estimatedDelivery?: string;
   createdAt: string;
+  cancellationReason?: string;
+  cancelledBy?: string;
+  cancelledAt?: string;
   shippingAddress: {
     address: string;
     city: string;
@@ -46,12 +49,12 @@ interface TrackingData {
   }[];
 }
 
-const STATUS_ORDER = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
+const STATUS_ORDER = ['pending', 'accepted', 'packed', 'shipped', 'delivered'];
 
 const STATUS_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   pending: 'time-outline',
-  confirmed: 'checkmark-circle-outline',
-  processing: 'cube-outline',
+  accepted: 'checkmark-circle-outline',
+  packed: 'cube-outline',
   shipped: 'car-outline',
   delivered: 'home-outline',
   cancelled: 'close-circle-outline',
@@ -59,8 +62,8 @@ const STATUS_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 const STATUS_COLORS: Record<string, string> = {
   pending: '#EF6C00',
-  confirmed: '#0277BD',
-  processing: '#6A1B9A',
+  accepted: '#0277BD',
+  packed: '#6A1B9A',
   shipped: '#00838F',
   delivered: '#2E7D32',
   cancelled: '#C62828',
@@ -157,6 +160,7 @@ export default function TrackOrderScreen() {
     borderColor: colors.border,
   },
   noEventsText: { color: colors.gray, fontSize: Typography.fontSize.sm },
+  cancelledInfoText: { fontSize: Typography.fontSize.sm, color: colors.gray, marginTop: Layout.spacing.xs, lineHeight: 20 },
   timelineItem: { flexDirection: 'row', marginBottom: 0 },
   timelineDotCol: { alignItems: 'center', width: 20, marginRight: Layout.spacing.sm },
   timelineDot: { width: 12, height: 12, borderRadius: 6 },
@@ -360,6 +364,20 @@ export default function TrackOrderScreen() {
                 );
               })}
             </View>
+          </View>
+        )}
+
+        {isCancelled && (
+          <View style={styles.timelineCard}>
+            <Text style={styles.sectionTitle}>Cancellation Details</Text>
+            <Text style={styles.cancelledInfoText}>
+              {tracking.cancellationReason || 'This order was cancelled by the buyer or administrator.'}
+            </Text>
+            {tracking.cancelledAt ? (
+              <Text style={styles.cancelledInfoText}>
+                Cancelled on {formatDate(tracking.cancelledAt)}
+              </Text>
+            ) : null}
           </View>
         )}
 

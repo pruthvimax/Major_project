@@ -9,6 +9,7 @@ import {
   Platform,
   Modal,
   TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -39,6 +40,9 @@ interface Order {
   paymentMethod: 'cash' | 'bank_transfer' | 'blockchain';
   blockchainTxHash?: string;
   blockchainOrderId?: number;
+  cancellationReason?: string;
+  cancelledBy?: 'buyer' | 'admin';
+  cancelledAt?: string;
   items: OrderItem[];
   createdAt: string;
 }
@@ -276,6 +280,12 @@ export default function OrdersScreen() {
     fontWeight: '600',
     marginLeft: Layout.spacing.xs,
   },
+  cancelledNote: {
+    marginTop: Layout.spacing.xs,
+    color: '#C62828',
+    fontSize: Typography.fontSize.xs,
+    fontWeight: '600',
+  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -395,9 +405,10 @@ export default function OrdersScreen() {
     if (Platform.OS === 'web') {
       window.alert(`${title}: ${message}`);
       if (onOk) onOk();
-    } else {
-      // confirm dialog style alert
+      return;
     }
+
+    Alert.alert(title, message, onOk ? [{ text: 'OK', onPress: onOk }] : [{ text: 'OK' }]);
   };
 
   const handleCancelOrder = async (orderId: string) => {
@@ -422,10 +433,13 @@ export default function OrdersScreen() {
       if (confirmCancel) {
         cancelAction();
       }
-    } else {
-      // standard react native confirm dialog
-      cancelAction();
+      return;
     }
+
+    Alert.alert('Cancel order', 'Are you sure you want to cancel this order?', [
+      { text: 'No', style: 'cancel' },
+      { text: 'Cancel Order', style: 'destructive', onPress: cancelAction },
+    ]);
   };
 
   const handleCancelReview = () => {
@@ -564,18 +578,20 @@ export default function OrdersScreen() {
         </View>
       )}
 
+      {item.status === 'cancelled' && item.cancellationReason ? (
+        <Text style={styles.cancelledNote}>Cancellation note: {item.cancellationReason}</Text>
+      ) : null}
+
       {/* Action Buttons */}
       <View style={styles.actionBtnsRow}>
-        {item.status !== 'cancelled' && (
-          <TouchableOpacity
-            style={styles.trackBtn}
-            onPress={() => router.push({ pathname: '/(buyer)/track-order', params: { orderId: item._id } })}
-          >
-            <Ionicons name="navigate-outline" size={14} color={colors.secondary} />
-            <Text style={styles.trackBtnText}>Track Order</Text>
-          </TouchableOpacity>
-        )}
-        {(item.status === 'pending') && (
+        <TouchableOpacity
+          style={styles.trackBtn}
+          onPress={() => router.push({ pathname: '/(buyer)/track-order', params: { orderId: item._id } })}
+        >
+          <Ionicons name="navigate-outline" size={14} color={colors.secondary} />
+          <Text style={styles.trackBtnText}>{item.status === 'cancelled' ? 'View Timeline' : 'Track Order'}</Text>
+        </TouchableOpacity>
+        {['pending', 'accepted'].includes(item.status) && (
           <TouchableOpacity
             style={styles.cancelBtn}
             onPress={() => handleCancelOrder(item._id)}

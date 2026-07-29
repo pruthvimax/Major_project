@@ -37,6 +37,9 @@ interface Order {
   paymentMethod: 'cash' | 'bank_transfer' | 'blockchain';
   blockchainTxHash?: string;
   blockchainOrderId?: number;
+  cancellationReason?: string;
+  cancelledBy?: 'buyer' | 'admin';
+  cancelledAt?: string;
   items: OrderItem[];
   buyer: {
     name: string;
@@ -245,6 +248,42 @@ export default function ManageOrdersScreen() {
       alignItems: 'center',
       marginTop: Layout.spacing.md,
     },
+    filterRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Layout.spacing.sm,
+      paddingHorizontal: Layout.spacing.md,
+      paddingBottom: Layout.spacing.md,
+      backgroundColor: colors.card,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    filterChip: {
+      paddingHorizontal: Layout.spacing.md,
+      paddingVertical: 8,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.lighterGray,
+    },
+    filterChipActive: {
+      backgroundColor: colors.admin,
+      borderColor: colors.admin,
+    },
+    filterChipText: {
+      color: colors.gray,
+      fontSize: Typography.fontSize.xs,
+      fontWeight: '700',
+    },
+    filterChipTextActive: {
+      color: colors.white,
+    },
+    cancelledNote: {
+      color: '#C62828',
+      fontSize: Typography.fontSize.xs,
+      fontWeight: '600',
+      marginTop: Layout.spacing.xs,
+    },
     cancelBtnText: {
       color: '#C62828',
       fontWeight: Typography.fontWeight.bold,
@@ -255,6 +294,7 @@ export default function ManageOrdersScreen() {
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'pending' | 'accepted' | 'packed' | 'shipped' | 'delivered' | 'cancelled'>('all');
 
   useEffect(() => {
     fetchOrders();
@@ -276,20 +316,21 @@ export default function ManageOrdersScreen() {
   };
 
   useEffect(() => {
-    if (search.trim() === '') {
-      setFilteredOrders(orders);
-    } else {
-      setFilteredOrders(
-        orders.filter(
-          (o) =>
-            o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-            o.status.toLowerCase().includes(search.toLowerCase()) ||
-            (o.buyer?.name && o.buyer.name.toLowerCase().includes(search.toLowerCase())) ||
-            (o.farmer?.name && o.farmer.name.toLowerCase().includes(search.toLowerCase()))
-        )
-      );
-    }
-  }, [search, orders]);
+    const normalizedSearch = search.trim().toLowerCase();
+    const nextOrders = orders.filter((order) => {
+      const matchesFilter = selectedFilter === 'all' || order.status === selectedFilter;
+      const matchesSearch =
+        normalizedSearch === '' ||
+        order.orderNumber.toLowerCase().includes(normalizedSearch) ||
+        order.status.toLowerCase().includes(normalizedSearch) ||
+        (order.buyer?.name && order.buyer.name.toLowerCase().includes(normalizedSearch)) ||
+        (order.farmer?.name && order.farmer.name.toLowerCase().includes(normalizedSearch));
+
+      return matchesFilter && matchesSearch;
+    });
+
+    setFilteredOrders(nextOrders);
+  }, [search, orders, selectedFilter]);
 
   const showAlert = (title: string, message: string, onOk?: () => void) => {
     if (Platform.OS === 'web') {
@@ -388,6 +429,12 @@ export default function ManageOrdersScreen() {
         <Text style={styles.totalPrice}>₹{item.totalAmount.toFixed(2)}</Text>
       </View>
 
+      {item.status === 'cancelled' && (
+        <Text style={styles.cancelledNote}>
+          Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}{item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
+        </Text>
+      )}
+
       {/* Blockchain Details Section */}
       {item.paymentMethod === 'blockchain' && (
         <View style={styles.blockchainDetails}>
@@ -447,6 +494,23 @@ export default function ManageOrdersScreen() {
             onChangeText={setSearch}
           />
         </View>
+      </View>
+
+      <View style={styles.filterRow}>
+        {(['all', 'pending', 'accepted', 'packed', 'shipped', 'delivered', 'cancelled'] as const).map((filter) => {
+          const isActive = selectedFilter === filter;
+          return (
+            <TouchableOpacity
+              key={filter}
+              style={[styles.filterChip, isActive && styles.filterChipActive]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              <Text style={[styles.filterChipText, isActive && styles.filterChipTextActive]}>
+                {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
 
       {loading ? (
