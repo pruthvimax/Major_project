@@ -1,4 +1,4 @@
-# Blockchain-Based Farm Marketplace
+# Blockchain-Based Farm Marketplace.
 
 Cross-platform mobile app that connects farmers and buyers directly, with blockchain-backed product registration and escrow payments. Frontend: React Native (Expo). Backend: Node.js / Express / MongoDB.
 
