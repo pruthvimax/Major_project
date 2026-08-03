@@ -259,7 +259,7 @@ export default function LoginScreen() {
   };
 
   const navigateToRegister = () => {
-    router.push('/register');
+    router.push('/auth/register');
   };
 
   const handleForgotPassword = () => {
