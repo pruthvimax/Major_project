@@ -18,16 +18,22 @@ import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import EmptyState from '../../components/EmptyState';
 
-interface User {
+interface Product {
   _id: string;
   name: string;
-  email: string;
-  mobile: string;
-  role: 'farmer' | 'buyer' | 'admin';
-  isSuspended?: boolean;
+  category: string;
+  price: number;
+  unit: string;
+  quantity: number;
+  isApproved?: boolean;
+  isBlocked?: boolean;
+  farmer: {
+    name: string;
+    email: string;
+  };
 }
 
-export default function ManageUsersScreen() {
+export default function ManageProductsScreen() {
   const colors = useColors();
   const styles = useMemo(() => StyleSheet.create({
   container: {
@@ -88,7 +94,7 @@ export default function ManageUsersScreen() {
     marginTop: Layout.spacing.md,
     color: colors.gray,
   },
-  noUsersText: {
+  noProductsText: {
     fontSize: Typography.fontSize.md,
     color: colors.gray,
     marginTop: Layout.spacing.md,
@@ -110,55 +116,51 @@ export default function ManageUsersScreen() {
   cardInfo: {
     flex: 1,
   },
-  userName: {
+  productName: {
     fontSize: Typography.fontSize.md,
     fontWeight: Typography.fontWeight.bold,
     color: colors.black,
+    marginBottom: 4,
   },
-  userEmail: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  userMobile: {
+  productDetail: {
     fontSize: Typography.fontSize.xs,
     color: colors.gray,
-    marginTop: 2,
+    marginVertical: 1,
   },
-  roleBadge: {
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 2,
-    borderRadius: Layout.borderRadius.xs,
-    alignSelf: 'flex-start',
-    marginTop: Layout.spacing.sm,
+  priceText: {
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.bold,
+    color: colors.primary,
+    marginTop: 6,
   },
-  roleBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+  unitText: {
+    fontSize: Typography.fontSize.xs,
+    color: colors.gray,
+    fontWeight: 'normal',
   },
   deleteButton: {
     padding: Layout.spacing.sm,
   },
 }), [colors]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    fetchUsers();
+    fetchProducts();
   }, []);
 
-  const fetchUsers = async () => {
+  const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/users');
+      const response = await api.get('/products?all=true');
       if (response.data.success) {
-        setUsers(response.data.users);
-        setFilteredUsers(response.data.users);
+        setProducts(response.data.products);
+        setFilteredProducts(response.data.products);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching products:', error);
     } finally {
       setLoading(false);
     }
@@ -166,18 +168,18 @@ export default function ManageUsersScreen() {
 
   useEffect(() => {
     if (search.trim() === '') {
-      setFilteredUsers(users);
+      setFilteredProducts(products);
     } else {
-      setFilteredUsers(
-        users.filter(
-          (u) =>
-            u.name.toLowerCase().includes(search.toLowerCase()) ||
-            u.email.toLowerCase().includes(search.toLowerCase()) ||
-            u.role.toLowerCase().includes(search.toLowerCase())
+      setFilteredProducts(
+        products.filter(
+          (p) =>
+            p.name.toLowerCase().includes(search.toLowerCase()) ||
+            p.category.toLowerCase().includes(search.toLowerCase()) ||
+            (p.farmer?.name && p.farmer.name.toLowerCase().includes(search.toLowerCase()))
         )
       );
     }
-  }, [search, users]);
+  }, [search, products]);
 
   const showAlert = (title: string, message: string, onOk?: () => void) => {
     if (Platform.OS === 'web') {
@@ -188,41 +190,39 @@ export default function ManageUsersScreen() {
     }
   };
 
-  const handleSuspendUser = async (user: User) => {
+  const handleModerate = async (productId: string, action: 'approve' | 'block') => {
     try {
       setLoading(true);
-      const response = await api.put(`/users/${user._id}/suspend`, {
-        suspended: !user.isSuspended,
-      });
+      const response = await api.put(`/products/${productId}/${action}`);
       if (response.data.success) {
         showAlert('Success', response.data.message);
-        fetchUsers();
+        fetchProducts();
       }
     } catch (error: any) {
-      showAlert('Error', error.response?.data?.message || 'Failed to update user');
+      showAlert('Error', error.response?.data?.message || `Failed to ${action} product`);
       setLoading(false);
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
+  const handleDeleteProduct = async (productId: string) => {
     const deleteAction = async () => {
       try {
         setLoading(true);
-        const response = await api.delete(`/users/${userId}`);
+        const response = await api.delete(`/products/${productId}`);
         if (response.data.success) {
-          showAlert('Success', 'User deleted successfully');
-          fetchUsers();
+          showAlert('Success', 'Product deleted successfully');
+          fetchProducts();
         }
       } catch (error: any) {
-        console.error('Error deleting user:', error);
-        const errorMsg = error.response?.data?.message || 'Failed to delete user';
+        console.error('Error deleting product:', error);
+        const errorMsg = error.response?.data?.message || 'Failed to delete product';
         showAlert('Error', errorMsg);
         setLoading(false);
       }
     };
 
     if (Platform.OS === 'web') {
-      const confirmDelete = window.confirm('Are you sure you want to delete this user account? This cannot be undone.');
+      const confirmDelete = window.confirm('Are you sure you want to remove this product listing from the marketplace?');
       if (confirmDelete) {
         deleteAction();
       }
@@ -231,61 +231,56 @@ export default function ManageUsersScreen() {
     }
   };
 
-  const renderUserCard = ({ item }: { item: User }) => (
+  const renderProductCard = ({ item }: { item: Product }) => (
     <View style={styles.card}>
       <View style={styles.cardInfo}>
-        <Text style={styles.userName}>{item.name}</Text>
-        <Text style={styles.userEmail}>{item.email}</Text>
-        {item.mobile && <Text style={styles.userMobile}>Mobile: {item.mobile}</Text>}
-        <View
-          style={[
-            styles.roleBadge,
-            { backgroundColor: item.role === 'farmer' ? '#E8F5E9' : item.role === 'buyer' ? '#E3F2FD' : '#F3E5F5' },
-          ]}
-        >
-          <Text
-            style={[
-              styles.roleBadgeText,
-              { color: item.role === 'farmer' ? '#2E7D32' : item.role === 'buyer' ? '#1976D2' : '#7B1FA2' },
-            ]}
-          >
-            {item.role.toUpperCase()}
-            {item.isSuspended ? ' · SUSPENDED' : ''}
-          </Text>
-        </View>
+        <Text style={styles.productName}>{item.name}</Text>
+        <Text style={styles.productDetail}>Category: {item.category.toUpperCase()}</Text>
+        <Text style={styles.productDetail}>
+          Farmer: {item.farmer?.name || 'Unknown'}
+        </Text>
+        <Text style={styles.productDetail}>
+          Stock: {item.quantity} {item.unit}
+        </Text>
+        <Text style={styles.priceText}>
+          ₹{item.price} <Text style={styles.unitText}>/ {item.unit}</Text>
+        </Text>
+        <Text style={styles.productDetail}>
+          {item.isBlocked ? 'BLOCKED' : item.isApproved === false ? 'PENDING' : 'APPROVED'}
+        </Text>
       </View>
 
-      {item.role !== 'admin' && (
-        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-          <TouchableOpacity
-            style={[styles.deleteButton, { marginRight: 8 }]}
-            onPress={() => handleSuspendUser(item)}
-          >
-            <Ionicons
-              name={item.isSuspended ? 'lock-open-outline' : 'ban-outline'}
-              size={20}
-              color={item.isSuspended ? '#2E7D32' : '#F57C00'}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDeleteUser(item._id)}
-          >
-            <Ionicons name="trash-outline" size={20} color="#C62828" />
-          </TouchableOpacity>
-        </View>
-      )}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity
+          style={[styles.deleteButton, { marginRight: 6 }]}
+          onPress={() => handleModerate(item._id, 'approve')}
+        >
+          <Ionicons name="checkmark-circle-outline" size={20} color="#2E7D32" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.deleteButton, { marginRight: 6 }]}
+          onPress={() => handleModerate(item._id, 'block')}
+        >
+          <Ionicons name="ban-outline" size={20} color="#F57C00" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => handleDeleteProduct(item._id)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#C62828" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(admin)')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/admin')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.admin} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Manage Users</Text>
-        <TouchableOpacity onPress={fetchUsers} style={styles.refreshButton}>
+        <Text style={styles.headerTitle}>Manage Products</Text>
+        <TouchableOpacity onPress={fetchProducts} style={styles.refreshButton}>
           <Ionicons name="refresh" size={20} color={colors.admin} />
         </TouchableOpacity>
       </View>
@@ -295,7 +290,7 @@ export default function ManageUsersScreen() {
           <Ionicons name="search" size={20} color={colors.gray} style={styles.searchIcon} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search users..."
+            placeholder="Search products..."
             placeholderTextColor={colors.gray}
             value={search}
             onChangeText={setSearch}
@@ -306,19 +301,19 @@ export default function ManageUsersScreen() {
       {loading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.admin} />
-          <Text style={styles.loadingText}>Fetching users...</Text>
+          <Text style={styles.loadingText}>Fetching products...</Text>
         </View>
-      ) : filteredUsers.length === 0 ? (
+      ) : filteredProducts.length === 0 ? (
         <EmptyState 
-          icon="people-outline" 
-          title="No users found" 
-          description={search ? 'Try a different search term' : 'No users registered yet'} 
+          icon="cube-outline" 
+          title="No products found" 
+          description={search ? 'Try a different search term' : 'No products listed yet'} 
         />
       ) : (
         <FlatList
-          data={filteredUsers}
+          data={filteredProducts}
           keyExtractor={(item) => item._id}
-          renderItem={renderUserCard}
+          renderItem={renderProductCard}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
         />
@@ -326,4 +321,5 @@ export default function ManageUsersScreen() {
     </SafeAreaView>
   );
 }
+
 

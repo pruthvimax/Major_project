@@ -344,7 +344,7 @@ export default function AddProductScreen() {
           msg += `\n\n⛓️ Listed On-Chain!\nTx Hash: ${product.blockchainTxHash.substring(0, 20)}...`;
         }
         showAlert('Success', msg, () => {
-          router.replace('/(farmer)');
+          router.replace('/farmer');
         });
       }
     } catch (error: any) {
@@ -542,4 +542,5 @@ export default function AddProductScreen() {
     </SafeAreaView>
   );
 }
+
 

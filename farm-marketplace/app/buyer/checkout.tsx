@@ -374,7 +374,7 @@ export default function CheckoutScreen() {
                 showAlert(
                   'Complete Payment',
                   'Complete the payment in your UPI app. Once done, come back to confirm your order.',
-                  () => router.replace('/(buyer)/orders')
+                  () => router.replace('/buyer/orders')
                 );
               } else {
                 await api.post('/payments/razorpay/verify', {
@@ -384,7 +384,7 @@ export default function CheckoutScreen() {
                   razorpaySignature: 'mock_signature',
                 });
                 showAlert('Order Confirmed', 'Payment processed successfully!', () =>
-                  router.replace('/(buyer)/orders')
+                  router.replace('/buyer/orders')
                 );
               }
             }
@@ -399,7 +399,7 @@ export default function CheckoutScreen() {
           if (paymentMethod === 'blockchain' && lastOrder.blockchainTxHash) {
             successMessage += `\n\n⛓️ Escrow Transaction Verified!\nTx: ${lastOrder.blockchainTxHash.substring(0, 20)}...`;
           }
-          showAlert('Success', successMessage, () => router.replace('/(buyer)/orders'));
+          showAlert('Success', successMessage, () => router.replace('/buyer/orders'));
         }
       }
     } catch (error: any) {
@@ -677,4 +677,5 @@ export default function CheckoutScreen() {
     </SafeAreaView>
   );
 }
+
 

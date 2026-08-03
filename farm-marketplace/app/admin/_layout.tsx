@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
 
-export default function FarmerLayout() {
+export default function AdminLayout() {
   return (
     <Stack
       screenOptions={{

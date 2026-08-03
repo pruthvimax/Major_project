@@ -239,9 +239,9 @@ export default function RegisterScreen() {
           'Registration completed successfully!',
           () => {
             if (selectedRole === 'farmer') {
-              router.replace('/(farmer)');
+              router.replace('/farmer');
             } else {
-              router.replace('/(buyer)');
+              router.replace('/buyer');
             }
           }
         );
@@ -462,4 +462,5 @@ export default function RegisterScreen() {
     </KeyboardAvoidingView>
   );
 }
+
 

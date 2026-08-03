@@ -365,7 +365,7 @@ export default function BrowseScreen() {
 
   const handleBuy = (product: Product) => {
     router.push({
-      pathname: '/(buyer)/checkout',
+      pathname: '/buyer/checkout',
       params: {
         productId: product._id,
         name: product.name,
@@ -496,7 +496,7 @@ export default function BrowseScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.secondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Browse Marketplace</Text>
-        <TouchableOpacity onPress={() => router.push('/(buyer)/cart')} style={styles.refreshButton}>
+        <TouchableOpacity onPress={() => router.push('/buyer/cart')} style={styles.refreshButton}>
           <View>
             <Ionicons name="cart-outline" size={22} color={colors.secondary} />
             {summary.itemCount > 0 && (
@@ -591,4 +591,5 @@ export default function BrowseScreen() {
     </SafeAreaView>
   );
 }
+
 

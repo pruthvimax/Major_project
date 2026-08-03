@@ -181,6 +181,18 @@ export default function LoginScreen() {
     }
   };
 
+  const redirectTo = (path: string) => {
+    const performRedirect = () => {
+      router.replace(path as never);
+    };
+
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(performRedirect);
+    } else {
+      setTimeout(performRedirect, 0);
+    }
+  };
+
   const handleLogin = async () => {
     if (!email || !password) {
       showAlert('Error', 'Please fill in all fields');
@@ -206,7 +218,7 @@ export default function LoginScreen() {
           await AsyncStorage.setItem('token', response.data.token);
           await AsyncStorage.setItem('user', JSON.stringify(user));
           await AsyncStorage.setItem('currentUser', JSON.stringify(user));
-          router.replace('/(admin)');
+          redirectTo('/admin');
         }
       } else {
         // Farmer/Buyer login - call backend API
@@ -231,9 +243,9 @@ export default function LoginScreen() {
           await AsyncStorage.setItem('currentUser', JSON.stringify(user));
 
           if (selectedRole === 'farmer') {
-            router.replace('/(farmer)');
+            redirectTo('/farmer');
           } else {
-            router.replace('/(buyer)');
+            redirectTo('/buyer');
           }
         }
       }
@@ -247,7 +259,7 @@ export default function LoginScreen() {
   };
 
   const navigateToRegister = () => {
-    router.push('/(auth)/register');
+    router.push('/register');
   };
 
   const handleForgotPassword = () => {

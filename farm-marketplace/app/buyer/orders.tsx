@@ -586,7 +586,7 @@ export default function OrdersScreen() {
       <View style={styles.actionBtnsRow}>
         <TouchableOpacity
           style={styles.trackBtn}
-          onPress={() => router.push({ pathname: '/(buyer)/track-order', params: { orderId: item._id } })}
+          onPress={() => router.push({ pathname: '/buyer/track-order', params: { orderId: item._id } })}
         >
           <Ionicons name="navigate-outline" size={14} color={colors.secondary} />
           <Text style={styles.trackBtnText}>{item.status === 'cancelled' ? 'View Timeline' : 'Track Order'}</Text>
@@ -606,7 +606,7 @@ export default function OrdersScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(buyer)')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/buyer')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.secondary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Orders</Text>
@@ -625,7 +625,7 @@ export default function OrdersScreen() {
           <Text style={styles.noOrdersDesc}>When you purchase products, they will appear here along with blockchain transaction status.</Text>
           <TouchableOpacity
             style={styles.shopBtn}
-            onPress={() => router.push('/(buyer)/browse')}
+            onPress={() => router.push('/buyer/browse')}
           >
             <Text style={styles.shopBtnText}>Shop Now</Text>
           </TouchableOpacity>
@@ -702,4 +702,5 @@ export default function OrdersScreen() {
     </SafeAreaView>
   );
 }
+
 

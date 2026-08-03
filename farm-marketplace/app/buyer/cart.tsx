@@ -241,7 +241,7 @@ export default function CartScreen() {
           title="Your cart is empty"
           description="Browse fresh farm products and add them to your cart."
           actionLabel="Browse Products"
-          onAction={() => router.push('/(buyer)/browse')}
+          onAction={() => router.push('/buyer/browse')}
         />
       ) : (
         <>
@@ -266,7 +266,7 @@ export default function CartScreen() {
             </View>
             <TouchableOpacity
               style={styles.checkoutBtn}
-              onPress={() => router.push({ pathname: '/(buyer)/checkout', params: { fromCart: '1' } })}
+              onPress={() => router.push({ pathname: '/buyer/checkout', params: { fromCart: '1' } })}
             >
               <Text style={styles.checkoutText}>Proceed to Checkout</Text>
             </TouchableOpacity>
@@ -276,3 +276,4 @@ export default function CartScreen() {
     </SafeAreaView>
   );
 }
+

@@ -17,12 +17,11 @@ import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import ThemeToggle from '../../components/ThemeToggle';
 import { registerForPushNotificationsAsync, savePushToken } from '../../services/notifications';
-import { useCart } from '../../context/CartContext';
 
-export default function BuyerDashboard() {
+export default function FarmerDashboard() {
   const colors = useColors();
-  const { summary } = useCart();
-  const [userName, setUserName] = useState('Buyer');
+  const [userName, setUserName] = useState('Farmer');
+  const [productsCount, setProductsCount] = useState(0);
   const [ordersCount, setOrdersCount] = useState(0);
 
   const styles = useMemo(() => StyleSheet.create({
@@ -77,7 +76,7 @@ export default function BuyerDashboard() {
       marginBottom: Layout.spacing.sm,
     },
     roleBadge: {
-      backgroundColor: colors.secondary + '15',
+      backgroundColor: colors.primary + '15',
       paddingHorizontal: Layout.spacing.md,
       paddingVertical: Layout.spacing.xs,
       borderRadius: Layout.borderRadius.md,
@@ -85,7 +84,7 @@ export default function BuyerDashboard() {
     roleBadgeText: {
       fontSize: Typography.fontSize.sm,
       fontWeight: Typography.fontWeight.semibold,
-      color: colors.secondary,
+      color: colors.primary,
     },
     statsContainer: {
       flexDirection: 'row',
@@ -94,18 +93,18 @@ export default function BuyerDashboard() {
     },
     statCard: {
       flex: 1,
-      backgroundColor: colors.secondary + '10',
+      backgroundColor: colors.primary + '10',
       borderRadius: Layout.borderRadius.lg,
       padding: Layout.spacing.lg,
       alignItems: 'center',
       marginHorizontal: Layout.spacing.xs,
       borderWidth: 1,
-      borderColor: colors.secondary + '30',
+      borderColor: colors.primary + '30',
     },
     statNumber: {
       fontSize: Typography.fontSize.xxl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.secondary,
+      color: colors.primary,
       marginTop: Layout.spacing.sm,
     },
     statLabel: {
@@ -127,10 +126,10 @@ export default function BuyerDashboard() {
       justifyContent: 'center',
     },
     actionButtonPrimary: {
-      backgroundColor: colors.secondary,
+      backgroundColor: colors.primary,
     },
     actionButtonSecondary: {
-      backgroundColor: colors.primary,
+      backgroundColor: colors.primaryDark,
     },
     actionButtonText: {
       color: colors.white,
@@ -152,31 +151,39 @@ export default function BuyerDashboard() {
       const userData = await AsyncStorage.getItem('currentUser');
       const token = await AsyncStorage.getItem('token');
       if (!userData || !token) {
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
         return;
       }
       const user = JSON.parse(userData);
-      if (user.role !== 'buyer') {
+      if (user.role !== 'farmer') {
+        // Stale session — role mismatch, redirect to login
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
         return;
       }
-      setUserName(user.name || 'Buyer');
+      setUserName(user.name || 'Farmer');
       fetchStats();
     } catch (error) {
       console.error('Role validation error:', error);
-      router.replace('/(auth)/login');
+      router.replace('/auth/login');
     }
   };
 
   const fetchStats = async () => {
     try {
-      const response = await api.get('/orders/buyer');
-      if (response.data.success) {
-        setOrdersCount(response.data.orders.length);
+      const [productsRes, ordersRes] = await Promise.all([
+        api.get('/products/farmer/my-products'),
+        api.get('/orders/farmer'),
+      ]);
+
+      if (productsRes.data.success) {
+        setProductsCount(productsRes.data.products.length);
+      }
+      if (ordersRes.data.success) {
+        setOrdersCount(ordersRes.data.orders.length);
       }
     } catch (error) {
-      console.error('Error fetching order stats:', error);
+      console.error('Error fetching farmer stats:', error);
     }
   };
 
@@ -185,7 +192,7 @@ export default function BuyerDashboard() {
       const userData = await AsyncStorage.getItem('currentUser');
       if (userData) {
         const user = JSON.parse(userData);
-        setUserName(user.name || 'Buyer');
+        setUserName(user.name || 'Farmer');
       }
     } catch (error) {
       console.error('Error getting user name:', error);
@@ -196,7 +203,7 @@ export default function BuyerDashboard() {
     const performLogout = async () => {
       try {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
       } catch (error) {
         console.error('Logout error:', error);
       }
@@ -229,61 +236,61 @@ export default function BuyerDashboard() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Buyer Dashboard</Text>
+        <Text style={styles.headerTitle}>Farm Dashboard</Text>
         <View style={styles.headerActions}>
           <ThemeToggle />
           <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color={colors.secondary} />
+            <Ionicons name="log-out-outline" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.welcomeCard}>
-          <Ionicons name="storefront-outline" size={40} color={colors.secondary} />
+          <Ionicons name="leaf-outline" size={40} color={colors.primary} />
           <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>Buyer</Text>
+            <Text style={styles.roleBadgeText}>Farmer</Text>
           </View>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
-            <Ionicons name="receipt-outline" size={32} color={colors.secondary} />
-            <Text style={styles.statNumber}>{ordersCount}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
+            <Ionicons name="cube-outline" size={32} color={colors.primary} />
+            <Text style={styles.statNumber}>{productsCount}</Text>
+            <Text style={styles.statLabel}>Products Listed</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="cart-outline" size={32} color={colors.secondary} />
-            <Text style={styles.statNumber}>{summary.itemCount}</Text>
-            <Text style={styles.statLabel}>Cart Items</Text>
+            <Ionicons name="receipt-outline" size={32} color={colors.primary} />
+            <Text style={styles.statNumber}>{ordersCount}</Text>
+            <Text style={styles.statLabel}>Total Orders</Text>
           </View>
         </View>
 
         <View style={styles.actionContainer}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonPrimary]}
-            onPress={() => router.push('/(buyer)/browse')}
+            onPress={() => router.push('/farmer/add-product')}
           >
-            <Ionicons name="search-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>Browse Products</Text>
+            <Ionicons name="add-circle-outline" size={24} color={colors.white} />
+            <Text style={styles.actionButtonText}>Add New Product</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/(buyer)/cart')}
+            onPress={() => router.push('/farmer/products')}
           >
-            <Ionicons name="cart-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>My Cart</Text>
+            <Ionicons name="list-outline" size={24} color={colors.white} />
+            <Text style={styles.actionButtonText}>View Products</Text>
           </TouchableOpacity>
         </View>
 
         <View style={[styles.actionContainer, { marginTop: Layout.spacing.lg }]}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/(buyer)/orders')}
+            style={[styles.actionButton, styles.actionButtonPrimary]}
+            onPress={() => router.push('/farmer/orders')}
           >
             <Ionicons name="receipt-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>My Orders</Text>
+            <Text style={styles.actionButtonText}>Manage Orders</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

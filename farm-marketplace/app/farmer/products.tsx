@@ -387,7 +387,7 @@ export default function MyProductsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/(farmer)')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.replace('/farmer')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Products</Text>
@@ -406,7 +406,7 @@ export default function MyProductsScreen() {
           <Text style={styles.noProductsDesc}>Add fresh produce to start listing items on the marketplace.</Text>
           <TouchableOpacity
             style={styles.addBtn}
-            onPress={() => router.push('/(farmer)/add-product')}
+            onPress={() => router.push('/farmer/add-product')}
           >
             <Text style={styles.addBtnText}>Add First Product</Text>
           </TouchableOpacity>
@@ -425,4 +425,5 @@ export default function MyProductsScreen() {
     </SafeAreaView>
   );
 }
+
 

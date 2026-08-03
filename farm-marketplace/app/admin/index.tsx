@@ -180,20 +180,20 @@ export default function AdminDashboard() {
       const userData = await AsyncStorage.getItem('currentUser');
       const token = await AsyncStorage.getItem('token');
       if (!userData || !token) {
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
         return;
       }
       const user = JSON.parse(userData);
       if (user.role !== 'admin') {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
         return;
       }
       setUserName(user.name || 'Admin');
       fetchAnalytics();
     } catch (error) {
       console.error('Role validation error:', error);
-      router.replace('/(auth)/login');
+      router.replace('/auth/login');
     }
   };
 
@@ -246,7 +246,7 @@ export default function AdminDashboard() {
     const performLogout = async () => {
       try {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
-        router.replace('/(auth)/login');
+        router.replace('/auth/login');
       } catch (error) {
         console.error('Logout error:', error);
       }
@@ -328,14 +328,14 @@ export default function AdminDashboard() {
         <View style={[styles.actionContainer, { marginTop: 16 }]}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonPrimary]}
-            onPress={() => router.push('/(admin)/users')}
+            onPress={() => router.push('/admin/users')}
           >
             <Ionicons name="people-outline" size={20} color={colors.white} />
             <Text style={styles.actionButtonText}>Users</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/(admin)/products')}
+            onPress={() => router.push('/admin/products')}
           >
             <Ionicons name="cube-outline" size={20} color={colors.white} />
             <Text style={styles.actionButtonText}>Products</Text>
@@ -345,14 +345,14 @@ export default function AdminDashboard() {
         <View style={styles.actionContainer}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonTertiary]}
-            onPress={() => router.push('/(admin)/orders')}
+            onPress={() => router.push('/admin/orders')}
           >
             <Ionicons name="receipt-outline" size={20} color={colors.white} />
             <Text style={styles.actionButtonText}>Orders</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonQuaternary]}
-            onPress={() => router.push('/(admin)/analytics')}
+            onPress={() => router.push('/admin/analytics')}
           >
             <Ionicons name="bar-chart-outline" size={20} color={colors.white} />
             <Text style={styles.actionButtonText}>Analytics</Text>
@@ -362,7 +362,7 @@ export default function AdminDashboard() {
         <View style={styles.actionContainer}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.gray }]}
-            onPress={() => router.push('/(admin)/settings')}
+            onPress={() => router.push('/admin/settings')}
           >
             <Ionicons name="settings-outline" size={20} color={colors.white} />
             <Text style={styles.actionButtonText}>Settings</Text>
@@ -372,3 +372,4 @@ export default function AdminDashboard() {
     </View>
   );
 }
+
