@@ -160,20 +160,31 @@ export const deleteUser = async (req: Request, res: Response): Promise<void> => 
 export const suspendUser = async (req: Request, res: Response): Promise<void> => {
   try {
     const { suspended } = req.body;
-    const user = await User.findById(req.params.id);
+
+    // First fetch user to check admin role (without triggering full validation)
+    const existingUser = await User.findById(req.params.id).select('role isSuspended');
+    if (!existingUser) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+    if (existingUser.role === 'admin') {
+      res.status(400).json({ success: false, message: 'Cannot suspend admin accounts' });
+      return;
+    }
+
+    // Use findByIdAndUpdate with $set to only modify isSuspended, avoiding
+    // full document validation on legacy records with invalid roles
+    const newSuspended = typeof suspended === 'boolean' ? suspended : !existingUser.isSuspended;
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: { isSuspended: newSuspended } },
+      { new: true, runValidators: false }
+    );
 
     if (!user) {
       res.status(404).json({ success: false, message: 'User not found' });
       return;
     }
-
-    if (user.role === 'admin') {
-      res.status(400).json({ success: false, message: 'Cannot suspend admin accounts' });
-      return;
-    }
-
-    user.isSuspended = typeof suspended === 'boolean' ? suspended : !user.isSuspended;
-    await user.save();
 
     res.status(200).json({
       success: true,

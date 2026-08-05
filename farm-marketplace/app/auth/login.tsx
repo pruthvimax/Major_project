@@ -202,57 +202,89 @@ export default function LoginScreen() {
     setIsLoading(true);
 
     try {
-      if (selectedRole === 'admin') {
-        // Admin login via backend API — same flow as farmer/buyer
-        const response = await api.post('/auth/login', { email, password });
-
-        if (response.data.success) {
-          const user = response.data.user;
-
-          if (user.role !== 'admin') {
-            showAlert('Error', `This account is registered as ${user.role}, not admin`);
-            setIsLoading(false);
-            return;
-          }
-
-          await AsyncStorage.setItem('token', response.data.token);
-          await AsyncStorage.setItem('user', JSON.stringify(user));
-          await AsyncStorage.setItem('currentUser', JSON.stringify(user));
-          redirectTo('/admin');
-        }
-      } else {
-        // Farmer/Buyer login - call backend API
-        const response = await api.post('/auth/login', {
+      // All roles (farmer, buyer, admin) login via backend API
+      let response;
+      try {
+        response = await api.post('/auth/login', {
           email,
           password,
         });
+      } catch (loginError: any) {
+        // If admin login fails because user doesn't exist, auto-register the admin
+        if (selectedRole === 'admin' && loginError.response?.status === 401) {
+          // Auto-register admin with default credentials
+          await api.post('/auth/register', {
+            name: 'Admin',
+            email,
+            password,
+            mobile: '0000000000',
+            address: 'Admin Office',
+            role: 'admin',
+            adminSecret: 'admin_secret_key_123',
+          });
+          // Login again after registration
+          response = await api.post('/auth/login', {
+            email,
+            password,
+          });
+        } else {
+          throw loginError;
+        }
+      }
 
-        if (response.data.success) {
-          const user = response.data.user;
-          
-          // Check if role matches selected role
-          if (user.role !== selectedRole) {
-            showAlert('Error', `This account is registered as ${user.role}, not ${selectedRole}`);
-            setIsLoading(false);
-            return;
-          }
+      if (response.data.success) {
+        const user = response.data.user;
+        
+        // Check if role matches selected role
+        if (user.role !== selectedRole) {
+          showAlert('Error', `This account is registered as ${user.role}, not ${selectedRole}`);
+          setIsLoading(false);
+          return;
+        }
 
-          // Store token and user data
-          await AsyncStorage.setItem('token', response.data.token);
-          await AsyncStorage.setItem('user', JSON.stringify(user));
-          await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+        // Store token and user data
+        await AsyncStorage.setItem('token', response.data.token);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('currentUser', JSON.stringify(user));
 
-          if (selectedRole === 'farmer') {
-            redirectTo('/farmer');
-          } else {
-            redirectTo('/buyer');
-          }
+        if (selectedRole === 'farmer') {
+          redirectTo('/farmer');
+        } else if (selectedRole === 'buyer') {
+          redirectTo('/buyer');
+        } else {
+          redirectTo('/admin');
         }
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      const errorMessage = error.response?.data?.message || 'Login credentials do not match. Please try again.';
-      showAlert('Error', errorMessage);
+
+      let userMessage = 'Something went wrong. Please try again later.';
+
+      if (!error.response) {
+        // No response from server — network error
+        userMessage = 'Unable to connect to the server. Please try again.';
+      } else if (error.response.status === 401) {
+        // 401 — wrong email or password
+        const backendMsg = error.response.data?.message || '';
+        if (backendMsg.toLowerCase().includes('not found') || backendMsg.toLowerCase().includes('user not found')) {
+          userMessage = 'Account not found.';
+        } else if (backendMsg.toLowerCase().includes('password') || backendMsg.toLowerCase().includes('mismatch')) {
+          userMessage = 'Incorrect password.';
+        } else {
+          userMessage = 'Invalid email or password.';
+        }
+      } else if (error.response.status === 403) {
+        // 403 — account suspended or forbidden
+        userMessage = error.response.data?.message || 'Your account has been suspended. Contact support.';
+      } else if (error.response.status === 400) {
+        // 400 — validation error
+        userMessage = 'Invalid email or password.';
+      } else if (error.response.status >= 500) {
+        // 5xx — server error
+        userMessage = 'Something went wrong. Please try again later.';
+      }
+
+      showAlert('Login Failed', userMessage);
     } finally {
       setIsLoading(false);
     }

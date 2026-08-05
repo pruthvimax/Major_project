@@ -29,6 +29,8 @@ interface Product {
   blockchainId?: number;
   blockchainTxHash?: string;
   images?: string[];
+  averageRating?: number;
+  reviewCount?: number;
   location: {
     address: string;
   };
@@ -238,6 +240,16 @@ export default function MyProductsScreen() {
     fontSize: Typography.fontSize.xs,
     marginLeft: 4,
   },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: Layout.spacing.xs,
+  },
+  ratingText: {
+    fontSize: 11,
+    color: colors.gray,
+    marginLeft: 4,
+  },
 }), [colors]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -320,9 +332,17 @@ export default function MyProductsScreen() {
       )}
 
       <View style={styles.cardHeader}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.productName}>{item.name}</Text>
           <Text style={styles.categoryText}>Category: {item.category.toUpperCase()}</Text>
+          {item.averageRating !== undefined && item.averageRating > 0 && (
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={14} color="#FFD700" />
+              <Text style={styles.ratingText}>
+                {item.averageRating.toFixed(1)} ({item.reviewCount || 0} review{(item.reviewCount || 0) !== 1 ? 's' : ''})
+              </Text>
+            </View>
+          )}
         </View>
         {item.isOrganic && (
           <View style={styles.organicBadge}>

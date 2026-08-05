@@ -22,6 +22,11 @@ api.interceptors.request.use(
     try {
       const token = await AsyncStorage.getItem('token');
       if (token) {
+        // Detect stale hardcoded admin token from old login bypass
+        if (token === 'admin-token-hardcoded') {
+          await AsyncStorage.multiRemove(['token', 'user', 'currentUser']);
+          return config;
+        }
         config.headers.Authorization = `Bearer ${token}`;
       }
       return config;

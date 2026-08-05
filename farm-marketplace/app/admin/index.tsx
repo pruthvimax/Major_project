@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   ScrollView,
   Alert,
   Platform,
-  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -17,21 +17,47 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import ThemeToggle from '../../components/ThemeToggle';
-import { StatCardSkeleton } from '../../components/SkeletonLoader';
+import { AdminStatCardSkeleton } from '../../components/admin/AdminSkeleton';
+
+interface DashboardCards {
+  totalFarmers: number;
+  totalBuyers: number;
+  totalProducts: number;
+  totalOrders: number;
+  pendingOrders: number;
+  deliveredOrders: number;
+  cancelledOrders: number;
+  revenue: number;
+  blockchainTransactions: number;
+  disputedOrders: number;
+}
+
+interface Activity {
+  type: string;
+  message: string;
+  amount?: number;
+  createdAt: string;
+}
 
 export default function AdminDashboard() {
   const colors = useColors();
   const [userName, setUserName] = useState('Admin');
   const [loading, setLoading] = useState(true);
-  const [cards, setCards] = useState({
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [cards, setCards] = useState<DashboardCards>({
     totalFarmers: 0,
     totalBuyers: 0,
     totalProducts: 0,
     totalOrders: 0,
+    pendingOrders: 0,
+    deliveredOrders: 0,
+    cancelledOrders: 0,
     revenue: 0,
     blockchainTransactions: 0,
+    disputedOrders: 0,
   });
-  const [activities, setActivities] = useState<any[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -64,6 +90,7 @@ export default function AdminDashboard() {
     },
     scrollContent: {
       padding: Layout.spacing.lg,
+      paddingBottom: Layout.spacing.xxl,
     },
     welcomeCard: {
       backgroundColor: colors.card,
@@ -76,6 +103,8 @@ export default function AdminDashboard() {
       shadowOpacity: 0.1,
       shadowRadius: 8,
       elevation: 3,
+      borderWidth: 1,
+      borderColor: colors.border,
     },
     welcomeText: {
       fontSize: Typography.fontSize.xxl,
@@ -143,7 +172,13 @@ export default function AdminDashboard() {
       borderLeftWidth: 4,
       borderLeftColor: colors.primary,
     },
-    activityText: { color: colors.black, fontSize: 13, fontWeight: '600' },
+    activityHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 4,
+    },
+    activityText: { color: colors.black, fontSize: 13, fontWeight: '600', flex: 1 },
     activityMeta: { color: colors.gray, fontSize: 11, marginTop: 2 },
     actionContainer: {
       flexDirection: 'row',
@@ -163,23 +198,50 @@ export default function AdminDashboard() {
     actionButtonSecondary: { backgroundColor: colors.primary },
     actionButtonTertiary: { backgroundColor: colors.secondary },
     actionButtonQuaternary: { backgroundColor: colors.primaryDark },
+    actionButtonQuinary: { backgroundColor: '#7B1FA2' },
     actionButtonText: {
       color: colors.white,
       fontSize: Typography.fontSize.sm,
       fontWeight: Typography.fontWeight.semibold,
       marginLeft: Layout.spacing.sm,
     },
+    errorCard: {
+      backgroundColor: '#FFEBEE',
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.md,
+      marginBottom: Layout.spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    errorText: {
+      color: '#C62828',
+      fontSize: Typography.fontSize.sm,
+      flex: 1,
+      marginLeft: Layout.spacing.sm,
+    },
+    viewAllButton: {
+      alignSelf: 'flex-end',
+      paddingVertical: Layout.spacing.xs,
+      paddingHorizontal: Layout.spacing.sm,
+    },
+    viewAllText: {
+      color: colors.admin,
+      fontSize: Typography.fontSize.xs,
+      fontWeight: '700',
+    },
   }), [colors]);
 
-  useEffect(() => {
-    validateRoleAndLoad();
-  }, []);
-
-  const validateRoleAndLoad = async () => {
+  const validateRoleAndLoad = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem('currentUser');
       const token = await AsyncStorage.getItem('token');
       if (!userData || !token) {
+        router.replace('/auth/login');
+        return;
+      }
+      // Detect stale hardcoded admin token from old login bypass
+      if (token === 'admin-token-hardcoded') {
+        await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
         return;
       }
@@ -190,23 +252,37 @@ export default function AdminDashboard() {
         return;
       }
       setUserName(user.name || 'Admin');
-      fetchAnalytics();
+      await fetchAnalytics();
     } catch (error) {
       console.error('Role validation error:', error);
       router.replace('/auth/login');
     }
-  };
+  }, []);
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     try {
-      setLoading(true);
+      setError(null);
       const res = await api.get('/admin/analytics');
       if (res.data.success) {
-        setCards(res.data.analytics.cards);
-        setActivities(res.data.analytics.latestActivities || []);
+        const analytics = res.data.analytics;
+        const c = analytics.cards || {};
+        setCards({
+          totalFarmers: c.totalFarmers || 0,
+          totalBuyers: c.totalBuyers || 0,
+          totalProducts: c.totalProducts || 0,
+          totalOrders: c.totalOrders || 0,
+          pendingOrders: c.pendingOrders || 0,
+          deliveredOrders: c.deliveredOrders || 0,
+          cancelledOrders: c.cancelledOrders || 0,
+          revenue: c.revenue || 0,
+          blockchainTransactions: c.blockchainTransactions || 0,
+          disputedOrders: c.disputedOrders || 0,
+        });
+        setActivities(analytics.latestActivities || []);
       }
     } catch (error) {
       console.error('Error fetching admin analytics:', error);
+      setError('Failed to load dashboard data. Showing fallback data.');
       // Fallback to basic counts
       try {
         const [usersRes, productsRes, ordersRes] = await Promise.all([
@@ -215,32 +291,34 @@ export default function AdminDashboard() {
           api.get('/orders'),
         ]);
         const users = usersRes.data.users || [];
+        const orders = ordersRes.data.orders || [];
         setCards((prev) => ({
           ...prev,
           totalFarmers: users.filter((u: any) => u.role === 'farmer').length,
           totalBuyers: users.filter((u: any) => u.role === 'buyer').length,
           totalProducts: productsRes.data.products?.length || 0,
-          totalOrders: ordersRes.data.orders?.length || 0,
+          totalOrders: orders.length,
+          pendingOrders: orders.filter((o: any) => o.status === 'pending').length,
+          deliveredOrders: orders.filter((o: any) => o.status === 'delivered').length,
+          cancelledOrders: orders.filter((o: any) => o.status === 'cancelled').length,
         }));
       } catch (e) {
         console.error(e);
       }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
-  const getUserName = async () => {
-    try {
-      const userData = await AsyncStorage.getItem('currentUser');
-      if (userData) {
-        const user = JSON.parse(userData);
-        setUserName(user.name || 'Admin');
-      }
-    } catch (error) {
-      console.error('Error getting user name:', error);
-    }
-  };
+  useEffect(() => {
+    validateRoleAndLoad();
+  }, [validateRoleAndLoad]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const handleLogout = () => {
     const performLogout = async () => {
@@ -262,11 +340,29 @@ export default function AdminDashboard() {
     }
   };
 
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'order':
+        return { name: 'receipt-outline' as const, color: colors.secondary };
+      case 'user':
+        return { name: 'person-add-outline' as const, color: colors.primary };
+      case 'blockchain':
+        return { name: 'link-outline' as const, color: colors.info };
+      case 'product':
+        return { name: 'cube-outline' as const, color: colors.warning };
+      default:
+        return { name: 'notifications-outline' as const, color: colors.gray };
+    }
+  };
+
   const statItems = [
     { icon: 'people-outline' as const, value: cards.totalFarmers, label: 'Farmers', color: colors.primary, bgColor: colors.primary + '15' },
     { icon: 'person-outline' as const, value: cards.totalBuyers, label: 'Buyers', color: colors.secondary, bgColor: colors.secondary + '15' },
     { icon: 'cube-outline' as const, value: cards.totalProducts, label: 'Products', color: colors.admin, bgColor: colors.admin + '15' },
     { icon: 'receipt-outline' as const, value: cards.totalOrders, label: 'Orders', color: colors.warning, bgColor: colors.warning + '15' },
+    { icon: 'time-outline' as const, value: cards.pendingOrders, label: 'Pending', color: '#EF6C00', bgColor: '#FFF3E0' },
+    { icon: 'checkmark-done-outline' as const, value: cards.deliveredOrders, label: 'Delivered', color: '#2E7D32', bgColor: '#E8F5E9' },
+    { icon: 'close-circle-outline' as const, value: cards.cancelledOrders, label: 'Cancelled', color: '#C62828', bgColor: '#FFEBEE' },
     { icon: 'cash-outline' as const, value: `₹${(cards.revenue / 1000).toFixed(1)}k`, label: 'Revenue', color: colors.success, bgColor: colors.success + '15' },
     { icon: 'link-outline' as const, value: cards.blockchainTransactions, label: 'Chain Tx', color: colors.info, bgColor: colors.info + '15' },
   ];
@@ -283,7 +379,12 @@ export default function AdminDashboard() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.admin]} />
+        }
+      >
         <View style={styles.welcomeCard}>
           <Ionicons name="shield-checkmark-outline" size={40} color={colors.admin} />
           <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
@@ -292,12 +393,15 @@ export default function AdminDashboard() {
           </View>
         </View>
 
-        {loading ? (
-          <View style={{ flexDirection: 'row', marginBottom: 16 }}>
-            <StatCardSkeleton />
-            <StatCardSkeleton />
-            <StatCardSkeleton />
+        {error && (
+          <View style={styles.errorCard}>
+            <Ionicons name="alert-circle-outline" size={20} color="#C62828" />
+            <Text style={styles.errorText}>{error}</Text>
           </View>
+        )}
+
+        {loading ? (
+          <AdminStatCardSkeleton count={9} />
         ) : (
           <View style={styles.statsGrid}>
             {statItems.map((item) => (
@@ -312,20 +416,7 @@ export default function AdminDashboard() {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Latest Activities</Text>
-        {activities.slice(0, 5).map((a, idx) => (
-          <View key={idx} style={styles.activityCard}>
-            <Text style={styles.activityText}>{a.message}</Text>
-            <Text style={styles.activityMeta}>
-              {a.type} · {new Date(a.createdAt).toLocaleString()}
-            </Text>
-          </View>
-        ))}
-        {activities.length === 0 && !loading && (
-          <Text style={styles.activityMeta}>No recent activity</Text>
-        )}
-
-        <View style={[styles.actionContainer, { marginTop: 16 }]}>
+        <View style={styles.actionContainer}>
           <TouchableOpacity
             style={[styles.actionButton, styles.actionButtonPrimary]}
             onPress={() => router.push('/admin/users')}
@@ -361,6 +452,26 @@ export default function AdminDashboard() {
 
         <View style={styles.actionContainer}>
           <TouchableOpacity
+            style={[styles.actionButton, styles.actionButtonQuinary]}
+            onPress={() => router.push('/admin/disputes')}
+          >
+            <Ionicons name="warning-outline" size={20} color={colors.white} />
+            <Text style={styles.actionButtonText}>Disputes</Text>
+            {cards.disputedOrders > 0 && (
+              <View style={{
+                backgroundColor: '#FFEBEE',
+                borderRadius: 10,
+                paddingHorizontal: 6,
+                paddingVertical: 2,
+                marginLeft: 6,
+              }}>
+                <Text style={{ color: '#C62828', fontSize: 10, fontWeight: '700' }}>
+                  {cards.disputedOrders}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: colors.gray }]}
             onPress={() => router.push('/admin/settings')}
           >
@@ -368,8 +479,44 @@ export default function AdminDashboard() {
             <Text style={styles.actionButtonText}>Settings</Text>
           </TouchableOpacity>
         </View>
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={styles.sectionTitle}>Latest Activities</Text>
+          <TouchableOpacity
+            style={styles.viewAllButton}
+            onPress={() => router.push('/admin/analytics')}
+          >
+            <Text style={styles.viewAllText}>View All</Text>
+          </TouchableOpacity>
+        </View>
+
+        {activities.slice(0, 8).map((a, idx) => {
+          const icon = getActivityIcon(a.type);
+          return (
+            <View key={idx} style={styles.activityCard}>
+              <View style={styles.activityHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                  <Ionicons name={icon.name} size={16} color={icon.color} style={{ marginRight: 6 }} />
+                  <Text style={styles.activityText} numberOfLines={1}>{a.message}</Text>
+                </View>
+                {a.amount !== undefined && (
+                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>
+                    ₹{a.amount}
+                  </Text>
+                )}
+              </View>
+              <Text style={styles.activityMeta}>
+                {a.type} · {new Date(a.createdAt).toLocaleString()}
+              </Text>
+            </View>
+          );
+        })}
+        {activities.length === 0 && !loading && (
+          <View style={styles.activityCard}>
+            <Text style={styles.activityMeta}>No recent activity</Text>
+          </View>
+        )}
       </ScrollView>
     </View>
   );
 }
-
