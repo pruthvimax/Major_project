@@ -50,7 +50,7 @@ This document outlines the major updates, features, and fixes implemented in thi
 ---
 
 ## 🕸️ 5. Web Browser Compatibility & Fixes
-* **Alert Interventions**: Replaced standard React Native `Alert.alert` (which crashes/freezes on Web) with conditional checks using native browser `window.confirm` and `window.alert` dialogs for login validations, registration, checkout success, and logout warnings.
+* **Alert Interventions**: Replaced standard React Native android `Alert.alert` (which crashes/freezes on Web) with conditional checks using native browser `window.confirm` and `window.alert` dialogs for login validations, registration, checkout success, and logout warnings.
 * **TypeScript Compiler Fixes**:
   * Added `as const` to [constants/Typography.ts](file:///d:/Major/Major_project/farm-marketplace/constants/Typography.ts) to define exact literal types for `fontWeight` properties.
   * Cast `StyleSheet.create` output as `any` in all screens to prevent generic `TextStyle` key properties from throwing compilation warnings when passed to layout blocks.
