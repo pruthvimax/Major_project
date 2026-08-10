@@ -3,6 +3,27 @@
 Base URL: `http://localhost:5000/api`  
 Auth: `Authorization: Bearer <JWT>`
 
+## Core workflows
+
+### Cart
+- `GET /cart` — fetch the current buyer cart and summary
+- `POST /cart/items` — add a product to the cart
+- `PUT /cart/items/:productId` — update quantity
+- `DELETE /cart/items/:productId` — remove an item
+- `DELETE /cart` — clear the cart
+
+### Orders
+- `POST /orders` — create an order from cart items or direct checkout payload
+- `GET /orders/buyer` — fetch buyer order history
+- `GET /orders/farmer` — fetch farmer incoming orders
+- `PUT /orders/:id/status` — update order status
+- `PUT /orders/:id/cancel` — cancel an order
+- `GET /orders/:id` — fetch a single order
+
+### Admin
+- `GET /admin/analytics` — dashboard analytics
+- `GET /admin/transactions` — blockchain transactions
+
 ---
 
 ## Authentication Endpoints

@@ -8,6 +8,65 @@ interface AuthRequest extends Request {
   user?: any;
 }
 
+// @desc    Get all reviews for the logged-in farmer's products
+// @route   GET /api/reviews/farmer
+// @access  Private/Farmer
+export const getFarmerReviews = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const farmerId = req.user?._id;
+
+    // Get all product IDs belonging to this farmer
+    const farmerProducts = await Product.find({ farmer: farmerId }).select('_id name');
+    const productIds = farmerProducts.map((p) => p._id);
+
+    if (productIds.length === 0) {
+      res.status(200).json({
+        success: true,
+        count: 0,
+        averageRating: 0,
+        totalReviews: 0,
+        reviews: [],
+      });
+      return;
+    }
+
+    // Get all reviews for these products, populated with buyer info
+    const reviews = await Review.find({ product: { $in: productIds } })
+      .populate('buyer', 'name profileImage')
+      .populate('product', 'name')
+      .sort({ createdAt: -1 });
+
+    // Calculate aggregate stats
+    const stats = await Review.aggregate([
+      { $match: { product: { $in: productIds } } },
+      {
+        $group: {
+          _id: null,
+          averageRating: { $avg: '$rating' },
+          totalReviews: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const averageRating = stats.length > 0 ? Math.round(stats[0].averageRating * 10) / 10 : 0;
+    const totalReviews = stats.length > 0 ? stats[0].totalReviews : 0;
+
+    res.status(200).json({
+      success: true,
+      count: reviews.length,
+      averageRating,
+      totalReviews,
+      reviews,
+    });
+  } catch (error: any) {
+    console.error('Get farmer reviews error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
+  }
+};
+
 // @desc    Create product review
 // @route   POST /api/reviews
 // @access  Private/Buyer

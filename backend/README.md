@@ -27,3 +27,5 @@ Backend API for the Blockchain-Based Farm Marketplace application.
 1. Install dependencies:
 ```bash
 npm install
+
+npm run dev

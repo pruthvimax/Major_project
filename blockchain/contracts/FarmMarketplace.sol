@@ -151,6 +151,16 @@ contract FarmMarketplace {
     }
 
     // Get ownership history of a product
+    function getProductDetails(uint256 _productId) external view returns (Product memory) {
+        require(products[_productId].id > 0, "Product does not exist");
+        return products[_productId];
+    }
+
+    function getOrderDetails(uint256 _orderId) external view returns (Order memory) {
+        require(orders[_orderId].orderId > 0, "Order does not exist");
+        return orders[_orderId];
+    }
+
     function getProductHistory(uint256 _productId) external view returns (address[] memory) {
         return productHistory[_productId];
     }

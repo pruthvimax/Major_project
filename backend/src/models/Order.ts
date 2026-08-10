@@ -14,6 +14,11 @@ export interface ITrackingEvent {
   timestamp: Date;
 }
 
+export interface IStatusHistoryEntry {
+  status: string;
+  timestamp: Date;
+}
+
 export type OrderStatus =
   | 'pending'
   | 'accepted'
@@ -56,6 +61,10 @@ export interface IOrder extends Document {
     country: string;
   };
   trackingEvents: ITrackingEvent[];
+  statusHistory: IStatusHistoryEntry[];
+  cancellationReason?: string;
+  cancelledBy?: 'buyer' | 'admin';
+  cancelledAt?: Date;
   estimatedDelivery?: Date;
   deliveryDate?: Date;
   notes?: string;
@@ -63,12 +72,19 @@ export interface IOrder extends Document {
   updatedAt: Date;
 }
 
+const generateOrderNumber = () => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `ORD-${timestamp}-${random}`;
+};
+
 const OrderSchema = new Schema<IOrder>(
   {
     orderNumber: {
       type: String,
       required: true,
       unique: true,
+      default: generateOrderNumber,
     },
     buyer: {
       type: Schema.Types.ObjectId,
@@ -181,6 +197,19 @@ const OrderSchema = new Schema<IOrder>(
         timestamp: { type: Date, default: Date.now },
       },
     ],
+    statusHistory: [
+      {
+        status: { type: String, required: true },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
+    cancellationReason: { type: String, default: '' },
+    cancelledBy: {
+      type: String,
+      enum: ['buyer', 'admin'],
+      default: 'buyer',
+    },
+    cancelledAt: { type: Date },
     estimatedDelivery: { type: Date },
     deliveryDate: {
       type: Date,
@@ -202,13 +231,17 @@ OrderSchema.index({ farmer: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ createdAt: -1 });
 
-// Generate order number before saving
+// Ensure a unique order number exists before validation/save
+OrderSchema.pre<IOrder>('validate', function (next) {
+  if (!this.orderNumber) {
+    this.orderNumber = generateOrderNumber();
+  }
+  next();
+});
+
 OrderSchema.pre<IOrder>('save', function (next) {
   if (!this.orderNumber) {
-    const prefix = 'ORD';
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-    this.orderNumber = `${prefix}-${timestamp}-${random}`;
+    this.orderNumber = generateOrderNumber();
   }
   next();
 });

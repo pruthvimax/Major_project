@@ -16,20 +16,21 @@ let contract: ethers.Contract | null = null;
 let isBlockchainEnabled = false;
 
 try {
-  const nodeUrl = process.env.ETHEREUM_NODE_URL;
-  const privateKey = process.env.ETHEREUM_PRIVATE_KEY;
+  const nodeUrl = process.env.ETHEREUM_NODE_URL || process.env.BLOCKCHAIN_RPC_URL;
+  const privateKey = process.env.ETHEREUM_PRIVATE_KEY || process.env.PRIVATE_KEY;
   const contractDetailsPath = path.join(__dirname, '../config/contractDetails.json');
 
   if (nodeUrl && privateKey && fs.existsSync(contractDetailsPath)) {
     const details: ContractDetails = JSON.parse(fs.readFileSync(contractDetailsPath, 'utf8'));
-    
+    const contractAddress = process.env.CONTRACT_ADDRESS || details.address;
+
     provider = new ethers.JsonRpcProvider(nodeUrl);
     wallet = new ethers.Wallet(privateKey, provider);
-    contract = new ethers.Contract(details.address, details.abi, wallet);
+    contract = new ethers.Contract(contractAddress, details.abi, wallet);
     isBlockchainEnabled = true;
-    
+
     console.log(`🔗 Blockchain Service Initialized`);
-    console.log(`🔗 Contract Address: ${details.address}`);
+    console.log(`🔗 Contract Address: ${contractAddress}`);
     console.log(`🔗 Relayer Address: ${wallet.address}`);
   } else {
     console.warn(`⚠️ Blockchain configuration missing or local Hardhat node not running. Running in database-only mode.`);
@@ -175,6 +176,32 @@ export const cancelOrderOnChain = async (onChainOrderId: number): Promise<string
 };
 
 // Get product history on-chain
+export const getProductDetailsOnChain = async (onChainProductId: number) => {
+  if (!isBlockchainEnabled || !contract) {
+    return null;
+  }
+
+  try {
+    return await contract.getProductDetails(onChainProductId);
+  } catch (error) {
+    console.error(`❌ Failed to retrieve product details:`, error);
+    return null;
+  }
+};
+
+export const getOrderDetailsOnChain = async (onChainOrderId: number) => {
+  if (!isBlockchainEnabled || !contract) {
+    return null;
+  }
+
+  try {
+    return await contract.getOrderDetails(onChainOrderId);
+  } catch (error) {
+    console.error(`❌ Failed to retrieve order details:`, error);
+    return null;
+  }
+};
+
 export const getProductHistoryOnChain = async (onChainProductId: number): Promise<string[]> => {
   if (!isBlockchainEnabled || !contract) {
     return [];

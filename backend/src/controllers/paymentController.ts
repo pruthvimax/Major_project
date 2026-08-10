@@ -223,6 +223,9 @@ export const getOrderTracking = async (req: AuthRequest, res: Response): Promise
         paymentMethod: order.paymentMethod,
         estimatedDelivery: order.estimatedDelivery,
         createdAt: order.createdAt,
+        cancellationReason: order.cancellationReason,
+        cancelledBy: order.cancelledBy,
+        cancelledAt: order.cancelledAt,
         shippingAddress: order.shippingAddress,
         events: order.trackingEvents.sort(
           (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
