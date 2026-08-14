@@ -1,16 +1,10 @@
 import React, { useMemo } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-} from 'react-native';
+import { Modal, View, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
+import Button from '../ui/Button';
 
 interface ConfirmDialogProps {
   visible: boolean;
@@ -38,45 +32,60 @@ export default function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const colors = useColors();
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
         overlay: {
           flex: 1,
-          backgroundColor: 'rgba(0,0,0,0.5)',
+          backgroundColor: colors.overlay,
           justifyContent: 'center',
           alignItems: 'center',
           padding: Layout.spacing.xl,
         },
         dialog: {
           backgroundColor: colors.card,
-          borderRadius: Layout.borderRadius.lg,
-          padding: Layout.spacing.xl,
+          borderRadius: Layout.borderRadius.xl,
+          paddingHorizontal: Layout.spacing.lg,
+          paddingTop: Layout.spacing.xl,
+          paddingBottom: Layout.spacing.lg,
           width: '100%',
           maxWidth: 400,
           alignItems: 'center',
+          borderWidth: 1,
+          borderColor: colors.border,
+          ...Layout.shadow.lg,
         },
-        iconWrap: {
-          width: 64,
-          height: 64,
-          borderRadius: 32,
-          backgroundColor: destructive ? '#FFEBEE' : colors.primary + '15',
+        iconOuter: {
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: destructive ? colors.errorSoft : colors.primaryTint,
           alignItems: 'center',
           justifyContent: 'center',
           marginBottom: Layout.spacing.md,
         },
+        iconInner: {
+          width: 54,
+          height: 54,
+          borderRadius: 27,
+          backgroundColor: destructive ? colors.errorSoft : colors.primarySoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
         title: {
           fontSize: Typography.fontSize.lg,
+          lineHeight: Typography.leading.lg,
           fontWeight: Typography.fontWeight.bold,
-          color: colors.black,
+          color: colors.text,
           textAlign: 'center',
         },
         message: {
           fontSize: Typography.fontSize.sm,
-          color: colors.gray,
+          lineHeight: Typography.leading.sm,
+          color: colors.textSecondary,
           textAlign: 'center',
-          marginTop: Layout.spacing.sm,
-          lineHeight: 20,
+          marginTop: Layout.spacing.xs + 2,
         },
         buttonRow: {
           flexDirection: 'row',
@@ -84,30 +93,9 @@ export default function ConfirmDialog({
           gap: Layout.spacing.sm,
           width: '100%',
         },
-        button: {
+        buttonSlot: {
           flex: 1,
-          paddingVertical: Layout.spacing.md,
-          borderRadius: Layout.borderRadius.md,
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        cancelButton: {
-          backgroundColor: colors.lighterGray,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        confirmButton: {
-          backgroundColor: destructive ? '#C62828' : colors.primary,
-        },
-        cancelText: {
-          color: colors.black,
-          fontWeight: Typography.fontWeight.semibold,
-          fontSize: Typography.fontSize.sm,
-        },
-        confirmText: {
-          color: colors.white,
-          fontWeight: Typography.fontWeight.semibold,
-          fontSize: Typography.fontSize.sm,
+          minWidth: 0,
         },
       }),
     [colors, destructive]
@@ -117,34 +105,37 @@ export default function ConfirmDialog({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
         <View style={styles.dialog}>
-          <View style={styles.iconWrap}>
-            <Ionicons
-              name={icon}
-              size={32}
-              color={destructive ? '#C62828' : colors.primary}
-            />
+          <View style={styles.iconOuter}>
+            <View style={styles.iconInner}>
+              <Ionicons
+                name={icon}
+                size={28}
+                color={destructive ? colors.error : colors.primary}
+              />
+            </View>
           </View>
+
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.message}>{message}</Text>
+
           <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[styles.button, styles.cancelButton]}
+            <Button
+              title={cancelLabel}
               onPress={onCancel}
+              variant="outline"
+              size="md"
               disabled={loading}
-            >
-              <Text style={styles.cancelText}>{cancelLabel}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.button, styles.confirmButton]}
+              style={styles.buttonSlot}
+            />
+            <Button
+              title={confirmLabel}
               onPress={onConfirm}
+              variant={destructive ? 'danger' : 'primary'}
+              size="md"
+              loading={loading}
               disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator size="small" color={colors.white} />
-              ) : (
-                <Text style={styles.confirmText}>{confirmLabel}</Text>
-              )}
-            </TouchableOpacity>
+              style={styles.buttonSlot}
+            />
           </View>
         </View>
       </View>

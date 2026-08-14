@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../constants/Colors';
 import Typography from '../constants/Typography';
 import Layout from '../constants/Layout';
+import Button from './ui/Button';
 
 interface EmptyStateProps {
   icon?: keyof typeof Ionicons.glyphMap;
@@ -12,6 +13,11 @@ interface EmptyStateProps {
   actionLabel?: string;
   onAction?: () => void;
   iconColor?: string;
+  /** Secondary action rendered under the primary one. */
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  compact?: boolean;
+  style?: ViewStyle;
 }
 
 export default function EmptyState({
@@ -21,68 +27,89 @@ export default function EmptyState({
   actionLabel,
   onAction,
   iconColor,
+  secondaryActionLabel,
+  onSecondaryAction,
+  compact = false,
+  style,
 }: EmptyStateProps) {
   const colors = useColors();
   const styles = useMemo(
     () =>
       StyleSheet.create({
         container: {
-          flex: 1,
+          flex: compact ? 0 : 1,
           alignItems: 'center',
           justifyContent: 'center',
-          padding: Layout.spacing.xl,
-          minHeight: 240,
+          paddingHorizontal: Layout.spacing.xl,
+          paddingVertical: compact ? Layout.spacing.xl : Layout.spacing.xxl,
+          minHeight: compact ? 0 : 240,
         },
-        iconWrap: {
-          width: 88,
-          height: 88,
-          borderRadius: 44,
-          backgroundColor: colors.primary + '15',
+        iconOuter: {
+          width: 108,
+          height: 108,
+          borderRadius: 54,
+          backgroundColor: colors.primaryTint,
           alignItems: 'center',
           justifyContent: 'center',
-          marginBottom: Layout.spacing.md,
+          marginBottom: Layout.spacing.lg,
+        },
+        iconInner: {
+          width: 76,
+          height: 76,
+          borderRadius: 38,
+          backgroundColor: colors.primarySoft,
+          alignItems: 'center',
+          justifyContent: 'center',
         },
         title: {
           fontSize: Typography.fontSize.lg,
+          lineHeight: Typography.leading.lg,
           fontWeight: Typography.fontWeight.bold,
-          color: colors.black,
+          color: colors.text,
           textAlign: 'center',
         },
         description: {
           fontSize: Typography.fontSize.sm,
-          color: colors.gray,
+          lineHeight: Typography.leading.sm,
+          color: colors.textSecondary,
           textAlign: 'center',
-          marginTop: Layout.spacing.xs,
-          lineHeight: 20,
+          marginTop: Layout.spacing.xs + 2,
+          maxWidth: 300,
+        },
+        actions: {
+          marginTop: Layout.spacing.lg,
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          width: '100%',
           maxWidth: 280,
         },
-        button: {
-          marginTop: Layout.spacing.lg,
-          backgroundColor: colors.primary,
-          paddingHorizontal: Layout.spacing.xl,
-          paddingVertical: Layout.spacing.sm + 2,
-          borderRadius: Layout.borderRadius.md,
-        },
-        buttonText: {
-          color: colors.white,
-          fontWeight: Typography.fontWeight.semibold,
-          fontSize: Typography.fontSize.sm,
-        },
       }),
-    [colors]
+    [colors, compact]
   );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.iconWrap}>
-        <Ionicons name={icon} size={40} color={iconColor || colors.primary} />
+    <View style={[styles.container, style]}>
+      <View style={styles.iconOuter}>
+        <View style={styles.iconInner}>
+          <Ionicons name={icon} size={36} color={iconColor || colors.primary} />
+        </View>
       </View>
       <Text style={styles.title}>{title}</Text>
       {!!description && <Text style={styles.description}>{description}</Text>}
-      {actionLabel && onAction && (
-        <TouchableOpacity style={styles.button} onPress={onAction} activeOpacity={0.85}>
-          <Text style={styles.buttonText}>{actionLabel}</Text>
-        </TouchableOpacity>
+      {((actionLabel && onAction) || (secondaryActionLabel && onSecondaryAction)) && (
+        <View style={styles.actions}>
+          {actionLabel && onAction && (
+            <Button title={actionLabel} onPress={onAction} size="md" />
+          )}
+          {secondaryActionLabel && onSecondaryAction && (
+            <Button
+              title={secondaryActionLabel}
+              onPress={onSecondaryAction}
+              variant="ghost"
+              size="sm"
+            />
+          )}
+        </View>
       )}
     </View>
   );

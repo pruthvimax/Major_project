@@ -6,21 +6,28 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
   Alert,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import { useCart, CartItem } from '../../context/CartContext';
-import EmptyState from '../../components/EmptyState';
+import {
+  ScreenHeader,
+  Card,
+  Button,
+  QuantityStepper,
+  EmptyState,
+  ListSkeleton,
+} from '../../components/ui';
 
 export default function CartScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { items, summary, loading, refreshCart, updateQuantity, removeItem } = useCart();
   const [updating, setUpdating] = useState<string | null>(null);
 
@@ -32,112 +39,129 @@ export default function CartScreen() {
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        header: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: Layout.spacing.lg,
-          paddingTop: Platform.OS === 'android' ? 40 : 20,
-          paddingBottom: Layout.spacing.md,
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
+        list: {
+          padding: Layout.spacing.lg,
+          paddingBottom: Layout.spacing.xxl,
         },
-        headerTitle: {
-          fontSize: Typography.fontSize.lg,
-          fontWeight: Typography.fontWeight.bold,
-          color: colors.black,
-        },
+        skeletonWrap: { padding: Layout.spacing.lg },
         card: {
           flexDirection: 'row',
-          backgroundColor: colors.card,
-          borderRadius: Layout.borderRadius.lg,
+          alignItems: 'flex-start',
+          gap: Layout.spacing.md,
+          marginBottom: Layout.spacing.md,
           padding: Layout.spacing.md,
-          marginBottom: Layout.spacing.sm,
-          borderWidth: 1,
-          borderColor: colors.border,
         },
-        image: {
-          width: 72,
-          height: 72,
+        thumbWell: {
+          width: 76,
+          height: 76,
           borderRadius: Layout.borderRadius.md,
-          backgroundColor: colors.lighterGray,
-        },
-        placeholder: {
-          width: 72,
-          height: 72,
-          borderRadius: Layout.borderRadius.md,
-          backgroundColor: colors.primary + '12',
+          backgroundColor: colors.primaryTint,
           alignItems: 'center',
           justifyContent: 'center',
+          overflow: 'hidden',
         },
-        info: { flex: 1, marginLeft: Layout.spacing.md },
+        image: {
+          width: '100%',
+          height: '100%',
+          resizeMode: 'cover',
+        },
+        info: { flex: 1, minWidth: 0 },
+        nameRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: Layout.spacing.sm,
+        },
         name: {
+          flex: 1,
           fontSize: Typography.fontSize.md,
+          lineHeight: Typography.leading.md,
           fontWeight: Typography.fontWeight.bold,
-          color: colors.black,
+          color: colors.text,
         },
-        farmer: { fontSize: Typography.fontSize.xs, color: colors.gray, marginTop: 2 },
+        farmer: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
         price: {
-          fontSize: Typography.fontSize.sm,
-          fontWeight: Typography.fontWeight.semibold,
+          fontSize: Typography.fontSize.md,
+          lineHeight: Typography.leading.md,
+          fontWeight: Typography.fontWeight.bold,
           color: colors.primary,
-          marginTop: 4,
+          marginTop: Layout.spacing.xs,
+        },
+        priceUnit: {
+          fontSize: Typography.fontSize.xs,
+          fontWeight: Typography.fontWeight.medium,
+          color: colors.textSecondary,
         },
         qtyRow: {
           flexDirection: 'row',
           alignItems: 'center',
-          marginTop: Layout.spacing.sm,
+          gap: Layout.spacing.sm,
+          marginTop: Layout.spacing.md,
         },
-        qtyBtn: {
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          backgroundColor: colors.lighterGray,
+        removeBtn: {
+          width: Layout.touchTarget,
+          height: Layout.touchTarget,
+          borderRadius: Layout.borderRadius.md,
           alignItems: 'center',
           justifyContent: 'center',
+          backgroundColor: colors.errorSoft,
         },
-        qtyText: {
-          marginHorizontal: Layout.spacing.md,
-          fontWeight: '700',
-          color: colors.black,
-          minWidth: 20,
-          textAlign: 'center',
-        },
-        removeBtn: { padding: 6, marginLeft: 'auto' as any },
-        footer: {
+        bottomBar: {
           backgroundColor: colors.card,
-          padding: Layout.spacing.lg,
           borderTopWidth: 1,
           borderTopColor: colors.border,
+          paddingHorizontal: Layout.spacing.lg,
+          paddingTop: Layout.spacing.lg,
+          paddingBottom: Math.max(insets.bottom, Layout.spacing.md) + Layout.spacing.md,
+          ...Layout.shadow.lg,
+        },
+        summaryCard: {
+          padding: Layout.spacing.lg,
+          marginBottom: Layout.spacing.md,
         },
         row: {
           flexDirection: 'row',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: Layout.spacing.xs,
+          gap: Layout.spacing.md,
+          marginBottom: Layout.spacing.sm,
         },
-        label: { color: colors.gray, fontSize: Typography.fontSize.sm },
-        value: { fontWeight: '700', color: colors.black },
-        total: {
-          fontSize: Typography.fontSize.lg,
+        totalRow: {
+          marginBottom: 0,
+          marginTop: Layout.spacing.sm,
+          paddingTop: Layout.spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        label: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.textSecondary,
+          flexShrink: 1,
+        },
+        value: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          fontWeight: Typography.fontWeight.semibold,
+          color: colors.text,
+        },
+        totalLabel: {
+          fontSize: Typography.fontSize.md,
           fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+        },
+        total: {
+          fontSize: Typography.fontSize.xl,
+          lineHeight: Typography.leading.xl,
+          fontWeight: Typography.fontWeight.extrabold,
           color: colors.primary,
         },
-        checkoutBtn: {
-          backgroundColor: colors.primary,
-          borderRadius: Layout.borderRadius.md,
-          paddingVertical: Layout.spacing.md,
-          alignItems: 'center',
-          marginTop: Layout.spacing.md,
-        },
-        checkoutText: {
-          color: colors.white,
-          fontWeight: '700',
-          fontSize: Typography.fontSize.md,
-        },
-        list: { padding: Layout.spacing.md },
-      } as any),
-    [colors]
+      }),
+    [colors, insets.bottom]
   );
 
   const getProductId = (item: CartItem) =>
@@ -180,60 +204,69 @@ export default function CartScreen() {
     const busy = updating === id;
 
     return (
-      <View style={styles.card}>
-        {product?.images?.[0] ? (
-          <Image source={{ uri: product.images[0] }} style={styles.image} />
-        ) : (
-          <View style={styles.placeholder}>
-            <Ionicons name="leaf" size={28} color={colors.primary} />
-          </View>
-        )}
+      <Card elevation="sm" padded={false} style={styles.card}>
+        <View style={styles.thumbWell}>
+          {product?.images?.[0] ? (
+            <Image source={{ uri: product.images[0] }} style={styles.image} />
+          ) : (
+            <Ionicons name="leaf" size={30} color={colors.primary} />
+          )}
+        </View>
+
         <View style={styles.info}>
-          <Text style={styles.name}>{product?.name || 'Product'}</Text>
-          <Text style={styles.farmer}>by {product?.farmer?.name || 'Farmer'}</Text>
-          <Text style={styles.price}>
-            ₹{item.price} / {item.unit}
+          <View style={styles.nameRow}>
+            <Text style={styles.name} numberOfLines={2}>
+              {product?.name || 'Product'}
+            </Text>
+            <TouchableOpacity
+              style={styles.removeBtn}
+              onPress={() => handleRemove(item)}
+              accessibilityRole="button"
+              accessibilityLabel="Remove from cart"
+            >
+              <Ionicons name="trash-outline" size={19} color={colors.error} />
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.farmer} numberOfLines={1}>
+            by {product?.farmer?.name || 'Farmer'}
           </Text>
+
+          <Text style={styles.price} numberOfLines={1}>
+            ₹{item.price} <Text style={styles.priceUnit}>/ {item.unit}</Text>
+          </Text>
+
           <View style={styles.qtyRow}>
-            <TouchableOpacity
-              style={styles.qtyBtn}
+            <QuantityStepper
+              value={item.quantity}
               disabled={busy}
-              onPress={() => handleQty(item, item.quantity - 1)}
-            >
-              <Ionicons name="remove" size={16} color={colors.black} />
-            </TouchableOpacity>
-            <Text style={styles.qtyText}>{busy ? '…' : item.quantity}</Text>
-            <TouchableOpacity
-              style={styles.qtyBtn}
-              disabled={busy}
-              onPress={() => handleQty(item, item.quantity + 1)}
-            >
-              <Ionicons name="add" size={16} color={colors.black} />
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item)}>
-              <Ionicons name="trash-outline" size={20} color={colors.error} />
-            </TouchableOpacity>
+              onDecrease={() => handleQty(item, item.quantity - 1)}
+              onIncrease={() => handleQty(item, item.quantity + 1)}
+            />
+            {busy && <ActivityIndicator size="small" color={colors.primary} />}
           </View>
         </View>
-      </View>
+      </Card>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Cart</Text>
-        <TouchableOpacity onPress={refreshCart}>
-          <Ionicons name="refresh" size={20} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="My Cart"
+        onBack={() => router.back()}
+        iconActions={[
+          {
+            icon: 'refresh',
+            onPress: refreshCart,
+            accessibilityLabel: 'Refresh cart',
+          },
+        ]}
+      />
 
       {loading && items.length === 0 ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonWrap}>
+          <ListSkeleton count={3} />
         </View>
       ) : items.length === 0 ? (
         <EmptyState
@@ -250,30 +283,39 @@ export default function CartScreen() {
             keyExtractor={(item) => getProductId(item)}
             renderItem={renderItem}
             contentContainerStyle={styles.list}
+            showsVerticalScrollIndicator={false}
           />
-          <View style={styles.footer}>
-            <View style={styles.row}>
-              <Text style={styles.label}>Items</Text>
-              <Text style={styles.value}>{summary.itemCount}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={styles.label}>Subtotal</Text>
-              <Text style={styles.value}>₹{summary.subtotal.toFixed(2)}</Text>
-            </View>
-            <View style={styles.row}>
-              <Text style={[styles.label, { fontWeight: '700', color: colors.black }]}>Total</Text>
-              <Text style={styles.total}>₹{summary.totalAmount.toFixed(2)}</Text>
-            </View>
-            <TouchableOpacity
-              style={styles.checkoutBtn}
-              onPress={() => router.push({ pathname: '/buyer/checkout', params: { fromCart: '1' } })}
-            >
-              <Text style={styles.checkoutText}>Proceed to Checkout</Text>
-            </TouchableOpacity>
+
+          <View style={styles.bottomBar}>
+            <Card elevation="none" bordered padded={false} style={styles.summaryCard}>
+              <View style={styles.row}>
+                <Text style={styles.label}>Items</Text>
+                <Text style={styles.value}>{summary.itemCount}</Text>
+              </View>
+              <View style={styles.row}>
+                <Text style={styles.label}>Subtotal</Text>
+                <Text style={styles.value}>₹{summary.subtotal.toFixed(2)}</Text>
+              </View>
+              <View style={[styles.row, styles.totalRow]}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.total} numberOfLines={1}>
+                  ₹{summary.totalAmount.toFixed(2)}
+                </Text>
+              </View>
+            </Card>
+
+            <Button
+              title="Proceed to Checkout"
+              icon="arrow-forward"
+              iconPosition="right"
+              size="lg"
+              onPress={() =>
+                router.push({ pathname: '/buyer/checkout', params: { fromCart: '1' } })
+              }
+            />
           </View>
         </>
       )}
-    </SafeAreaView>
+    </View>
   );
 }
-

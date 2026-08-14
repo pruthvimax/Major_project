@@ -3,16 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ScrollView,
-  ActivityIndicator,
+  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
@@ -20,230 +18,237 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { useCart } from '../../context/CartContext';
+import {
+  ScreenHeader,
+  SectionHeader,
+  Card,
+  Input,
+  Button,
+  Badge,
+  QuantityStepper,
+} from '../../components/ui';
 
 type PaymentMethod = 'cash' | 'bank_transfer' | 'blockchain' | 'razorpay';
 
 export default function CheckoutScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { items: cartItems, summary: cartSummary, clearCart, refreshCart } = useCart();
-  const styles = useMemo(() => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  scrollContent: {
-    padding: Layout.spacing.md,
-  },
-  section: {
-    marginBottom: Layout.spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-    marginBottom: Layout.spacing.sm,
-  },
-  itemCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  itemHeader: {
-    marginBottom: Layout.spacing.md,
-  },
-  itemName: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  itemSeller: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  quantityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  qtyLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.black,
-    marginRight: Layout.spacing.md,
-  },
-  qtySelector: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: Layout.borderRadius.sm,
-    backgroundColor: colors.lighterGray,
-  },
-  qtyBtn: {
-    padding: Layout.spacing.sm,
-  },
-  qtyText: {
-    paddingHorizontal: Layout.spacing.md,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-  },
-  maxQty: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-    marginLeft: Layout.spacing.md,
-  },
-  addressCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  input: {
-    backgroundColor: colors.lighterGray,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: Layout.borderRadius.sm,
-    height: 48,
-    paddingHorizontal: Layout.spacing.md,
-    fontSize: Typography.fontSize.sm,
-    color: colors.black,
-    marginBottom: Layout.spacing.md,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    marginBottom: 0,
-  },
-  textArea: {
-    height: 80,
-    paddingTop: Layout.spacing.sm,
-    textAlignVertical: 'top',
-  },
-  paymentCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  paymentOption: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: Layout.borderRadius.sm,
-    padding: Layout.spacing.md,
-    marginBottom: Layout.spacing.sm,
-  },
-  paymentOptionActive: {
-    borderColor: colors.secondary,
-    backgroundColor: colors.secondary + '05',
-  },
-  paymentOptionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  paymentOptionText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.gray,
-    marginLeft: Layout.spacing.sm,
-  },
-  paymentOptionTextActive: {
-    color: colors.secondary,
-  },
-  paymentDesc: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-    marginLeft: 28,
-    lineHeight: 16,
-  },
-  totalCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: Layout.spacing.xxl,
-  },
-  pricingRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.sm,
-  },
-  pricingLabel: {
-    color: colors.gray,
-    fontSize: Typography.fontSize.sm,
-  },
-  pricingValue: {
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.sm,
-  },
-  grandTotalRow: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: Layout.spacing.md,
-    marginTop: Layout.spacing.sm,
-  },
-  grandTotalLabel: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  grandTotalValue: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.secondary,
-  },
-  checkoutBtn: {
-    backgroundColor: colors.secondary,
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.md,
-    alignItems: 'center',
-    marginTop: Layout.spacing.lg,
-  },
-  checkoutBtnUpi: {
-    backgroundColor: '#5F3DC4',
-  },
-  checkoutBtnText: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-  },
-  recommendedBadge: {
-    backgroundColor: colors.secondary,
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    marginLeft: Layout.spacing.sm,
-  },
-  recommendedText: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: colors.white,
-    letterSpacing: 0.5,
-  },
-}), [colors]);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        scrollContent: {
+          padding: Layout.spacing.lg,
+          paddingBottom: Layout.spacing.xxl,
+        },
+        section: {
+          marginBottom: Layout.spacing.xl,
+        },
+        summaryGroupCard: {
+          padding: Layout.spacing.lg,
+          marginBottom: Layout.spacing.md,
+        },
+        card: {
+          padding: Layout.spacing.lg,
+        },
+        farmerRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+        },
+        farmerIconWell: {
+          width: 34,
+          height: 34,
+          borderRadius: Layout.borderRadius.md,
+          backgroundColor: colors.primarySoft,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        itemSeller: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        groupItem: {
+          marginTop: Layout.spacing.md,
+          paddingTop: Layout.spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        itemName: {
+          fontSize: Typography.fontSize.md,
+          lineHeight: Typography.leading.md,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+          flexShrink: 1,
+        },
+        itemMeta: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        itemMetaValue: {
+          color: colors.primary,
+          fontWeight: Typography.fontWeight.bold,
+        },
+        itemHeader: {
+          marginBottom: Layout.spacing.md,
+        },
+        quantityRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: Layout.spacing.md,
+          paddingTop: Layout.spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        qtyLabel: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          fontWeight: Typography.fontWeight.semibold,
+          color: colors.text,
+          flexShrink: 1,
+        },
+        maxQty: {
+          fontSize: Typography.fontSize.xs,
+          color: colors.textSecondary,
+          marginLeft: 'auto',
+        },
+        inputRow: {
+          flexDirection: 'row',
+          gap: Layout.spacing.md,
+        },
+        inputHalf: {
+          flex: 1,
+        },
+        paymentOption: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: Layout.spacing.md,
+          borderWidth: 1.5,
+          borderColor: colors.border,
+          borderRadius: Layout.borderRadius.md,
+          padding: Layout.spacing.md,
+          marginBottom: Layout.spacing.sm,
+          backgroundColor: colors.surface,
+          minHeight: Layout.touchTarget,
+        },
+        paymentOptionActive: {
+          borderColor: colors.primary,
+          backgroundColor: colors.primaryTint,
+        },
+        paymentIconWell: {
+          width: 40,
+          height: 40,
+          borderRadius: Layout.borderRadius.md,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.surfaceAlt,
+        },
+        paymentIconWellActive: {
+          backgroundColor: colors.primarySoft,
+        },
+        paymentBody: {
+          flex: 1,
+          minWidth: 0,
+        },
+        paymentTitleRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: Layout.spacing.sm,
+        },
+        paymentOptionText: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+          flexShrink: 1,
+        },
+        paymentOptionTextActive: {
+          color: colors.primary,
+        },
+        paymentDesc: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          marginTop: Layout.spacing.xs,
+        },
+        radio: {
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          borderWidth: 2,
+          borderColor: colors.borderStrong,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: 2,
+        },
+        radioActive: {
+          borderColor: colors.primary,
+          backgroundColor: colors.primary,
+        },
+        pricingRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Layout.spacing.md,
+          marginBottom: Layout.spacing.sm,
+        },
+        pricingLabel: {
+          flexShrink: 1,
+          color: colors.textSecondary,
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+        },
+        pricingValue: {
+          fontWeight: Typography.fontWeight.semibold,
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.text,
+        },
+        pricingValueFree: {
+          color: colors.primary,
+          fontWeight: Typography.fontWeight.bold,
+        },
+        grandTotalRow: {
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: Layout.spacing.md,
+          marginTop: Layout.spacing.sm,
+          marginBottom: 0,
+        },
+        grandTotalLabel: {
+          fontSize: Typography.fontSize.md,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+          flexShrink: 1,
+        },
+        grandTotalValue: {
+          fontSize: Typography.fontSize.xl,
+          lineHeight: Typography.leading.xl,
+          fontWeight: Typography.fontWeight.extrabold,
+          color: colors.primary,
+        },
+        bottomBar: {
+          backgroundColor: colors.card,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingHorizontal: Layout.spacing.lg,
+          paddingTop: Layout.spacing.md,
+          paddingBottom: Math.max(insets.bottom, Layout.spacing.md) + Layout.spacing.md,
+          ...Layout.shadow.lg,
+        },
+      }),
+    [colors, insets.bottom]
+  );
   const params = useLocalSearchParams();
   const fromCart = params.fromCart === '1';
   const productId = params.productId as string;
@@ -261,6 +266,8 @@ export default function CheckoutScreen() {
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('blockchain');
   const [isLoading, setIsLoading] = useState(false);
+  /** Display-only: reveals the inline copy of the validation already run below. */
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
 
   useEffect(() => {
     if (fromCart) refreshCart();
@@ -324,6 +331,8 @@ export default function CheckoutScreen() {
   };
 
   const handlePlaceOrder = async () => {
+    setShowFieldErrors(true);
+
     if (!address || !city || !state || !pincode) {
       showAlert('Error', 'Please fill in all shipping address fields');
       return;
@@ -413,269 +422,284 @@ export default function CheckoutScreen() {
 
   const totalPrice = fromCart ? cartSummary.totalAmount : productPrice * quantity;
 
+  const addressError = showFieldErrors && !address ? 'Street address is required' : undefined;
+  const cityError = showFieldErrors && !city ? 'City is required' : undefined;
+  const stateError = showFieldErrors && !state ? 'State is required' : undefined;
+  const pincodeError = showFieldErrors
+    ? !pincode
+      ? 'Pincode is required'
+      : !/^[0-9]{6}$/.test(pincode)
+      ? 'Enter a valid 6-digit pincode'
+      : undefined
+    : undefined;
+
+  const paymentOptions: {
+    value: PaymentMethod;
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    description?: string;
+    recommended?: boolean;
+  }[] = [
+    {
+      value: 'razorpay',
+      label: 'UPI / Razorpay',
+      icon: 'phone-portrait-outline',
+      description: 'Pay instantly via GPay, PhonePe, Paytm, or any UPI app.',
+      recommended: true,
+    },
+    {
+      value: 'blockchain',
+      label: 'Blockchain Smart Escrow',
+      icon: 'link',
+      description: 'Funds secured on-chain, released only after delivery confirmation.',
+    },
+    { value: 'cash', label: 'Cash on Delivery', icon: 'cash-outline' },
+    { value: 'bank_transfer', label: 'Direct Bank Transfer', icon: 'business-outline' },
+  ];
+
+  const ctaTitle =
+    paymentMethod === 'razorpay'
+      ? 'Pay via UPI / Razorpay'
+      : paymentMethod === 'blockchain'
+      ? 'Place Escrow Order'
+      : 'Place Order';
+
+  const ctaIcon: keyof typeof Ionicons.glyphMap =
+    paymentMethod === 'razorpay'
+      ? 'card-outline'
+      : paymentMethod === 'blockchain'
+      ? 'link'
+      : 'cube-outline';
+
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.secondary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Checkout</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <ScreenHeader title="Checkout" onBack={() => router.back()} />
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           {/* Order Summary */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Order Summary</Text>
+            <SectionHeader title="Order Summary" />
             {fromCart ? (
               cartOrderGroups.map((group) => (
-                <View key={group.farmerId} style={[styles.itemCard, { marginBottom: 8 }]}>
-                  <Text style={styles.itemSeller}>Farmer: {group.farmerName}</Text>
+                <Card key={group.farmerId} padded={false} style={styles.summaryGroupCard}>
+                  <View style={styles.farmerRow}>
+                    <View style={styles.farmerIconWell}>
+                      <Ionicons name="person-outline" size={17} color={colors.primary} />
+                    </View>
+                    <Text style={[styles.itemSeller, { flex: 1 }]} numberOfLines={1}>
+                      Farmer: {group.farmerName}
+                    </Text>
+                  </View>
                   {group.items.map((it) => (
-                    <View key={it.productId} style={{ marginTop: 8 }}>
-                      <Text style={styles.itemName}>{it.name}</Text>
-                      <Text style={{ color: colors.gray, fontSize: 13 }}>
-                        {it.quantity} {it.unit} × ₹{it.price} = ₹{(it.quantity * it.price).toFixed(2)}
+                    <View key={it.productId} style={styles.groupItem}>
+                      <Text style={styles.itemName} numberOfLines={2}>
+                        {it.name}
+                      </Text>
+                      <Text style={styles.itemMeta} numberOfLines={2}>
+                        {it.quantity} {it.unit} × ₹{it.price} ={' '}
+                        <Text style={styles.itemMetaValue}>
+                          ₹{(it.quantity * it.price).toFixed(2)}
+                        </Text>
                       </Text>
                     </View>
                   ))}
-                </View>
+                </Card>
               ))
             ) : (
-              <View style={styles.itemCard}>
+              <Card padded={false} style={styles.card}>
                 <View style={styles.itemHeader}>
-                  <Text style={styles.itemName}>{productName}</Text>
-                  <Text style={styles.itemSeller}>Farmer: {farmerName}</Text>
+                  <Text style={styles.itemName} numberOfLines={2}>
+                    {productName}
+                  </Text>
+                  <Text style={styles.itemSeller} numberOfLines={1}>
+                    Farmer: {farmerName}
+                  </Text>
+                  <Text style={styles.itemMeta} numberOfLines={1}>
+                    <Text style={styles.itemMetaValue}>₹{productPrice}</Text>
+                    {productUnit ? ` / ${productUnit}` : ''}
+                  </Text>
                 </View>
 
                 <View style={styles.quantityRow}>
-                  <Text style={styles.qtyLabel}>Quantity:</Text>
-                  <View style={styles.qtySelector}>
-                    <TouchableOpacity onPress={decrementQty} style={styles.qtyBtn}>
-                      <Ionicons name="remove" size={16} color={colors.black} />
-                    </TouchableOpacity>
-                    <Text style={styles.qtyText}>{quantity}</Text>
-                    <TouchableOpacity onPress={incrementQty} style={styles.qtyBtn}>
-                      <Ionicons name="add" size={16} color={colors.black} />
-                    </TouchableOpacity>
-                  </View>
+                  <Text style={styles.qtyLabel}>Quantity</Text>
+                  <QuantityStepper
+                    value={quantity}
+                    onDecrease={decrementQty}
+                    onIncrease={incrementQty}
+                    min={1}
+                    max={maxQty}
+                  />
                   <Text style={styles.maxQty}>Max: {maxQty}</Text>
                 </View>
-              </View>
+              </Card>
             )}
           </View>
 
           {/* Shipping Address */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shipping Address</Text>
-            <View style={styles.addressCard}>
-              <TextInput
-                style={styles.input}
-                placeholder="Street Address"
-                placeholderTextColor={colors.gray}
+            <SectionHeader title="Shipping Address" subtitle="Where should we deliver your order?" />
+            <Card padded={false} style={styles.card}>
+              <Input
+                label="Street Address"
+                icon="home-outline"
+                required
+                placeholder="House no., street, area"
                 value={address}
                 onChangeText={setAddress}
+                error={addressError}
               />
               <View style={styles.inputRow}>
-                <TextInput
-                  style={[styles.input, { flex: 1, marginRight: Layout.spacing.sm }]}
+                <Input
+                  containerStyle={styles.inputHalf}
+                  label="City"
+                  icon="business-outline"
+                  required
                   placeholder="City"
-                  placeholderTextColor={colors.gray}
                   value={city}
                   onChangeText={setCity}
+                  error={cityError}
                 />
-                <TextInput
-                  style={[styles.input, { flex: 1 }]}
+                <Input
+                  containerStyle={styles.inputHalf}
+                  label="State"
+                  icon="map-outline"
+                  required
                   placeholder="State"
-                  placeholderTextColor={colors.gray}
                   value={state}
                   onChangeText={setState}
+                  error={stateError}
                 />
               </View>
-              <TextInput
-                style={styles.input}
-                placeholder="Pincode (6 digits)"
-                placeholderTextColor={colors.gray}
+              <Input
+                label="Pincode"
+                icon="location-outline"
+                required
+                placeholder="6-digit pincode"
                 value={pincode}
                 onChangeText={setPincode}
                 keyboardType="numeric"
                 maxLength={6}
+                error={pincodeError}
               />
-              <TextInput
-                style={[styles.input, styles.textArea]}
-                placeholder="Notes for farmer (optional)"
-                placeholderTextColor={colors.gray}
+              <Input
+                label="Notes for farmer"
+                icon="chatbubble-ellipses-outline"
+                placeholder="Anything the farmer should know? (optional)"
                 value={notes}
                 onChangeText={setNotes}
                 multiline
                 numberOfLines={3}
+                containerStyle={{ marginBottom: 0 }}
               />
-            </View>
+            </Card>
           </View>
 
           {/* Payment Method */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Select Payment Method</Text>
-            <View style={styles.paymentCard}>
-              {/* Razorpay UPI */}
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'razorpay' && styles.paymentOptionActive,
-                ]}
-                onPress={() => setPaymentMethod('razorpay')}
-              >
-                <View style={styles.paymentOptionHeader}>
-                  <Ionicons
-                    name="phone-portrait-outline"
-                    size={20}
-                    color={paymentMethod === 'razorpay' ? colors.secondary : colors.gray}
-                  />
-                  <Text
+            <SectionHeader title="Select Payment Method" />
+            <Card padded={false} style={styles.card}>
+              {paymentOptions.map((option, idx) => {
+                const active = paymentMethod === option.value;
+                return (
+                  <TouchableOpacity
+                    key={option.value}
+                    activeOpacity={0.85}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: active }}
                     style={[
-                      styles.paymentOptionText,
-                      paymentMethod === 'razorpay' && styles.paymentOptionTextActive,
+                      styles.paymentOption,
+                      active && styles.paymentOptionActive,
+                      idx === paymentOptions.length - 1 && { marginBottom: 0 },
                     ]}
+                    onPress={() => setPaymentMethod(option.value)}
                   >
-                    UPI / Razorpay
-                  </Text>
-                  <View style={styles.recommendedBadge}>
-                    <Text style={styles.recommendedText}>RECOMMENDED</Text>
-                  </View>
-                </View>
-                <Text style={styles.paymentDesc}>
-                  Pay instantly via GPay, PhonePe, Paytm, or any UPI app.
-                </Text>
-              </TouchableOpacity>
+                    <View
+                      style={[
+                        styles.paymentIconWell,
+                        active && styles.paymentIconWellActive,
+                      ]}
+                    >
+                      <Ionicons
+                        name={option.icon}
+                        size={20}
+                        color={active ? colors.primary : colors.muted}
+                      />
+                    </View>
 
-              {/* Blockchain Escrow */}
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'blockchain' && styles.paymentOptionActive,
-                ]}
-                onPress={() => setPaymentMethod('blockchain')}
-              >
-                <View style={styles.paymentOptionHeader}>
-                  <Ionicons
-                    name="link"
-                    size={20}
-                    color={paymentMethod === 'blockchain' ? colors.secondary : colors.gray}
-                  />
-                  <Text
-                    style={[
-                      styles.paymentOptionText,
-                      paymentMethod === 'blockchain' && styles.paymentOptionTextActive,
-                    ]}
-                  >
-                    Blockchain Smart Escrow
-                  </Text>
-                </View>
-                <Text style={styles.paymentDesc}>
-                  Funds secured on-chain, released only after delivery confirmation.
-                </Text>
-              </TouchableOpacity>
+                    <View style={styles.paymentBody}>
+                      <View style={styles.paymentTitleRow}>
+                        <Text
+                          style={[
+                            styles.paymentOptionText,
+                            active && styles.paymentOptionTextActive,
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {option.label}
+                        </Text>
+                        {option.recommended && (
+                          <Badge label="RECOMMENDED" tone="primary" />
+                        )}
+                      </View>
+                      {!!option.description && (
+                        <Text style={styles.paymentDesc}>{option.description}</Text>
+                      )}
+                    </View>
 
-              {/* Cash on Delivery */}
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'cash' && styles.paymentOptionActive,
-                ]}
-                onPress={() => setPaymentMethod('cash')}
-              >
-                <View style={styles.paymentOptionHeader}>
-                  <Ionicons
-                    name="cash-outline"
-                    size={20}
-                    color={paymentMethod === 'cash' ? colors.secondary : colors.gray}
-                  />
-                  <Text
-                    style={[
-                      styles.paymentOptionText,
-                      paymentMethod === 'cash' && styles.paymentOptionTextActive,
-                    ]}
-                  >
-                    Cash on Delivery
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              {/* Bank Transfer */}
-              <TouchableOpacity
-                style={[
-                  styles.paymentOption,
-                  paymentMethod === 'bank_transfer' && styles.paymentOptionActive,
-                ]}
-                onPress={() => setPaymentMethod('bank_transfer')}
-              >
-                <View style={styles.paymentOptionHeader}>
-                  <Ionicons
-                    name="business-outline"
-                    size={20}
-                    color={paymentMethod === 'bank_transfer' ? colors.secondary : colors.gray}
-                  />
-                  <Text
-                    style={[
-                      styles.paymentOptionText,
-                      paymentMethod === 'bank_transfer' && styles.paymentOptionTextActive,
-                    ]}
-                  >
-                    Direct Bank Transfer
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
+                    <View style={[styles.radio, active && styles.radioActive]}>
+                      {active && <Ionicons name="checkmark" size={13} color={colors.white} />}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </Card>
           </View>
 
-          {/* Pricing Details & Checkout Button */}
-          <View style={styles.totalCard}>
-            <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>
-                {fromCart
-                  ? `Subtotal (${cartSummary.itemCount} items)`
-                  : `Price (${quantity} x ₹${productPrice})`}
-              </Text>
-              <Text style={styles.pricingValue}>₹{totalPrice.toFixed(2)}</Text>
-            </View>
-            <View style={styles.pricingRow}>
-              <Text style={styles.pricingLabel}>Delivery Fee</Text>
-              <Text style={[styles.pricingValue, { color: '#2E7D32' }]}>Free</Text>
-            </View>
-            <View style={[styles.pricingRow, styles.grandTotalRow]}>
-              <Text style={styles.grandTotalLabel}>Grand Total</Text>
-              <Text style={styles.grandTotalValue}>₹{totalPrice.toFixed(2)}</Text>
-            </View>
-
-            <TouchableOpacity
-              style={[
-                styles.checkoutBtn,
-                paymentMethod === 'razorpay' && styles.checkoutBtnUpi,
-              ]}
-              onPress={handlePlaceOrder}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={colors.white} />
-              ) : (
-                <Text style={styles.checkoutBtnText}>
-                  {paymentMethod === 'razorpay'
-                    ? '💳 Pay via UPI / Razorpay'
-                    : paymentMethod === 'blockchain'
-                    ? '⛓️ Place Escrow Order'
-                    : '📦 Place Order'}
+          {/* Pricing Details */}
+          <View style={styles.section}>
+            <SectionHeader title="Price Details" />
+            <Card padded={false} style={styles.card}>
+              <View style={styles.pricingRow}>
+                <Text style={styles.pricingLabel} numberOfLines={2}>
+                  {fromCart
+                    ? `Subtotal (${cartSummary.itemCount} items)`
+                    : `Price (${quantity} x ₹${productPrice})`}
                 </Text>
-              )}
-            </TouchableOpacity>
+                <Text style={styles.pricingValue}>₹{totalPrice.toFixed(2)}</Text>
+              </View>
+              <View style={styles.pricingRow}>
+                <Text style={styles.pricingLabel}>Delivery Fee</Text>
+                <Text style={[styles.pricingValue, styles.pricingValueFree]}>Free</Text>
+              </View>
+              <View style={[styles.pricingRow, styles.grandTotalRow]}>
+                <Text style={styles.grandTotalLabel}>Grand Total</Text>
+                <Text style={styles.grandTotalValue} numberOfLines={1}>
+                  ₹{totalPrice.toFixed(2)}
+                </Text>
+              </View>
+            </Card>
           </View>
         </ScrollView>
+
+        <View style={styles.bottomBar}>
+          <Button
+            title={ctaTitle}
+            icon={ctaIcon}
+            size="lg"
+            loading={isLoading}
+            disabled={isLoading}
+            onPress={handlePlaceOrder}
+          />
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-

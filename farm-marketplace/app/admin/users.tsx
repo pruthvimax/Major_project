@@ -10,7 +10,7 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
@@ -21,8 +21,14 @@ import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
 import StatusBadge from '../../components/admin/StatusBadge';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
-import EmptyState from '../../components/EmptyState';
 import { AdminListSkeleton } from '../../components/admin/AdminSkeleton';
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  friendlyError,
+} from '../../components/ui';
 
 interface User {
   _id: string;
@@ -39,6 +45,7 @@ interface User {
 
 export default function ManageUsersScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,73 +65,127 @@ export default function ManageUsersScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    centerContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: Layout.spacing.xl,
+    listContainer: {
+      paddingHorizontal: Layout.spacing.md,
+      paddingTop: Layout.spacing.sm,
+      paddingBottom: Layout.spacing.xxl,
     },
-    loadingText: { marginTop: Layout.spacing.md, color: colors.gray },
-    listContainer: { padding: Layout.spacing.md },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.lg,
-      marginBottom: Layout.spacing.md,
+
+    // List card
+    card: { marginBottom: Layout.spacing.md - 2 },
+    cardTop: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
+      alignItems: 'flex-start',
+      gap: Layout.spacing.md,
     },
-    cardInfo: { flex: 1 },
+    avatarWell: {
+      width: 46,
+      height: 46,
+      borderRadius: Layout.borderRadius.md,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    avatarWellText: {
+      fontSize: Typography.fontSize.lg,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.primary,
+    },
+    cardHeadings: { flex: 1, minWidth: 0 },
     userName: {
       fontSize: Typography.fontSize.md,
+      lineHeight: Typography.leading.md,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.text,
     },
-    userEmail: { fontSize: Typography.fontSize.sm, color: colors.gray, marginTop: 2 },
-    userMeta: { fontSize: Typography.fontSize.xs, color: colors.gray, marginTop: 2 },
-    roleBadge: {
-      paddingHorizontal: Layout.spacing.sm,
-      paddingVertical: 2,
-      borderRadius: Layout.borderRadius.xs,
-      alignSelf: 'flex-start',
-      marginTop: Layout.spacing.sm,
+    userEmail: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      color: colors.textSecondary,
+      marginTop: 1,
     },
-    roleBadgeText: { fontSize: 10, fontWeight: '700' },
-    actionButtons: { flexDirection: 'row', alignItems: 'center' },
-    actionButton: { padding: Layout.spacing.sm },
-    // Modal styles
+    userMeta: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.muted,
+      marginTop: 2,
+    },
+    badgeStack: {
+      alignItems: 'flex-end',
+      gap: Layout.spacing.xs,
+      flexShrink: 0,
+    },
+    cardActions: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'flex-end',
+      gap: Layout.spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      marginTop: Layout.spacing.md,
+      paddingTop: Layout.spacing.md,
+    },
+
+    errorBanner: { paddingHorizontal: Layout.spacing.md, paddingVertical: Layout.spacing.md },
+
+    // Modal
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: colors.overlay,
       justifyContent: 'flex-end',
     },
-    modalContent: {
+    modalSheet: {
       backgroundColor: colors.card,
-      borderTopLeftRadius: Layout.borderRadius.xl,
-      borderTopRightRadius: Layout.borderRadius.xl,
-      padding: Layout.spacing.xl,
-      maxHeight: '85%',
+      borderTopLeftRadius: Layout.borderRadius.xxl,
+      borderTopRightRadius: Layout.borderRadius.xxl,
+      paddingHorizontal: Layout.spacing.lg,
+      paddingTop: Layout.spacing.sm,
+      maxHeight: '88%',
+      ...Layout.shadow.lg,
+    },
+    sheetHandle: {
+      alignSelf: 'center',
+      width: 44,
+      height: 5,
+      borderRadius: Layout.borderRadius.full,
+      backgroundColor: colors.lightGray,
+      marginBottom: Layout.spacing.sm,
     },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: Layout.spacing.md,
+      gap: Layout.spacing.md,
+      paddingBottom: Layout.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     modalTitle: {
-      fontSize: Typography.fontSize.lg,
+      flex: 1,
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.text,
     },
-    closeButton: { padding: Layout.spacing.xs },
+    closeButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    sheetBody: {
+      paddingTop: Layout.spacing.lg,
+      paddingBottom: Layout.spacing.xl + insets.bottom,
+    },
     avatarCircle: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.primary + '15',
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: colors.primarySoft,
       alignItems: 'center',
       justifyContent: 'center',
       alignSelf: 'center',
@@ -132,84 +193,93 @@ export default function ManageUsersScreen() {
     },
     avatarText: {
       fontSize: Typography.fontSize.xxl,
-      fontWeight: '700',
+      fontWeight: Typography.fontWeight.extrabold,
       color: colors.primary,
     },
     userNameCenter: {
       fontSize: Typography.fontSize.lg,
-      fontWeight: '700',
-      color: colors.black,
+      lineHeight: Typography.leading.lg,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.text,
       textAlign: 'center',
     },
     userEmailCenter: {
       fontSize: Typography.fontSize.sm,
-      color: colors.gray,
+      lineHeight: Typography.leading.sm,
+      color: colors.textSecondary,
       textAlign: 'center',
       marginTop: 2,
     },
     badgeRow: {
       flexDirection: 'row',
       justifyContent: 'center',
+      flexWrap: 'wrap',
       gap: Layout.spacing.sm,
-      marginTop: Layout.spacing.sm,
+      marginTop: Layout.spacing.md,
     },
     detailSection: {
       marginTop: Layout.spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      paddingTop: Layout.spacing.md,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: Layout.borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
     },
     detailRow: {
       flexDirection: 'row',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginVertical: 4,
+      gap: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
     },
-    detailLabel: { fontSize: Typography.fontSize.xs, color: colors.gray },
+    detailLabel: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      flexShrink: 0,
+    },
     detailValue: {
       fontSize: Typography.fontSize.sm,
-      color: colors.black,
-      fontWeight: '600',
+      lineHeight: Typography.leading.sm,
+      color: colors.text,
+      fontWeight: Typography.fontWeight.semibold,
       flex: 1,
+      flexShrink: 1,
       textAlign: 'right',
     },
     statsRow: {
       flexDirection: 'row',
-      justifyContent: 'space-around',
+      gap: Layout.spacing.md,
       marginTop: Layout.spacing.md,
-      backgroundColor: colors.lighterGray,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
     },
-    statItem: { alignItems: 'center' },
+    statTile: {
+      flex: 1,
+      minWidth: 0,
+      alignItems: 'center',
+      backgroundColor: colors.primaryTint,
+      borderRadius: Layout.borderRadius.lg,
+      paddingVertical: Layout.spacing.md,
+    },
     statValue: {
-      fontSize: Typography.fontSize.lg,
-      fontWeight: '700',
-      color: colors.admin,
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.primary,
     },
-    statLabel: { fontSize: Typography.fontSize.xs, color: colors.gray, marginTop: 2 },
+    statLabel: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
     actionButtonRow: {
       flexDirection: 'row',
       gap: Layout.spacing.sm,
-      marginTop: Layout.spacing.lg,
+      marginTop: Layout.spacing.xl,
     },
-    actionBtn: {
-      flex: 1,
-      paddingVertical: Layout.spacing.md,
-      borderRadius: Layout.borderRadius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    actionBtnText: { color: colors.white, fontWeight: '700', fontSize: Typography.fontSize.sm },
-    errorCard: {
-      backgroundColor: '#FFEBEE',
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      margin: Layout.spacing.md,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    errorText: { color: '#C62828', fontSize: Typography.fontSize.sm, flex: 1, marginLeft: Layout.spacing.sm },
-  }), [colors]);
+    actionBtn: { flex: 1, minWidth: 0 },
+  }), [colors, insets.bottom]);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -332,65 +402,65 @@ export default function ManageUsersScreen() {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
-  const getRoleColors = (role: string) => {
-    switch (role) {
-      case 'farmer':
-        return { bg: '#E8F5E9', text: '#2E7D32' };
-      case 'buyer':
-        return { bg: '#E3F2FD', text: '#1976D2' };
-      default:
-        return { bg: '#F3E5F5', text: '#7B1FA2' };
-    }
+  const hasFilters = search.trim() !== '' || selectedFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearch('');
+    setSelectedFilter('all');
   };
 
-  const renderUserCard = ({ item }: { item: User }) => {
-    const roleColors = getRoleColors(item.role);
-    return (
-      <TouchableOpacity
-        style={styles.card}
-        onPress={() => openUserDetails(item)}
-        activeOpacity={0.7}
-      >
-        <View style={styles.cardInfo}>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
-          <Text style={styles.userMeta}>Joined {formatDate(item.createdAt)}</Text>
-          <View style={[styles.roleBadge, { backgroundColor: roleColors.bg }]}>
-            <Text style={[styles.roleBadgeText, { color: roleColors.text }]}>
-              {item.role.toUpperCase()}
-              {item.isSuspended ? ' · SUSPENDED' : ''}
-            </Text>
-          </View>
+  const renderUserCard = ({ item }: { item: User }) => (
+    <Card style={styles.card} onPress={() => openUserDetails(item)}>
+      <View style={styles.cardTop}>
+        <View style={styles.avatarWell}>
+          <Text style={styles.avatarWellText}>{item.name.charAt(0).toUpperCase()}</Text>
         </View>
 
-        {item.role !== 'admin' && (
-          <View style={styles.actionButtons}>
-            <TouchableOpacity
-              style={[styles.actionButton, { marginRight: 8 }]}
-              onPress={() =>
-                setConfirmAction({
-                  type: item.isSuspended ? 'activate' : 'suspend',
-                  user: item,
-                })
-              }
-            >
-              <Ionicons
-                name={item.isSuspended ? 'lock-open-outline' : 'ban-outline'}
-                size={20}
-                color={item.isSuspended ? '#2E7D32' : '#F57C00'}
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={() => setConfirmAction({ type: 'delete', user: item })}
-            >
-              <Ionicons name="trash-outline" size={20} color="#C62828" />
-            </TouchableOpacity>
-          </View>
-        )}
-      </TouchableOpacity>
-    );
-  };
+        <View style={styles.cardHeadings}>
+          <Text style={styles.userName} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.userEmail} numberOfLines={1}>
+            {item.email}
+          </Text>
+          <Text style={styles.userMeta} numberOfLines={1}>
+            Joined {formatDate(item.createdAt)}
+          </Text>
+        </View>
+
+        <View style={styles.badgeStack}>
+          <StatusBadge status={item.role} />
+          {item.isSuspended ? <StatusBadge status="suspended" /> : null}
+        </View>
+      </View>
+
+      {item.role !== 'admin' && (
+        <View style={styles.cardActions}>
+          <Button
+            title={item.isSuspended ? 'Activate' : 'Suspend'}
+            icon={item.isSuspended ? 'lock-open-outline' : 'ban-outline'}
+            variant="outline"
+            size="sm"
+            fullWidth={false}
+            onPress={() =>
+              setConfirmAction({
+                type: item.isSuspended ? 'activate' : 'suspend',
+                user: item,
+              })
+            }
+          />
+          <Button
+            title="Delete"
+            icon="trash-outline"
+            variant="danger"
+            size="sm"
+            fullWidth={false}
+            onPress={() => setConfirmAction({ type: 'delete', user: item })}
+          />
+        </View>
+      )}
+    </Card>
+  );
 
   const getConfirmDialogProps = () => {
     if (!confirmAction) return null;
@@ -426,7 +496,7 @@ export default function ManageUsersScreen() {
   const confirmProps = getConfirmDialogProps();
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <AdminHeader
         title="User Management"
         subtitle={`${users.length} registered users`}
@@ -451,20 +521,36 @@ export default function ManageUsersScreen() {
         onSelect={setSelectedFilter}
       />
 
-      {error && (
-        <View style={styles.errorCard}>
-          <Ionicons name="alert-circle-outline" size={20} color="#C62828" />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+      {error && !loading && filteredUsers.length > 0 && (
+        <ErrorState
+          compact
+          icon="alert-circle-outline"
+          title="Something went wrong"
+          message={friendlyError(error)}
+          onRetry={fetchUsers}
+          style={styles.errorBanner}
+        />
       )}
 
       {loading ? (
         <AdminListSkeleton count={6} />
+      ) : error && filteredUsers.length === 0 ? (
+        <ErrorState
+          title="Could not load users"
+          message={friendlyError(error)}
+          onRetry={fetchUsers}
+        />
       ) : filteredUsers.length === 0 ? (
         <EmptyState
           icon="people-outline"
           title="No users found"
-          description={search ? 'Try a different search term' : 'No users registered yet'}
+          description={
+            hasFilters
+              ? 'No one matches this search or filter. Try widening it.'
+              : 'No users registered yet'
+          }
+          actionLabel={hasFilters ? 'Clear filters' : undefined}
+          onAction={hasFilters ? clearFilters : undefined}
         />
       ) : (
         <FlatList
@@ -487,23 +573,39 @@ export default function ManageUsersScreen() {
         onRequestClose={() => setDetailVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>User Details</Text>
-              <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={colors.gray} />
+              <Text style={styles.modalTitle} numberOfLines={1}>
+                User Details
+              </Text>
+              <TouchableOpacity
+                onPress={() => setDetailVisible(false)}
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close user details"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             {selectedUser && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.sheetBody}
+              >
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>
                     {selectedUser.name.charAt(0).toUpperCase()}
                   </Text>
                 </View>
-                <Text style={styles.userNameCenter}>{selectedUser.name}</Text>
-                <Text style={styles.userEmailCenter}>{selectedUser.email}</Text>
+                <Text style={styles.userNameCenter} numberOfLines={2}>
+                  {selectedUser.name}
+                </Text>
+                <Text style={styles.userEmailCenter} numberOfLines={1}>
+                  {selectedUser.email}
+                </Text>
                 <View style={styles.badgeRow}>
                   <StatusBadge status={selectedUser.role} />
                   <StatusBadge
@@ -514,7 +616,9 @@ export default function ManageUsersScreen() {
                 <View style={styles.detailSection}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Mobile</Text>
-                    <Text style={styles.detailValue}>{selectedUser.mobile || 'N/A'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedUser.mobile || 'N/A'}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Address</Text>
@@ -533,7 +637,7 @@ export default function ManageUsersScreen() {
                   {selectedUser.walletAddress ? (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Wallet</Text>
-                      <Text style={styles.detailValue} numberOfLines={1}>
+                      <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
                         {selectedUser.walletAddress}
                       </Text>
                     </View>
@@ -541,17 +645,17 @@ export default function ManageUsersScreen() {
                 </View>
 
                 <View style={styles.statsRow}>
-                  <View style={styles.statItem}>
+                  <View style={styles.statTile}>
                     {statsLoading ? (
-                      <ActivityIndicator size="small" color={colors.admin} />
+                      <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <Text style={styles.statValue}>{userStats.products}</Text>
                     )}
                     <Text style={styles.statLabel}>Products</Text>
                   </View>
-                  <View style={styles.statItem}>
+                  <View style={styles.statTile}>
                     {statsLoading ? (
-                      <ActivityIndicator size="small" color={colors.admin} />
+                      <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <Text style={styles.statValue}>{userStats.orders}</Text>
                     )}
@@ -561,30 +665,27 @@ export default function ManageUsersScreen() {
 
                 {selectedUser.role !== 'admin' && (
                   <View style={styles.actionButtonRow}>
-                    <TouchableOpacity
-                      style={[
-                        styles.actionBtn,
-                        {
-                          backgroundColor: selectedUser.isSuspended ? '#2E7D32' : '#F57C00',
-                        },
-                      ]}
+                    <Button
+                      title={selectedUser.isSuspended ? 'Activate' : 'Suspend'}
+                      icon={selectedUser.isSuspended ? 'lock-open-outline' : 'ban-outline'}
+                      variant={selectedUser.isSuspended ? 'primary' : 'outline'}
+                      size="md"
+                      style={styles.actionBtn}
                       onPress={() =>
                         setConfirmAction({
                           type: selectedUser.isSuspended ? 'activate' : 'suspend',
                           user: selectedUser,
                         })
                       }
-                    >
-                      <Text style={styles.actionBtnText}>
-                        {selectedUser.isSuspended ? 'Activate' : 'Suspend'}
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: '#C62828' }]}
+                    />
+                    <Button
+                      title="Delete"
+                      icon="trash-outline"
+                      variant="danger"
+                      size="md"
+                      style={styles.actionBtn}
                       onPress={() => setConfirmAction({ type: 'delete', user: selectedUser })}
-                    >
-                      <Text style={styles.actionBtnText}>Delete</Text>
-                    </TouchableOpacity>
+                    />
                   </View>
                 )}
               </ScrollView>

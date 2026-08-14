@@ -5,12 +5,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   Modal,
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
@@ -21,8 +20,14 @@ import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
 import StatusBadge from '../../components/admin/StatusBadge';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
-import EmptyState from '../../components/EmptyState';
 import { AdminListSkeleton } from '../../components/admin/AdminSkeleton';
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  friendlyError,
+} from '../../components/ui';
 
 interface OrderItem {
   product: {
@@ -77,6 +82,7 @@ interface Order {
 
 export default function ManageOrdersScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,186 +97,299 @@ export default function ManageOrdersScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    centerContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: Layout.spacing.xl,
+    listContainer: {
+      paddingHorizontal: Layout.spacing.md,
+      paddingTop: Layout.spacing.sm,
+      paddingBottom: Layout.spacing.xxl,
     },
-    loadingText: { marginTop: Layout.spacing.md, color: colors.gray },
-    listContainer: { padding: Layout.spacing.md },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.lg,
-      marginBottom: Layout.spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    cardHeader: {
+
+    // List card
+    card: { marginBottom: Layout.spacing.md - 2 },
+    cardTop: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'flex-start',
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-      paddingBottom: Layout.spacing.sm,
-      marginBottom: Layout.spacing.md,
+      gap: Layout.spacing.md,
     },
+    iconWell: {
+      width: 46,
+      height: 46,
+      borderRadius: Layout.borderRadius.md,
+      backgroundColor: colors.tintBlue,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    cardHeadings: { flex: 1, minWidth: 0 },
     orderNumber: {
       fontSize: Typography.fontSize.md,
+      lineHeight: Typography.leading.md,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.text,
     },
-    orderDate: { fontSize: Typography.fontSize.xs, color: colors.gray, marginTop: 2 },
+    orderDate: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.muted,
+      marginTop: 2,
+    },
+    partyBlock: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: Layout.borderRadius.md,
+      paddingHorizontal: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
+      marginTop: Layout.spacing.md,
+      gap: Layout.spacing.xs,
+    },
     partyRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: Layout.spacing.md,
-      backgroundColor: colors.lighterGray,
-      padding: Layout.spacing.sm,
-      borderRadius: Layout.borderRadius.sm,
+      alignItems: 'center',
+      gap: Layout.spacing.sm,
     },
-    partyText: { fontSize: Typography.fontSize.xs, color: colors.gray },
-    partyName: { fontWeight: 'bold', color: colors.black },
-    itemsSection: { marginBottom: Layout.spacing.md },
+    partyLabel: {
+      fontSize: Typography.fontSize.xs,
+      color: colors.textSecondary,
+      flexShrink: 0,
+    },
+    partyName: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: Typography.fontSize.sm,
+      color: colors.text,
+      fontWeight: Typography.fontWeight.semibold,
+      textAlign: 'right',
+    },
+    itemsSection: { marginTop: Layout.spacing.md, gap: Layout.spacing.xs },
     itemRow: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      marginVertical: 3,
+      gap: Layout.spacing.md,
     },
     itemText: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.black,
       flex: 1,
-      marginRight: Layout.spacing.md,
+      minWidth: 0,
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      color: colors.text,
     },
-    itemPrice: { fontSize: Typography.fontSize.sm, fontWeight: '500', color: colors.black },
+    itemPrice: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.text,
+      flexShrink: 0,
+    },
     paymentInfoRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
-      alignItems: 'center',
+      alignItems: 'flex-end',
+      gap: Layout.spacing.md,
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      paddingTop: Layout.spacing.sm,
-      marginBottom: Layout.spacing.sm,
+      paddingTop: Layout.spacing.md,
+      marginTop: Layout.spacing.md,
     },
-    paymentMethodLabel: { fontSize: Typography.fontSize.xs, color: colors.gray },
-    paymentMethodValue: { fontWeight: 'bold', color: colors.black },
-    totalPrice: {
-      fontSize: Typography.fontSize.md,
+    paymentCol: { flex: 1, minWidth: 0, gap: Layout.spacing.xs },
+    paymentMethodLabel: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+    },
+    paymentMethodValue: {
       fontWeight: Typography.fontWeight.bold,
-      color: colors.admin,
+      color: colors.text,
+    },
+    paymentStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Layout.spacing.sm,
+      flexWrap: 'wrap',
+    },
+    totalCol: { alignItems: 'flex-end', flexShrink: 0 },
+    totalLabel: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+    },
+    totalPrice: {
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.primary,
+    },
+    noteBox: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: Layout.spacing.sm,
+      backgroundColor: colors.errorSoft,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.md,
+      marginTop: Layout.spacing.md,
+    },
+    cancelledNote: {
+      flex: 1,
+      minWidth: 0,
+      color: colors.error,
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      fontWeight: Typography.fontWeight.semibold,
     },
     blockchainDetails: {
-      backgroundColor: '#E8F5E9',
-      borderRadius: Layout.borderRadius.sm,
-      padding: Layout.spacing.sm,
-      marginVertical: Layout.spacing.sm,
+      backgroundColor: colors.primarySoft,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.md,
+      marginTop: Layout.spacing.md,
+      gap: 2,
     },
     blockchainHeader: {
       flexDirection: 'row',
       alignItems: 'center',
-      marginBottom: 4,
+      gap: Layout.spacing.xs,
+      marginBottom: Layout.spacing.xs,
     },
     blockchainTitle: {
-      fontSize: 10,
-      fontWeight: '700',
-      color: '#2E7D32',
-      marginLeft: 4,
+      fontSize: Typography.fontSize.xxs,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.primaryDark,
+      letterSpacing: 0.6,
+      textTransform: 'uppercase',
+      flexShrink: 1,
     },
-    blockchainDetailText: { fontSize: 10, color: '#555', marginVertical: 1 },
-    blockchainValue: { fontWeight: '700', color: '#2E7D32' },
-    cancelBtn: {
-      borderWidth: 1,
-      borderColor: '#C62828',
-      borderRadius: Layout.borderRadius.md,
-      paddingVertical: Layout.spacing.sm,
-      alignItems: 'center',
+    blockchainDetailText: {
+      fontSize: Typography.fontSize.xxs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+    },
+    blockchainValue: {
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.primaryDark,
+    },
+    cardActions: {
+      flexDirection: 'row',
+      justifyContent: 'flex-end',
+      gap: Layout.spacing.sm,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
       marginTop: Layout.spacing.md,
+      paddingTop: Layout.spacing.md,
     },
-    cancelBtnText: { color: '#C62828', fontWeight: '700', fontSize: Typography.fontSize.sm },
-    cancelledNote: {
-      color: '#C62828',
-      fontSize: Typography.fontSize.xs,
-      fontWeight: '600',
-      marginTop: Layout.spacing.xs,
-    },
-    viewButton: {
-      borderWidth: 1,
-      borderColor: colors.admin,
-      borderRadius: Layout.borderRadius.md,
-      paddingVertical: Layout.spacing.sm,
-      alignItems: 'center',
-      marginTop: Layout.spacing.md,
-    },
-    viewButtonText: { color: colors.admin, fontWeight: '700', fontSize: Typography.fontSize.sm },
-    // Modal styles
+
+    errorBanner: { paddingHorizontal: Layout.spacing.md, paddingVertical: Layout.spacing.md },
+
+    // Modal
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: colors.overlay,
       justifyContent: 'flex-end',
     },
-    modalContent: {
+    modalSheet: {
       backgroundColor: colors.card,
-      borderTopLeftRadius: Layout.borderRadius.xl,
-      borderTopRightRadius: Layout.borderRadius.xl,
-      padding: Layout.spacing.xl,
-      maxHeight: '85%',
+      borderTopLeftRadius: Layout.borderRadius.xxl,
+      borderTopRightRadius: Layout.borderRadius.xxl,
+      paddingHorizontal: Layout.spacing.lg,
+      paddingTop: Layout.spacing.sm,
+      maxHeight: '88%',
+      ...Layout.shadow.lg,
+    },
+    sheetHandle: {
+      alignSelf: 'center',
+      width: 44,
+      height: 5,
+      borderRadius: Layout.borderRadius.full,
+      backgroundColor: colors.lightGray,
+      marginBottom: Layout.spacing.sm,
     },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: Layout.spacing.md,
+      gap: Layout.spacing.md,
+      paddingBottom: Layout.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     modalTitle: {
-      fontSize: Typography.fontSize.lg,
+      flex: 1,
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.text,
     },
-    closeButton: { padding: Layout.spacing.xs },
-    detailSection: {
-      marginTop: Layout.spacing.md,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
+    closeButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    sheetBody: {
       paddingTop: Layout.spacing.md,
+      paddingBottom: Layout.spacing.xl + insets.bottom,
+    },
+    detailCard: {
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: Layout.borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
+      marginTop: Layout.spacing.sm,
     },
     sectionLabel: {
       fontSize: Typography.fontSize.sm,
-      fontWeight: '700',
-      color: colors.black,
-      marginBottom: Layout.spacing.xs,
+      lineHeight: Typography.leading.sm,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.text,
+      marginTop: Layout.spacing.lg,
     },
     detailRow: {
       flexDirection: 'row',
+      alignItems: 'center',
       justifyContent: 'space-between',
-      marginVertical: 4,
+      gap: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
     },
-    detailLabel: { fontSize: Typography.fontSize.xs, color: colors.gray },
+    detailLabel: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      flexShrink: 0,
+    },
     detailValue: {
       fontSize: Typography.fontSize.sm,
-      color: colors.black,
-      fontWeight: '600',
+      lineHeight: Typography.leading.sm,
+      color: colors.text,
+      fontWeight: Typography.fontWeight.semibold,
       flex: 1,
+      flexShrink: 1,
       textAlign: 'right',
     },
-    addressBox: {
-      backgroundColor: colors.lighterGray,
-      borderRadius: Layout.borderRadius.sm,
-      padding: Layout.spacing.md,
-      marginTop: Layout.spacing.xs,
-    },
-    addressText: { fontSize: Typography.fontSize.sm, color: colors.black, lineHeight: 20 },
-    errorCard: {
-      backgroundColor: '#FFEBEE',
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      margin: Layout.spacing.md,
+    totalRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Layout.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: Layout.spacing.md,
+      marginTop: Layout.spacing.sm,
     },
-    errorText: { color: '#C62828', fontSize: Typography.fontSize.sm, flex: 1, marginLeft: Layout.spacing.sm },
-  }), [colors]);
+    totalValue: {
+      fontSize: Typography.fontSize.lg,
+      lineHeight: Typography.leading.lg,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.primary,
+      flexShrink: 1,
+      textAlign: 'right',
+    },
+    addressText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.text,
+      lineHeight: Typography.leading.sm,
+    },
+    modalActions: { marginTop: Layout.spacing.xl },
+  }), [colors, insets.bottom]);
 
   const fetchOrders = useCallback(async () => {
     try {
@@ -341,6 +460,13 @@ export default function ManageOrdersScreen() {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
+  const hasFilters = search.trim() !== '' || selectedFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearch('');
+    setSelectedFilter('all');
+  };
+
   const renderOrderItem = (item: OrderItem, index: number) => (
     <View key={index} style={styles.itemRow}>
       <Text style={styles.itemText} numberOfLines={1}>
@@ -351,22 +477,37 @@ export default function ManageOrdersScreen() {
   );
 
   const renderOrderCard = ({ item }: { item: Order }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-          <Text style={styles.orderDate}>Placed on {formatDate(item.createdAt)}</Text>
+    <Card style={styles.card}>
+      <View style={styles.cardTop}>
+        <View style={styles.iconWell}>
+          <Ionicons name="receipt-outline" size={22} color={colors.info} />
+        </View>
+        <View style={styles.cardHeadings}>
+          <Text style={styles.orderNumber} numberOfLines={1}>
+            {item.orderNumber}
+          </Text>
+          <Text style={styles.orderDate} numberOfLines={1}>
+            Placed on {formatDate(item.createdAt)}
+          </Text>
         </View>
         <StatusBadge status={item.status} />
       </View>
 
-      <View style={styles.partyRow}>
-        <Text style={styles.partyText}>
-          Buyer: <Text style={styles.partyName}>{item.buyer?.name || 'Unknown'}</Text>
-        </Text>
-        <Text style={styles.partyText}>
-          Farmer: <Text style={styles.partyName}>{item.farmer?.name || 'Unknown'}</Text>
-        </Text>
+      <View style={styles.partyBlock}>
+        <View style={styles.partyRow}>
+          <Ionicons name="person-outline" size={14} color={colors.muted} />
+          <Text style={styles.partyLabel}>Buyer</Text>
+          <Text style={styles.partyName} numberOfLines={1}>
+            {item.buyer?.name || 'Unknown'}
+          </Text>
+        </View>
+        <View style={styles.partyRow}>
+          <Ionicons name="leaf-outline" size={14} color={colors.muted} />
+          <Text style={styles.partyLabel}>Farmer</Text>
+          <Text style={styles.partyName} numberOfLines={1}>
+            {item.farmer?.name || 'Unknown'}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.itemsSection}>
@@ -374,66 +515,84 @@ export default function ManageOrdersScreen() {
       </View>
 
       <View style={styles.paymentInfoRow}>
-        <View>
-          <Text style={styles.paymentMethodLabel}>
-            Payment: <Text style={styles.paymentMethodValue}>{item.paymentMethod?.replace('_', ' ').toUpperCase()}</Text>
+        <View style={styles.paymentCol}>
+          <Text style={styles.paymentMethodLabel} numberOfLines={1}>
+            Payment:{' '}
+            <Text style={styles.paymentMethodValue}>
+              {item.paymentMethod?.replace('_', ' ').toUpperCase()}
+            </Text>
           </Text>
-          <Text style={styles.paymentMethodLabel}>
-            Status: <StatusBadge status={item.paymentStatus} />
+          <View style={styles.paymentStatusRow}>
+            <Text style={styles.paymentMethodLabel}>Status</Text>
+            <StatusBadge status={item.paymentStatus} />
+          </View>
+        </View>
+        <View style={styles.totalCol}>
+          <Text style={styles.totalLabel}>Total</Text>
+          <Text style={styles.totalPrice} numberOfLines={1}>
+            ₹{item.totalAmount?.toFixed(2)}
           </Text>
         </View>
-        <Text style={styles.totalPrice}>₹{item.totalAmount?.toFixed(2)}</Text>
       </View>
 
       {item.status === 'cancelled' && (
-        <Text style={styles.cancelledNote}>
-          Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}
-          {item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
-        </Text>
+        <View style={styles.noteBox}>
+          <Ionicons name="close-circle-outline" size={16} color={colors.error} />
+          <Text style={styles.cancelledNote}>
+            Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}
+            {item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
+          </Text>
+        </View>
       )}
 
       {item.paymentMethod === 'blockchain' && (
         <View style={styles.blockchainDetails}>
           <View style={styles.blockchainHeader}>
-            <Ionicons name="link-outline" size={14} color="#2E7D32" />
-            <Text style={styles.blockchainTitle}>Blockchain Smart Escrow</Text>
+            <Ionicons name="link-outline" size={14} color={colors.primaryDark} />
+            <Text style={styles.blockchainTitle} numberOfLines={1}>
+              Blockchain Smart Escrow
+            </Text>
           </View>
           {item.blockchainOrderId !== undefined && item.blockchainOrderId !== null && (
-            <Text style={styles.blockchainDetailText}>
+            <Text style={styles.blockchainDetailText} numberOfLines={1}>
               Escrow Order ID: <Text style={styles.blockchainValue}>#{item.blockchainOrderId}</Text>
             </Text>
           )}
           {item.blockchainTxHash ? (
-            <Text style={styles.blockchainDetailText} numberOfLines={1}>
+            <Text style={styles.blockchainDetailText} numberOfLines={1} ellipsizeMode="middle">
               Tx Hash: <Text style={styles.blockchainValue}>{item.blockchainTxHash}</Text>
             </Text>
           ) : (
-            <Text style={styles.blockchainDetailText}>
+            <Text style={styles.blockchainDetailText} numberOfLines={1}>
               Tx Hash: <Text style={styles.blockchainValue}>Processing...</Text>
             </Text>
           )}
           {item.escrowStatus && (
-            <Text style={styles.blockchainDetailText}>
+            <Text style={styles.blockchainDetailText} numberOfLines={1}>
               Escrow: <Text style={styles.blockchainValue}>{item.escrowStatus.toUpperCase()}</Text>
             </Text>
           )}
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.viewButton}
-        onPress={() => {
-          setSelectedOrder(item);
-          setDetailVisible(true);
-        }}
-      >
-        <Text style={styles.viewButtonText}>View Details</Text>
-      </TouchableOpacity>
-    </View>
+      <View style={styles.cardActions}>
+        <Button
+          title="View Details"
+          icon="eye-outline"
+          variant="outline"
+          size="sm"
+          fullWidth={false}
+          onPress={() => {
+            setSelectedOrder(item);
+            setDetailVisible(true);
+          }}
+        />
+      </View>
+    </Card>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <AdminHeader
         title="Order Management"
         subtitle={`${orders.length} orders`}
@@ -460,20 +619,36 @@ export default function ManageOrdersScreen() {
         onSelect={setSelectedFilter}
       />
 
-      {error && (
-        <View style={styles.errorCard}>
-          <Ionicons name="alert-circle-outline" size={20} color="#C62828" />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+      {error && !loading && filteredOrders.length > 0 && (
+        <ErrorState
+          compact
+          icon="alert-circle-outline"
+          title="Something went wrong"
+          message={friendlyError(error)}
+          onRetry={fetchOrders}
+          style={styles.errorBanner}
+        />
       )}
 
       {loading ? (
         <AdminListSkeleton count={4} />
+      ) : error && filteredOrders.length === 0 ? (
+        <ErrorState
+          title="Could not load orders"
+          message={friendlyError(error)}
+          onRetry={fetchOrders}
+        />
       ) : filteredOrders.length === 0 ? (
         <EmptyState
           icon="receipt-outline"
           title="No orders found"
-          description={search ? 'Try a different search term' : 'No orders placed yet'}
+          description={
+            hasFilters
+              ? 'No orders match this search or filter. Try widening it.'
+              : 'No orders placed yet'
+          }
+          actionLabel={hasFilters ? 'Clear filters' : undefined}
+          onAction={hasFilters ? clearFilters : undefined}
         />
       ) : (
         <FlatList
@@ -496,98 +671,126 @@ export default function ManageOrdersScreen() {
         onRequestClose={() => setDetailVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Order Details</Text>
-              <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={colors.gray} />
+              <Text style={styles.modalTitle} numberOfLines={1}>
+                Order Details
+              </Text>
+              <TouchableOpacity
+                onPress={() => setDetailVisible(false)}
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close order details"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             {selectedOrder && (
-              <ScrollView showsVerticalScrollIndicator={false}>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Order Number</Text>
-                  <Text style={styles.detailValue}>{selectedOrder.orderNumber}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Status</Text>
-                  <StatusBadge status={selectedOrder.status} />
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Placed On</Text>
-                  <Text style={styles.detailValue}>{formatDate(selectedOrder.createdAt)}</Text>
-                </View>
-                <View style={styles.detailRow}>
-                  <Text style={styles.detailLabel}>Estimated Delivery</Text>
-                  <Text style={styles.detailValue}>{formatDate(selectedOrder.estimatedDelivery)}</Text>
-                </View>
-                {selectedOrder.deliveryDate && (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.sheetBody}
+              >
+                <View style={styles.detailCard}>
                   <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Delivered On</Text>
-                    <Text style={styles.detailValue}>{formatDate(selectedOrder.deliveryDate)}</Text>
+                    <Text style={styles.detailLabel}>Order Number</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedOrder.orderNumber}
+                    </Text>
                   </View>
-                )}
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Status</Text>
+                    <StatusBadge status={selectedOrder.status} />
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Placed On</Text>
+                    <Text style={styles.detailValue}>{formatDate(selectedOrder.createdAt)}</Text>
+                  </View>
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Estimated Delivery</Text>
+                    <Text style={styles.detailValue}>{formatDate(selectedOrder.estimatedDelivery)}</Text>
+                  </View>
+                  {selectedOrder.deliveryDate && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>Delivered On</Text>
+                      <Text style={styles.detailValue}>{formatDate(selectedOrder.deliveryDate)}</Text>
+                    </View>
+                  )}
+                </View>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.sectionLabel}>Buyer</Text>
+                <Text style={styles.sectionLabel}>Buyer</Text>
+                <View style={styles.detailCard}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Name</Text>
-                    <Text style={styles.detailValue}>{selectedOrder.buyer?.name || 'Unknown'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedOrder.buyer?.name || 'Unknown'}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Email</Text>
-                    <Text style={styles.detailValue}>{selectedOrder.buyer?.email || 'N/A'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
+                      {selectedOrder.buyer?.email || 'N/A'}
+                    </Text>
                   </View>
                   {selectedOrder.buyer?.mobile && (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Mobile</Text>
-                      <Text style={styles.detailValue}>{selectedOrder.buyer.mobile}</Text>
+                      <Text style={styles.detailValue} numberOfLines={1}>
+                        {selectedOrder.buyer.mobile}
+                      </Text>
                     </View>
                   )}
                 </View>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.sectionLabel}>Farmer</Text>
+                <Text style={styles.sectionLabel}>Farmer</Text>
+                <View style={styles.detailCard}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Name</Text>
-                    <Text style={styles.detailValue}>{selectedOrder.farmer?.name || 'Unknown'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedOrder.farmer?.name || 'Unknown'}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Email</Text>
-                    <Text style={styles.detailValue}>{selectedOrder.farmer?.email || 'N/A'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
+                      {selectedOrder.farmer?.email || 'N/A'}
+                    </Text>
                   </View>
                   {selectedOrder.farmer?.mobile && (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Mobile</Text>
-                      <Text style={styles.detailValue}>{selectedOrder.farmer.mobile}</Text>
+                      <Text style={styles.detailValue} numberOfLines={1}>
+                        {selectedOrder.farmer.mobile}
+                      </Text>
                     </View>
                   )}
                 </View>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.sectionLabel}>Items</Text>
+                <Text style={styles.sectionLabel}>Items</Text>
+                <View style={styles.detailCard}>
                   {selectedOrder.items.map((item, idx) => (
-                    <View key={idx} style={styles.itemRow}>
+                    <View key={idx} style={styles.detailRow}>
                       <Text style={styles.itemText} numberOfLines={1}>
                         {item.product?.name || 'Product'} x {item.quantity}
                       </Text>
                       <Text style={styles.itemPrice}>₹{(item.price * item.quantity).toFixed(2)}</Text>
                     </View>
                   ))}
-                  <View style={[styles.detailRow, { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: Layout.spacing.sm, marginTop: Layout.spacing.sm }]}>
+                  <View style={styles.totalRow}>
                     <Text style={styles.detailLabel}>Total Amount</Text>
-                    <Text style={[styles.detailValue, { color: colors.admin, fontWeight: '700' }]}>
+                    <Text style={styles.totalValue} numberOfLines={1}>
                       ₹{selectedOrder.totalAmount?.toFixed(2)}
                     </Text>
                   </View>
                 </View>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.sectionLabel}>Payment</Text>
+                <Text style={styles.sectionLabel}>Payment</Text>
+                <View style={styles.detailCard}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Method</Text>
-                    <Text style={styles.detailValue}>
+                    <Text style={styles.detailValue} numberOfLines={1}>
                       {selectedOrder.paymentMethod?.replace('_', ' ').toUpperCase()}
                     </Text>
                   </View>
@@ -610,56 +813,61 @@ export default function ManageOrdersScreen() {
                   {selectedOrder.blockchainTxHash && (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Tx Hash</Text>
-                      <Text style={styles.detailValue} numberOfLines={1}>
+                      <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
                         {selectedOrder.blockchainTxHash}
                       </Text>
                     </View>
                   )}
                 </View>
 
-                <View style={styles.detailSection}>
-                  <Text style={styles.sectionLabel}>Delivery Address</Text>
+                <Text style={styles.sectionLabel}>Delivery Address</Text>
+                <View style={styles.detailCard}>
                   {selectedOrder.shippingAddress ? (
-                    <View style={styles.addressBox}>
-                      <Text style={styles.addressText}>
-                        {selectedOrder.shippingAddress.address}
-                        {'\n'}
-                        {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}{' '}
-                        {selectedOrder.shippingAddress.pincode}
-                        {'\n'}
-                        {selectedOrder.shippingAddress.country}
-                      </Text>
-                    </View>
+                    <Text style={[styles.addressText, { paddingVertical: Layout.spacing.sm }]}>
+                      {selectedOrder.shippingAddress.address}
+                      {'\n'}
+                      {selectedOrder.shippingAddress.city}, {selectedOrder.shippingAddress.state}{' '}
+                      {selectedOrder.shippingAddress.pincode}
+                      {'\n'}
+                      {selectedOrder.shippingAddress.country}
+                    </Text>
                   ) : (
-                    <Text style={styles.detailValue}>No address provided</Text>
+                    <Text style={[styles.detailValue, { paddingVertical: Layout.spacing.sm }]}>
+                      No address provided
+                    </Text>
                   )}
                 </View>
 
                 {selectedOrder.status === 'cancelled' && (
-                  <View style={styles.detailSection}>
+                  <>
                     <Text style={styles.sectionLabel}>Cancellation</Text>
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Cancelled By</Text>
-                      <Text style={styles.detailValue}>
-                        {selectedOrder.cancelledBy === 'admin' ? 'Administrator' : 'Buyer'}
-                      </Text>
-                    </View>
-                    {selectedOrder.cancellationReason && (
+                    <View style={styles.detailCard}>
                       <View style={styles.detailRow}>
-                        <Text style={styles.detailLabel}>Reason</Text>
-                        <Text style={styles.detailValue}>{selectedOrder.cancellationReason}</Text>
+                        <Text style={styles.detailLabel}>Cancelled By</Text>
+                        <Text style={styles.detailValue}>
+                          {selectedOrder.cancelledBy === 'admin' ? 'Administrator' : 'Buyer'}
+                        </Text>
                       </View>
-                    )}
-                  </View>
+                      {selectedOrder.cancellationReason && (
+                        <View style={styles.detailRow}>
+                          <Text style={styles.detailLabel}>Reason</Text>
+                          <Text style={styles.detailValue}>{selectedOrder.cancellationReason}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </>
                 )}
 
                 {(selectedOrder.status === 'pending' || selectedOrder.status === 'accepted') && (
-                  <TouchableOpacity
-                    style={styles.cancelBtn}
-                    onPress={() => setConfirmVisible(true)}
-                  >
-                    <Text style={styles.cancelBtnText}>Force Cancel & Refund</Text>
-                  </TouchableOpacity>
+                  <View style={styles.modalActions}>
+                    <Button
+                      title="Force Cancel & Refund"
+                      icon="close-circle-outline"
+                      variant="danger"
+                      size="md"
+                      onPress={() => setConfirmVisible(true)}
+                    />
+                  </View>
                 )}
               </ScrollView>
             )}

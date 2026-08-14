@@ -9,36 +9,48 @@ export function AdminListSkeleton({ count = 5 }: { count?: number }) {
   const styles = useMemo(
     () =>
       StyleSheet.create({
+        wrap: {
+          padding: Layout.spacing.lg,
+        },
         card: {
           backgroundColor: colors.card,
-          borderRadius: Layout.borderRadius.md,
-          padding: Layout.spacing.lg,
+          borderRadius: Layout.borderRadius.lg,
+          padding: Layout.spacing.md,
           marginBottom: Layout.spacing.md,
           borderWidth: 1,
           borderColor: colors.border,
+          ...Layout.shadow.xs,
         },
-        row: {
+        headRow: {
           flexDirection: 'row',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginTop: Layout.spacing.sm,
+        },
+        footRow: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: Layout.spacing.md,
         },
       }),
     [colors]
   );
 
   return (
-    <View style={{ padding: Layout.spacing.md }}>
+    <View style={styles.wrap}>
       {Array.from({ length: count }).map((_, idx) => (
         <View key={idx} style={styles.card}>
-          <Skeleton height={18} width="50%" />
-          <Skeleton height={14} width="70%" style={{ marginTop: 8 }} />
-          <Skeleton height={14} width="40%" style={{ marginTop: 8 }} />
-          <View style={styles.row}>
-            <Skeleton height={24} width={80} borderRadius={6} />
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Skeleton height={32} width={32} borderRadius={8} />
-              <Skeleton height={32} width={32} borderRadius={8} />
+          <View style={styles.headRow}>
+            <Skeleton height={16} width="48%" />
+            <Skeleton height={22} width={78} borderRadius={Layout.borderRadius.full} />
+          </View>
+          <Skeleton height={12} width="70%" style={{ marginTop: 12 }} />
+          <Skeleton height={12} width="42%" style={{ marginTop: 8 }} />
+          <View style={styles.footRow}>
+            <Skeleton height={22} width={86} borderRadius={Layout.borderRadius.full} />
+            <View style={{ flexDirection: 'row', gap: Layout.spacing.sm }}>
+              <Skeleton height={36} width={36} borderRadius={Layout.borderRadius.md} />
+              <Skeleton height={36} width={36} borderRadius={Layout.borderRadius.md} />
             </View>
           </View>
         </View>
@@ -49,10 +61,17 @@ export function AdminListSkeleton({ count = 5 }: { count?: number }) {
 
 export function AdminStatCardSkeleton({ count = 8 }: { count?: number }) {
   return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', padding: Layout.spacing.md }}>
+    <View
+      style={{
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: Layout.spacing.md,
+        padding: Layout.spacing.lg,
+      }}
+    >
       {Array.from({ length: count }).map((_, idx) => (
-        <View key={idx} style={{ width: '33.33%', padding: 4 }}>
-          <Skeleton height={110} borderRadius={16} />
+        <View key={idx} style={{ flexGrow: 1, flexBasis: '40%', minWidth: 0 }}>
+          <Skeleton height={112} borderRadius={Layout.borderRadius.lg} />
         </View>
       ))}
     </View>

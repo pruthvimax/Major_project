@@ -3,17 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Switch,
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,192 +20,190 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
+import { ScreenHeader, Card, Input, Button, Chip } from '../../components/ui';
 
 const CATEGORIES = ['vegetables', 'fruits', 'grains', 'dairy'];
 
 export default function AddProductScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  scrollContent: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: Layout.spacing.xxl,
-  },
-  label: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.black,
-    marginBottom: Layout.spacing.xs,
-  },
-  input: {
-    backgroundColor: colors.lighterGray,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: Layout.borderRadius.sm,
-    height: 48,
-    paddingHorizontal: Layout.spacing.md,
-    fontSize: Typography.fontSize.sm,
-    color: colors.black,
-    marginBottom: Layout.spacing.md,
-  },
-  textArea: {
-    height: 90,
-    paddingTop: Layout.spacing.sm,
-    textAlignVertical: 'top',
-  },
-  categoryContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: Layout.spacing.md,
-  },
-  categoryTab: {
-    paddingHorizontal: Layout.spacing.md,
-    paddingVertical: Layout.spacing.xs,
-    borderRadius: Layout.borderRadius.xl,
-    backgroundColor: colors.lighterGray,
-    marginRight: Layout.spacing.xs,
-    marginBottom: Layout.spacing.xs,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  categoryTabActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  categoryText: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.gray,
-  },
-  categoryTextActive: {
-    color: colors.white,
-  },
-  inputRow: {
-    flexDirection: 'row',
-  },
-  switchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.xl,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: Layout.spacing.md,
-  },
-  switchLabel: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    color: colors.black,
-  },
-  switchDesc: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  submitBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.md,
-    alignItems: 'center',
-  },
-  submitBtnText: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-  },
-  previewContainer: {
-    marginBottom: Layout.spacing.md,
-  },
-  previewLabel: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: 'bold',
-    color: colors.black,
-    marginBottom: Layout.spacing.xs,
-  },
-  imagePreview: {
-    width: '100%',
-    height: 150,
-    borderRadius: Layout.borderRadius.sm,
-    resizeMode: 'cover',
-  },
-  pickerButtonsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: Layout.spacing.md,
-  },
-  pickerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: Layout.borderRadius.sm,
-    paddingVertical: Layout.spacing.sm,
-    flex: 0.48,
-  },
-  pickerBtnText: {
-    color: colors.primary,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.xs,
-    marginLeft: 6,
-  },
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Layout.spacing.xs,
-  },
-  removeImageBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  removeImageText: {
-    color: '#C62828',
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.xs,
-    marginLeft: 4,
-  },
-  loadingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  loadingText: {
-    color: colors.white,
-    fontWeight: 'bold',
-    fontSize: Typography.fontSize.md,
-    marginLeft: 8,
-  },
-}), [colors]);
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    scrollContent: {
+      padding: Layout.spacing.lg,
+      paddingBottom: Layout.spacing.xxl,
+    },
+    section: {
+      padding: Layout.spacing.lg,
+      marginBottom: Layout.spacing.md,
+    },
+    sectionHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Layout.spacing.sm + 2,
+      marginBottom: Layout.spacing.md,
+    },
+    sectionIconWell: {
+      width: 34,
+      height: 34,
+      borderRadius: Layout.borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    sectionTitle: {
+      flex: 1,
+      flexShrink: 1,
+      fontSize: Typography.fontSize.md,
+      lineHeight: Typography.leading.md,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.text,
+    },
+    fieldLabel: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.text,
+      marginBottom: Layout.spacing.xs + 2,
+    },
+    chipWrap: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Layout.spacing.sm,
+      marginBottom: Layout.spacing.md,
+    },
+    inputRow: {
+      flexDirection: 'row',
+      gap: Layout.spacing.md,
+    },
+    flexField: {
+      flex: 1,
+      minWidth: 0,
+    },
+    switchRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: Layout.spacing.md,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingTop: Layout.spacing.md,
+      minHeight: Layout.touchTarget,
+    },
+    switchLabel: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.text,
+    },
+    switchDesc: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    uploadWell: {
+      borderWidth: 1.5,
+      borderStyle: 'dashed',
+      borderColor: colors.borderStrong,
+      borderRadius: Layout.borderRadius.lg,
+      backgroundColor: colors.surfaceAlt,
+      padding: Layout.spacing.lg,
+      alignItems: 'center',
+    },
+    uploadIconWell: {
+      width: 48,
+      height: 48,
+      borderRadius: Layout.borderRadius.full,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Layout.spacing.sm + 2,
+    },
+    uploadTitle: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.text,
+      textAlign: 'center',
+    },
+    uploadHint: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginTop: 2,
+    },
+    uploadActions: {
+      flexDirection: 'row',
+      gap: Layout.spacing.sm,
+      marginTop: Layout.spacing.md,
+      alignSelf: 'stretch',
+    },
+    thumbCaption: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textSecondary,
+      marginTop: Layout.spacing.md,
+    },
+    thumbGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: Layout.spacing.md,
+      marginTop: Layout.spacing.sm,
+    },
+    thumbWrap: {
+      width: '46%',
+      aspectRatio: 4 / 3,
+      borderRadius: Layout.borderRadius.md,
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.input,
+      overflow: 'hidden',
+    },
+    thumb: {
+      width: '100%',
+      height: '100%',
+      resizeMode: 'cover',
+    },
+    thumbRemove: {
+      position: 'absolute',
+      top: Layout.spacing.sm,
+      right: Layout.spacing.sm,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      backgroundColor: colors.overlay,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    urlBlock: {
+      marginTop: Layout.spacing.md,
+    },
+    bottomBar: {
+      backgroundColor: colors.card,
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+      paddingHorizontal: Layout.spacing.lg,
+      paddingTop: Layout.spacing.md,
+    },
+    progressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: Layout.spacing.xs + 2,
+      marginBottom: Layout.spacing.sm,
+    },
+    progressText: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textSecondary,
+    },
+  }), [colors]);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('vegetables');
@@ -358,189 +354,243 @@ export default function AddProductScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="Add New Product"
+        subtitle="List fresh produce on the marketplace"
+        onBack={() => router.back()}
+      />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Add New Product</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Product details */}
+          <Card style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View style={[styles.sectionIconWell, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="leaf-outline" size={18} color={colors.primary} />
+              </View>
+              <Text style={styles.sectionTitle}>Product details</Text>
+            </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <View style={styles.card}>
-            {/* Name */}
-            <Text style={styles.label}>Product Name</Text>
-            <TextInput
-              style={styles.input}
+            <Input
+              label="Product Name"
+              required
+              icon="pricetag-outline"
               placeholder="e.g. Fresh Tomatoes"
-              placeholderTextColor={colors.gray}
               value={name}
               onChangeText={setName}
             />
 
-            {/* Description */}
-            <Text style={styles.label}>Description</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
+            <Input
+              label="Description"
+              required
+              icon="document-text-outline"
               placeholder="Describe the product (freshness, harvesting date, etc.)"
-              placeholderTextColor={colors.gray}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
             />
 
-            {/* Category Select */}
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.categoryContainer}>
+            <Text style={styles.fieldLabel}>Category</Text>
+            <View style={styles.chipWrap}>
               {CATEGORIES.map((cat) => (
-                <TouchableOpacity
+                <Chip
                   key={cat}
-                  style={[
-                    styles.categoryTab,
-                    category === cat && styles.categoryTabActive,
-                  ]}
+                  label={cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  active={category === cat}
                   onPress={() => setCategory(cat)}
-                >
-                  <Text
-                    style={[
-                      styles.categoryText,
-                      category === cat && styles.categoryTextActive,
-                    ]}
-                  >
-                    {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </Text>
-                </TouchableOpacity>
+                />
               ))}
             </View>
 
-            {/* Price & Unit row */}
-            <View style={styles.inputRow}>
-              <View style={{ flex: 1, marginRight: Layout.spacing.sm }}>
-                <Text style={styles.label}>Price (₹)</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Price"
-                  placeholderTextColor={colors.gray}
-                  value={price}
-                  onChangeText={setPrice}
-                  keyboardType="numeric"
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.label}>Unit</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. kg, piece, bundle"
-                  placeholderTextColor={colors.gray}
-                  value={unit}
-                  onChangeText={setUnit}
-                />
-              </View>
-            </View>
-
-            {/* Quantity */}
-            <Text style={styles.label}>Stock Quantity Available</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. 50"
-              placeholderTextColor={colors.gray}
-              value={quantity}
-              onChangeText={setQuantity}
-              keyboardType="numeric"
-            />
-
-            {/* Address */}
-            <Text style={styles.label}>Farm Location Address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Mangalore, Karnataka"
-              placeholderTextColor={colors.gray}
-              value={address}
-              onChangeText={setAddress}
-            />
-
-            {/* Device Image Picker */}
-            <Text style={styles.label}>Product Image</Text>
-            <View style={styles.pickerButtonsRow}>
-              <TouchableOpacity style={styles.pickerBtn} onPress={takePhoto}>
-                <Ionicons name="camera" size={18} color={colors.primary} />
-                <Text style={styles.pickerBtnText}>Take Photo</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.pickerBtn} onPress={pickImage}>
-                <Ionicons name="images" size={18} color={colors.primary} />
-                <Text style={styles.pickerBtnText}>From Gallery</Text>
-              </TouchableOpacity>
-            </View>
-
-            {selectedImage ? (
-              <View style={styles.previewContainer}>
-                <View style={styles.previewHeader}>
-                  <Text style={styles.previewLabel}>Selected Image Preview:</Text>
-                  <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.removeImageBtn}>
-                    <Ionicons name="close-circle" size={18} color="#C62828" />
-                    <Text style={styles.removeImageText}>Remove</Text>
-                  </TouchableOpacity>
-                </View>
-                <Image source={{ uri: selectedImage }} style={styles.imagePreview} />
-              </View>
-            ) : (
-              <View>
-                {/* Fallback Manual URL Input */}
-                <Text style={[styles.label, { marginTop: Layout.spacing.sm }]}>Or Paste Product Image URL</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. https://images.unsplash.com/... or direct image link"
-                  placeholderTextColor={colors.gray}
-                  value={imageUrl}
-                  onChangeText={setImageUrl}
-                  autoCapitalize="none"
-                />
-
-                {imageUrl ? (
-                  <View style={styles.previewContainer}>
-                    <Text style={styles.previewLabel}>URL Image Preview:</Text>
-                    <Image source={{ uri: imageUrl }} style={styles.imagePreview} />
-                  </View>
-                ) : null}
-              </View>
-            )}
-
             {/* Organic Switch */}
             <View style={styles.switchRow}>
-              <View style={{ flex: 1 }}>
+              <View style={{ flex: 1, flexShrink: 1 }}>
                 <Text style={styles.switchLabel}>Organic Certified</Text>
                 <Text style={styles.switchDesc}>Select if this product is fully organic</Text>
               </View>
               <Switch
                 value={isOrganic}
                 onValueChange={setIsOrganic}
-                trackColor={{ false: '#767577', true: colors.primary }}
+                trackColor={{ false: colors.lightGray, true: colors.primary }}
+                thumbColor={colors.white}
+              />
+            </View>
+          </Card>
+
+          {/* Pricing & stock */}
+          <Card style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View style={[styles.sectionIconWell, { backgroundColor: colors.tintBlue }]}>
+                <Ionicons name="cash-outline" size={18} color={colors.info} />
+              </View>
+              <Text style={styles.sectionTitle}>Pricing & stock</Text>
+            </View>
+
+            <View style={styles.inputRow}>
+              <Input
+                label="Price (₹)"
+                required
+                icon="pricetags-outline"
+                placeholder="Price"
+                value={price}
+                onChangeText={setPrice}
+                keyboardType="numeric"
+                containerStyle={styles.flexField}
+              />
+              <Input
+                label="Unit"
+                required
+                icon="scale-outline"
+                placeholder="e.g. kg, piece, bundle"
+                value={unit}
+                onChangeText={setUnit}
+                containerStyle={styles.flexField}
               />
             </View>
 
-            <TouchableOpacity style={styles.submitBtn} onPress={handleAddProduct} disabled={isLoading}>
-              {isLoading ? (
-                <View style={styles.loadingRow}>
-                  <ActivityIndicator color={colors.white} />
-                  <Text style={styles.loadingText}>
-                    {isUploading ? 'Uploading Image...' : 'Securing On-Chain...'}
-                  </Text>
+            <Input
+              label="Stock Quantity Available"
+              required
+              icon="cube-outline"
+              placeholder="e.g. 50"
+              value={quantity}
+              onChangeText={setQuantity}
+              keyboardType="numeric"
+              containerStyle={{ marginBottom: 0 }}
+            />
+          </Card>
+
+          {/* Location */}
+          <Card style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View style={[styles.sectionIconWell, { backgroundColor: colors.tintAmber }]}>
+                <Ionicons name="location-outline" size={18} color={colors.warning} />
+              </View>
+              <Text style={styles.sectionTitle}>Farm location</Text>
+            </View>
+
+            <Input
+              label="Farm Location Address"
+              required
+              icon="map-outline"
+              placeholder="e.g. Mangalore, Karnataka"
+              value={address}
+              onChangeText={setAddress}
+              containerStyle={{ marginBottom: 0 }}
+            />
+          </Card>
+
+          {/* Images */}
+          <Card style={styles.section}>
+            <View style={styles.sectionHead}>
+              <View style={[styles.sectionIconWell, { backgroundColor: colors.tintPurple }]}>
+                <Ionicons name="image-outline" size={18} color={colors.secondary} />
+              </View>
+              <Text style={styles.sectionTitle}>Product image</Text>
+            </View>
+
+            <View style={styles.uploadWell}>
+              <View style={styles.uploadIconWell}>
+                <Ionicons name="cloud-upload-outline" size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.uploadTitle}>Add a photo of your produce</Text>
+              <Text style={styles.uploadHint}>Capture a new photo or choose one from your gallery</Text>
+              <View style={styles.uploadActions}>
+                <Button
+                  title="Take Photo"
+                  variant="outline"
+                  size="sm"
+                  icon="camera"
+                  fullWidth={false}
+                  onPress={takePhoto}
+                  style={styles.flexField}
+                />
+                <Button
+                  title="From Gallery"
+                  variant="ghost"
+                  size="sm"
+                  icon="images"
+                  fullWidth={false}
+                  onPress={pickImage}
+                  style={styles.flexField}
+                />
+              </View>
+            </View>
+
+            {selectedImage ? (
+              <>
+                <Text style={styles.thumbCaption}>Selected image preview</Text>
+                <View style={styles.thumbGrid}>
+                  <View style={styles.thumbWrap}>
+                    <Image source={{ uri: selectedImage }} style={styles.thumb} />
+                    <TouchableOpacity
+                      onPress={() => setSelectedImage(null)}
+                      style={styles.thumbRemove}
+                      activeOpacity={0.8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Remove selected image"
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <Ionicons name="close" size={16} color={colors.white} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              ) : (
-                <Text style={styles.submitBtnText}>List Produce & Secure On-Chain</Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              </>
+            ) : (
+              <View style={styles.urlBlock}>
+                {/* Fallback Manual URL Input */}
+                <Input
+                  label="Or paste product image URL"
+                  icon="link-outline"
+                  placeholder="e.g. https://images.unsplash.com/... or direct image link"
+                  value={imageUrl}
+                  onChangeText={setImageUrl}
+                  autoCapitalize="none"
+                  containerStyle={{ marginBottom: 0 }}
+                />
+
+                {imageUrl ? (
+                  <>
+                    <Text style={styles.thumbCaption}>URL image preview</Text>
+                    <View style={styles.thumbGrid}>
+                      <View style={styles.thumbWrap}>
+                        <Image source={{ uri: imageUrl }} style={styles.thumb} />
+                      </View>
+                    </View>
+                  </>
+                ) : null}
+              </View>
+            )}
+          </Card>
         </ScrollView>
+
+        <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom, Layout.spacing.md) }]}>
+          {isLoading && (
+            <View style={styles.progressRow}>
+              <Ionicons name="sync-outline" size={14} color={colors.textSecondary} />
+              <Text style={styles.progressText}>
+                {isUploading ? 'Uploading Image...' : 'Securing On-Chain...'}
+              </Text>
+            </View>
+          )}
+          <Button
+            title="List Produce & Secure On-Chain"
+            size="lg"
+            icon="shield-checkmark-outline"
+            loading={isLoading}
+            onPress={handleAddProduct}
+          />
+        </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-

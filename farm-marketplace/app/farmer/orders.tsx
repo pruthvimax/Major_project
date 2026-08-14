@@ -4,20 +4,26 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  TouchableOpacity,
-  ActivityIndicator,
   Platform,
   Alert,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
-import EmptyState from '../../components/EmptyState';
+import {
+  ScreenHeader,
+  OrderCard,
+  Button,
+  EmptyState,
+  ErrorState,
+  friendlyError,
+  ListSkeleton,
+} from '../../components/ui';
+import type { BadgeTone, OrderMetaRow } from '../../components/ui';
 
 type OrderStatus = 'pending' | 'accepted' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -44,13 +50,13 @@ const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   shipped: 'delivered',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#F57C00',
-  accepted: '#1976D2',
-  packed: '#7B1FA2',
-  shipped: '#0288D1',
-  delivered: '#388E3C',
-  cancelled: '#D32F2F',
+const STATUS_TONES: Record<string, BadgeTone> = {
+  pending: 'warning',
+  accepted: 'info',
+  packed: 'info',
+  shipped: 'info',
+  delivered: 'success',
+  cancelled: 'error',
 };
 
 export default function FarmerOrdersScreen() {
@@ -59,76 +65,69 @@ export default function FarmerOrdersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const styles = useMemo(
     () =>
       StyleSheet.create({
         container: { flex: 1, backgroundColor: colors.background },
-        header: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          paddingHorizontal: Layout.spacing.lg,
-          paddingTop: Platform.OS === 'android' ? 40 : 20,
-          paddingBottom: Layout.spacing.md,
-          backgroundColor: colors.card,
-          borderBottomWidth: 1,
-          borderBottomColor: colors.border,
-        },
-        headerTitle: {
-          fontSize: Typography.fontSize.lg,
-          fontWeight: Typography.fontWeight.bold,
-          color: colors.black,
-        },
-        card: {
-          backgroundColor: colors.card,
-          borderRadius: Layout.borderRadius.lg,
+        list: {
           padding: Layout.spacing.lg,
-          marginBottom: Layout.spacing.md,
-          borderWidth: 1,
-          borderColor: colors.border,
+          paddingBottom: Layout.spacing.xxl,
         },
-        row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-        orderNumber: {
-          fontWeight: Typography.fontWeight.bold,
-          fontSize: Typography.fontSize.md,
-          color: colors.black,
+        skeletonWrap: { padding: Layout.spacing.lg },
+        items: {
+          marginTop: Layout.spacing.md,
+          gap: Layout.spacing.xs + 2,
         },
-        badge: {
-          paddingHorizontal: 10,
-          paddingVertical: 4,
-          borderRadius: 12,
-        },
-        badgeText: { color: '#fff', fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-        meta: { color: colors.gray, fontSize: 12, marginTop: 6 },
-        amount: {
-          fontSize: Typography.fontSize.lg,
-          fontWeight: '700',
-          color: colors.primary,
-          marginTop: 8,
-        },
-        itemLine: { color: colors.black, fontSize: 13, marginTop: 4 },
-        cancelledNote: { color: '#C62828', fontSize: 12, marginTop: 8, fontWeight: '600' },
-        actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
-        btn: {
+        itemLine: {
           flexDirection: 'row',
           alignItems: 'center',
-          paddingHorizontal: 12,
-          paddingVertical: 8,
-          borderRadius: 10,
+          gap: Layout.spacing.sm,
         },
-        btnText: { color: '#fff', fontWeight: '700', fontSize: 12, marginLeft: 4 },
-        list: { padding: Layout.spacing.md },
-      } as any),
+        itemText: {
+          flex: 1,
+          flexShrink: 1,
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.text,
+        },
+        cancelledNote: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          gap: Layout.spacing.sm,
+          backgroundColor: colors.errorSoft,
+          borderRadius: Layout.borderRadius.md,
+          padding: Layout.spacing.sm + 2,
+          marginTop: Layout.spacing.md,
+        },
+        cancelledText: {
+          flex: 1,
+          flexShrink: 1,
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          fontWeight: Typography.fontWeight.semibold,
+          color: colors.error,
+        },
+        actions: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          gap: Layout.spacing.sm,
+          flexShrink: 1,
+        },
+      }),
     [colors]
   );
 
   const fetchOrders = useCallback(async () => {
     try {
+      setLoadError(null);
       const res = await api.get('/orders/farmer');
       if (res.data.success) setOrders(res.data.orders);
     } catch (e) {
       console.error(e);
+      setLoadError(e);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -168,99 +167,127 @@ export default function FarmerOrdersScreen() {
     const next = NEXT_STATUS[item.status];
     const busy = actionId === item._id;
 
-    return (
-      <View style={styles.card}>
-        <View style={styles.row}>
-          <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-          <View style={[styles.badge, { backgroundColor: STATUS_COLORS[item.status] || colors.gray }]}>
-            <Text style={styles.badgeText}>{item.status}</Text>
-          </View>
-        </View>
-        <Text style={styles.meta}>
-          Buyer: {item.buyer?.name} · {new Date(item.createdAt).toLocaleDateString()}
-        </Text>
-        <Text style={styles.meta}>Payment: {item.paymentMethod}</Text>
-        {item.escrowStatus && item.escrowStatus !== 'none' && (
-          <Text style={styles.meta}>Escrow: {item.escrowStatus}</Text>
-        )}
-        {item.items?.map((it, idx) => (
-          <Text key={idx} style={styles.itemLine}>
-            • {it.product?.name || 'Product'} — {it.quantity} {it.unit} @ ₹{it.price}
-          </Text>
-        ))}
-        <Text style={styles.amount}>₹{item.totalAmount.toFixed(2)}</Text>
-        {item.status === 'cancelled' && (
-          <Text style={styles.cancelledNote}>
-            Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}{item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
-          </Text>
-        )}
+    const rows: OrderMetaRow[] = [
+      { icon: 'person-outline', label: 'Buyer', value: item.buyer?.name ?? '' },
+      { icon: 'card-outline', label: 'Payment', value: item.paymentMethod },
+    ];
+    if (item.escrowStatus && item.escrowStatus !== 'none') {
+      rows.push({ icon: 'lock-closed-outline', label: 'Escrow', value: item.escrowStatus });
+    }
 
-        <View style={styles.actions}>
-          {item.status === 'pending' && (
-            <>
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: colors.success }]}
-                disabled={busy}
-                onPress={() => confirmAction(item, 'accepted', 'Accept')}
-              >
-                <Ionicons name="checkmark" size={14} color="#fff" />
-                <Text style={styles.btnText}>Accept</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.btn, { backgroundColor: colors.error }]}
-                disabled={busy}
-                onPress={() => confirmAction(item, 'cancelled', 'Reject')}
-              >
-                <Ionicons name="close" size={14} color="#fff" />
-                <Text style={styles.btnText}>Reject</Text>
-              </TouchableOpacity>
-            </>
-          )}
-          {next && item.status !== 'pending' && (
-            <TouchableOpacity
-              style={[styles.btn, { backgroundColor: colors.primary }]}
-              disabled={busy}
-              onPress={() => confirmAction(item, next, `Mark ${next}`)}
-            >
-              {busy ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="arrow-forward" size={14} color="#fff" />
-                  <Text style={styles.btnText}>Mark {next}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          )}
-        </View>
-      </View>
+    return (
+      <OrderCard
+        reference={item.orderNumber}
+        date={new Date(item.createdAt).toLocaleDateString()}
+        statusLabel={item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+        statusTone={STATUS_TONES[item.status] || 'neutral'}
+        rows={rows}
+        totalLabel="Order total"
+        total={`₹${item.totalAmount.toFixed(2)}`}
+        actions={
+          <View style={styles.actions}>
+            {item.status === 'pending' && (
+              <>
+                <Button
+                  title="Accept"
+                  variant="primary"
+                  size="sm"
+                  icon="checkmark"
+                  fullWidth={false}
+                  disabled={busy}
+                  onPress={() => confirmAction(item, 'accepted', 'Accept')}
+                />
+                <Button
+                  title="Reject"
+                  variant="danger"
+                  size="sm"
+                  icon="close"
+                  fullWidth={false}
+                  disabled={busy}
+                  onPress={() => confirmAction(item, 'cancelled', 'Reject')}
+                />
+              </>
+            )}
+            {next && item.status !== 'pending' && (
+              <Button
+                title={`Mark ${next}`}
+                variant="primary"
+                size="sm"
+                icon="arrow-forward"
+                fullWidth={false}
+                loading={busy}
+                onPress={() => confirmAction(item, next, `Mark ${next}`)}
+              />
+            )}
+          </View>
+        }
+      >
+        {item.items?.length ? (
+          <View style={styles.items}>
+            {item.items.map((it, idx) => (
+              <View key={idx} style={styles.itemLine}>
+                <Ionicons name="ellipse" size={6} color={colors.primary} />
+                <Text style={styles.itemText} numberOfLines={2}>
+                  {it.product?.name || 'Product'} — {it.quantity} {it.unit} @ ₹{it.price}
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+
+        {item.status === 'cancelled' && (
+          <View style={styles.cancelledNote}>
+            <Ionicons name="alert-circle-outline" size={15} color={colors.error} />
+            <Text style={styles.cancelledText}>
+              Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}
+              {item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
+            </Text>
+          </View>
+        )}
+      </OrderCard>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Incoming Orders</Text>
-        <TouchableOpacity onPress={fetchOrders}>
-          <Ionicons name="refresh" size={20} color={colors.primary} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="Incoming Orders"
+        subtitle="Orders placed for your produce"
+        onBack={() => router.back()}
+        iconActions={[
+          {
+            icon: 'refresh',
+            onPress: () => {
+              fetchOrders();
+            },
+            accessibilityLabel: 'Refresh orders',
+          },
+        ]}
+      />
 
       {loading ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonWrap}>
+          <ListSkeleton count={3} />
         </View>
+      ) : loadError ? (
+        <ErrorState
+          title="Could not load orders"
+          message={friendlyError(loadError, 'We could not load your incoming orders. Please try again.')}
+          onRetry={fetchOrders}
+        />
       ) : (
         <FlatList
           data={orders}
           keyExtractor={(o) => o._id}
           renderItem={renderOrder}
           contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchOrders(); }} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => { setRefreshing(true); fetchOrders(); }}
+              colors={[colors.primary]}
+            />
           }
           ListEmptyComponent={
             <EmptyState
@@ -271,7 +298,6 @@ export default function FarmerOrdersScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
-

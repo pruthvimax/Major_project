@@ -4,18 +4,24 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Platform,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import {
+  ScreenHeader,
+  SectionHeader,
+  Card,
+  Badge,
+  Loading,
+  ErrorState,
+  friendlyError,
+} from '../../components/ui';
+import type { BadgeTone } from '../../components/ui';
 
 interface TrackingEvent {
   status: string;
@@ -60,157 +66,209 @@ const STATUS_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   cancelled: 'close-circle-outline',
 };
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: '#EF6C00',
-  accepted: '#0277BD',
-  packed: '#6A1B9A',
-  shipped: '#00838F',
-  delivered: '#2E7D32',
-  cancelled: '#C62828',
+const STATUS_TONES: Record<string, BadgeTone> = {
+  pending: 'warning',
+  accepted: 'info',
+  packed: 'info',
+  shipped: 'info',
+  delivered: 'success',
+  cancelled: 'error',
 };
 
 export default function TrackOrderScreen() {
   const colors = useColors();
-  const styles = useMemo(() => StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: Layout.spacing.xl },
-  loadingText: { marginTop: Layout.spacing.md, color: colors.gray },
-  errorText: { color: colors.gray, marginTop: Layout.spacing.md, textAlign: 'center' },
-  retryBtn: {
-    marginTop: Layout.spacing.lg,
-    backgroundColor: colors.secondary,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.sm,
-    borderRadius: Layout.borderRadius.md,
-  },
-  retryBtnText: { color: colors.white, fontWeight: 'bold' },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: { padding: Layout.spacing.xs },
-  refreshBtn: { padding: Layout.spacing.xs },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  scrollContent: { padding: Layout.spacing.md, paddingBottom: 40 },
-  summaryCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  orderNumber: { fontSize: Typography.fontSize.md, fontWeight: 'bold', color: colors.black },
-  statusBadge: { paddingHorizontal: Layout.spacing.sm, paddingVertical: 4, borderRadius: Layout.borderRadius.xs },
-  statusText: { fontSize: 10, fontWeight: '700' },
-  orderDate: { fontSize: Typography.fontSize.xs, color: colors.gray, marginBottom: Layout.spacing.sm },
-  etaRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
-  etaText: { fontSize: Typography.fontSize.xs, color: colors.gray, marginLeft: 4 },
-  etaBold: { color: colors.secondary, fontWeight: '600' },
-  paymentRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
-  paymentText: { fontSize: Typography.fontSize.xs, color: colors.gray, marginLeft: 4 },
-  stepperCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  sectionTitle: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-    marginBottom: Layout.spacing.md,
-  },
-  stepper: {},
-  stepRow: { flexDirection: 'row', marginBottom: 0 },
-  stepLeft: { alignItems: 'center', width: 36 },
-  stepCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  stepLine: { width: 2, flex: 1, minHeight: 28, marginVertical: 2 },
-  stepContent: { flex: 1, paddingLeft: Layout.spacing.sm, paddingBottom: Layout.spacing.md, justifyContent: 'center' },
-  stepLabel: { fontSize: Typography.fontSize.sm, color: colors.gray, fontWeight: '500' },
-  stepLabelActive: { color: colors.secondary, fontWeight: '700' },
-  stepSubLabel: { fontSize: 10, color: colors.secondary, marginTop: 2 },
-  timelineCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  noEventsText: { color: colors.gray, fontSize: Typography.fontSize.sm },
-  cancelledInfoText: { fontSize: Typography.fontSize.sm, color: colors.gray, marginTop: Layout.spacing.xs, lineHeight: 20 },
-  timelineItem: { flexDirection: 'row', marginBottom: 0 },
-  timelineDotCol: { alignItems: 'center', width: 20, marginRight: Layout.spacing.sm },
-  timelineDot: { width: 12, height: 12, borderRadius: 6 },
-  timelineConnector: { width: 2, flex: 1, backgroundColor: colors.border, minHeight: 24, marginVertical: 4 },
-  timelineContent: { flex: 1, paddingBottom: Layout.spacing.lg },
-  timelineMessage: { fontSize: Typography.fontSize.sm, color: colors.black, fontWeight: '500' },
-  locationRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-  locationText: { fontSize: 11, color: colors.gray, marginLeft: 2 },
-  timelineTime: { fontSize: 11, color: colors.gray, marginTop: 4 },
-  addressCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  addressHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: Layout.spacing.sm },
-  addressText: { fontSize: Typography.fontSize.sm, color: colors.gray, lineHeight: 22 },
-  itemsCard: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: Layout.spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  itemName: { fontSize: Typography.fontSize.sm, color: colors.black, flex: 1 },
-  itemDetail: { fontSize: Typography.fontSize.sm, color: colors.secondary, fontWeight: '600' },
-}), [colors]);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: { flex: 1, backgroundColor: colors.background },
+        scrollContent: {
+          padding: Layout.spacing.lg,
+          paddingBottom: Layout.spacing.xxl,
+        },
+        card: {
+          padding: Layout.spacing.lg,
+          marginBottom: Layout.spacing.md,
+        },
+        summaryRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+          justifyContent: 'space-between',
+          gap: Layout.spacing.sm,
+        },
+        orderNumber: {
+          flex: 1,
+          fontSize: Typography.fontSize.lg,
+          lineHeight: Typography.leading.lg,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+        },
+        orderDate: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        metaRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          marginTop: Layout.spacing.md,
+          paddingTop: Layout.spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+        },
+        metaIconWell: {
+          width: 32,
+          height: 32,
+          borderRadius: Layout.borderRadius.sm,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: colors.primarySoft,
+        },
+        metaLabel: {
+          fontSize: Typography.fontSize.xxs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          textTransform: 'uppercase',
+          letterSpacing: 0.4,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        metaValue: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.text,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        metaBody: { flex: 1, minWidth: 0 },
+        stepRow: { flexDirection: 'row' },
+        stepLeft: { alignItems: 'center', width: 36 },
+        stepCircle: {
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          borderWidth: 2,
+          justifyContent: 'center',
+          alignItems: 'center',
+        },
+        stepCircleCurrent: {
+          ...Layout.shadow.sm,
+        },
+        stepLine: { width: 3, flex: 1, minHeight: 26, marginVertical: 3, borderRadius: 2 },
+        stepContent: {
+          flex: 1,
+          minWidth: 0,
+          paddingLeft: Layout.spacing.md,
+          paddingBottom: Layout.spacing.lg,
+        },
+        stepLabel: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.muted,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        stepLabelDone: { color: colors.text },
+        stepLabelActive: { color: colors.primary, fontWeight: Typography.fontWeight.bold },
+        stepTime: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        noEventsText: {
+          color: colors.textSecondary,
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+        },
+        cancelledInfoText: {
+          fontSize: Typography.fontSize.sm,
+          color: colors.textSecondary,
+          marginTop: Layout.spacing.xs,
+          lineHeight: Typography.leading.sm,
+        },
+        timelineItem: { flexDirection: 'row' },
+        timelineDotCol: { alignItems: 'center', width: 20, marginRight: Layout.spacing.sm },
+        timelineDotOuter: {
+          width: 20,
+          height: 20,
+          borderRadius: 10,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        timelineDot: { width: 10, height: 10, borderRadius: 5 },
+        timelineConnector: {
+          width: 3,
+          flex: 1,
+          backgroundColor: colors.lightGray,
+          minHeight: 22,
+          marginVertical: 3,
+          borderRadius: 2,
+        },
+        timelineContent: { flex: 1, minWidth: 0, paddingBottom: Layout.spacing.lg },
+        timelineMessage: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.text,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        locationRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 3 },
+        locationText: {
+          flexShrink: 1,
+          fontSize: Typography.fontSize.xs,
+          color: colors.textSecondary,
+        },
+        timelineTime: {
+          fontSize: Typography.fontSize.xs,
+          color: colors.muted,
+          marginTop: 4,
+        },
+        addressText: {
+          fontSize: Typography.fontSize.sm,
+          color: colors.textSecondary,
+          lineHeight: Typography.leading.md,
+        },
+        itemRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Layout.spacing.md,
+          paddingVertical: Layout.spacing.sm + 2,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        },
+        itemRowLast: { borderBottomWidth: 0, paddingBottom: 0 },
+        itemName: {
+          flex: 1,
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.text,
+          fontWeight: Typography.fontWeight.medium,
+        },
+        itemDetail: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.primary,
+          fontWeight: Typography.fontWeight.bold,
+        },
+      }),
+    [colors]
+  );
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const [tracking, setTracking] = useState<TrackingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  /** Display-only: renders the failure the catch block already handles. */
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   const fetchTracking = useCallback(async () => {
     try {
       const response = await api.get(`/payments/tracking/${orderId}`);
       if (response.data.success) {
         setTracking(response.data.tracking);
+        setLoadError(null);
       }
     } catch (error) {
       console.error('Fetch tracking error:', error);
+      setLoadError(error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -245,35 +303,31 @@ export default function TrackOrderScreen() {
     return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+  const eventColor = (status: string) => {
+    if (status === 'cancelled') return colors.error;
+    if (status === 'pending') return colors.warning;
+    return colors.primary;
+  };
+
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.secondary} />
-          <Text style={styles.loadingText}>Fetching tracking info...</Text>
-        </View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <ScreenHeader title="Track Order" onBack={() => router.back()} />
+        <Loading label="Fetching tracking info…" />
+      </View>
     );
   }
 
   if (!tracking) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={colors.secondary} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Track Order</Text>
-          <View style={{ width: 24 }} />
-        </View>
-        <View style={styles.centerContainer}>
-          <Ionicons name="alert-circle-outline" size={60} color={colors.gray} />
-          <Text style={styles.errorText}>Could not load tracking information.</Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={fetchTracking}>
-            <Text style={styles.retryBtnText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <View style={styles.container}>
+        <ScreenHeader title="Track Order" onBack={() => router.back()} />
+        <ErrorState
+          title="Tracking unavailable"
+          message={friendlyError(loadError, 'We could not load tracking information for this order.')}
+          onRetry={fetchTracking}
+        />
+      </View>
     );
   }
 
@@ -281,95 +335,151 @@ export default function TrackOrderScreen() {
   const currentStatusIndex = STATUS_ORDER.indexOf(tracking.status);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.secondary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Track Order</Text>
-        <TouchableOpacity onPress={fetchTracking} style={styles.refreshBtn}>
-          <Ionicons name="refresh-outline" size={22} color={colors.secondary} />
-        </TouchableOpacity>
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="Track Order"
+        onBack={() => router.back()}
+        iconActions={[
+          {
+            icon: 'refresh',
+            onPress: fetchTracking,
+            accessibilityLabel: 'Refresh tracking',
+          },
+        ]}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.secondary]} />}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.primary]} />
+        }
       >
         {/* Order Summary Card */}
-        <View style={styles.summaryCard}>
+        <Card padded={false} style={styles.card}>
           <View style={styles.summaryRow}>
-            <Text style={styles.orderNumber}>{tracking.orderNumber}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[tracking.status] || colors.gray) + '20' }]}>
-              <Text style={[styles.statusText, { color: STATUS_COLORS[tracking.status] || colors.gray }]}>
-                {tracking.status.toUpperCase()}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.orderNumber} numberOfLines={1}>
+                {tracking.orderNumber}
+              </Text>
+              <Text style={styles.orderDate}>
+                Placed on {formatDateShort(tracking.createdAt)}
               </Text>
             </View>
+            <Badge
+              label={tracking.status.toUpperCase()}
+              tone={STATUS_TONES[tracking.status] || 'neutral'}
+              size="md"
+              icon={STATUS_ICONS[tracking.status]}
+            />
           </View>
-          <Text style={styles.orderDate}>Placed on {formatDateShort(tracking.createdAt)}</Text>
 
           {tracking.estimatedDelivery && !isCancelled && (
-            <View style={styles.etaRow}>
-              <Ionicons name="calendar-outline" size={15} color={colors.secondary} />
-              <Text style={styles.etaText}>
-                Est. Delivery: <Text style={styles.etaBold}>{formatDateShort(tracking.estimatedDelivery)}</Text>
-              </Text>
+            <View style={styles.metaRow}>
+              <View style={styles.metaIconWell}>
+                <Ionicons name="calendar-outline" size={16} color={colors.primary} />
+              </View>
+              <View style={styles.metaBody}>
+                <Text style={styles.metaLabel}>Estimated delivery</Text>
+                <Text style={styles.metaValue} numberOfLines={1}>
+                  {formatDateShort(tracking.estimatedDelivery)}
+                </Text>
+              </View>
             </View>
           )}
 
-          <View style={styles.paymentRow}>
-            <Ionicons name="card-outline" size={14} color={colors.gray} />
-            <Text style={styles.paymentText}>
-              {tracking.paymentMethod.replace('_', ' ').toUpperCase()} ·{' '}
-              <Text style={{ color: tracking.paymentStatus === 'paid' ? colors.secondary : '#EF6C00' }}>
-                {tracking.paymentStatus.toUpperCase()}
+          <View style={styles.metaRow}>
+            <View style={styles.metaIconWell}>
+              <Ionicons name="card-outline" size={16} color={colors.primary} />
+            </View>
+            <View style={styles.metaBody}>
+              <Text style={styles.metaLabel}>Payment</Text>
+              <Text style={styles.metaValue} numberOfLines={1} ellipsizeMode="middle">
+                {tracking.paymentMethod.replace('_', ' ').toUpperCase()}
               </Text>
-            </Text>
+            </View>
+            <Badge
+              label={tracking.paymentStatus.toUpperCase()}
+              tone={tracking.paymentStatus === 'paid' ? 'success' : 'warning'}
+            />
           </View>
-        </View>
+        </Card>
 
         {/* Visual Progress Stepper */}
         {!isCancelled && (
-          <View style={styles.stepperCard}>
-            <Text style={styles.sectionTitle}>Order Progress</Text>
-            <View style={styles.stepper}>
+          <Card padded={false} style={styles.card}>
+            <SectionHeader title="Order Progress" />
+            <View>
               {STATUS_ORDER.map((step, idx) => {
                 const isDone = idx <= currentStatusIndex;
                 const isActive = idx === currentStatusIndex;
-                const color = isDone ? colors.secondary : colors.border;
+                const stepEvent = tracking.events.find((e) => e.status === step);
+                const color = isDone ? colors.primary : colors.lightGray;
                 return (
                   <View key={step} style={styles.stepRow}>
                     <View style={styles.stepLeft}>
-                      <View style={[styles.stepCircle, { borderColor: color, backgroundColor: isDone ? color : colors.white }]}>
+                      <View
+                        style={[
+                          styles.stepCircle,
+                          {
+                            borderColor: color,
+                            backgroundColor: isDone ? color : colors.surface,
+                          },
+                          isActive && styles.stepCircleCurrent,
+                        ]}
+                      >
                         <Ionicons
                           name={STATUS_ICONS[step] || 'ellipse-outline'}
                           size={16}
-                          color={isDone ? colors.white : colors.border}
+                          color={isDone ? colors.white : colors.muted}
                         />
                       </View>
                       {idx < STATUS_ORDER.length - 1 && (
-                        <View style={[styles.stepLine, { backgroundColor: idx < currentStatusIndex ? colors.secondary : colors.border }]} />
+                        <View
+                          style={[
+                            styles.stepLine,
+                            {
+                              backgroundColor:
+                                idx < currentStatusIndex ? colors.primary : colors.lightGray,
+                            },
+                          ]}
+                        />
                       )}
                     </View>
                     <View style={styles.stepContent}>
-                      <Text style={[styles.stepLabel, isActive && styles.stepLabelActive]}>
+                      <Text
+                        style={[
+                          styles.stepLabel,
+                          isDone && styles.stepLabelDone,
+                          isActive && styles.stepLabelActive,
+                        ]}
+                        numberOfLines={1}
+                      >
                         {step.charAt(0).toUpperCase() + step.slice(1)}
                       </Text>
+                      {stepEvent ? (
+                        <Text style={styles.stepTime} numberOfLines={1}>
+                          {formatDate(stepEvent.timestamp)}
+                        </Text>
+                      ) : null}
                       {isActive && (
-                        <Text style={styles.stepSubLabel}>Current Status</Text>
+                        <Badge
+                          label="Current status"
+                          tone="primary"
+                          style={{ marginTop: Layout.spacing.xs }}
+                        />
                       )}
                     </View>
                   </View>
                 );
               })}
             </View>
-          </View>
+          </Card>
         )}
 
         {isCancelled && (
-          <View style={styles.timelineCard}>
-            <Text style={styles.sectionTitle}>Cancellation Details</Text>
+          <Card padded={false} style={styles.card}>
+            <SectionHeader title="Cancellation Details" />
             <Text style={styles.cancelledInfoText}>
               {tracking.cancellationReason || 'This order was cancelled by the buyer or administrator.'}
             </Text>
@@ -378,64 +488,77 @@ export default function TrackOrderScreen() {
                 Cancelled on {formatDate(tracking.cancelledAt)}
               </Text>
             ) : null}
-          </View>
+          </Card>
         )}
 
         {/* Tracking Timeline */}
-        <View style={styles.timelineCard}>
-          <Text style={styles.sectionTitle}>Tracking Timeline</Text>
+        <Card padded={false} style={styles.card}>
+          <SectionHeader title="Tracking Timeline" />
           {tracking.events.length === 0 ? (
             <Text style={styles.noEventsText}>No tracking updates yet.</Text>
           ) : (
-            tracking.events.map((event, idx) => (
-              <View key={idx} style={styles.timelineItem}>
-                <View style={styles.timelineDotCol}>
-                  <View style={[styles.timelineDot, { backgroundColor: STATUS_COLORS[event.status] || colors.secondary }]} />
-                  {idx < tracking.events.length - 1 && <View style={styles.timelineConnector} />}
-                </View>
-                <View style={styles.timelineContent}>
-                  <Text style={styles.timelineMessage}>{event.message}</Text>
-                  {event.location ? (
-                    <View style={styles.locationRow}>
-                      <Ionicons name="location-outline" size={12} color={colors.gray} />
-                      <Text style={styles.locationText}>{event.location}</Text>
+            tracking.events.map((event, idx) => {
+              const dotColor = eventColor(event.status);
+              const isLast = idx === tracking.events.length - 1;
+              return (
+                <View key={idx} style={styles.timelineItem}>
+                  <View style={styles.timelineDotCol}>
+                    <View style={[styles.timelineDotOuter, { backgroundColor: dotColor + '22' }]}>
+                      <View style={[styles.timelineDot, { backgroundColor: dotColor }]} />
                     </View>
-                  ) : null}
-                  <Text style={styles.timelineTime}>{formatDate(event.timestamp)}</Text>
+                    {!isLast && <View style={styles.timelineConnector} />}
+                  </View>
+                  <View
+                    style={[
+                      styles.timelineContent,
+                      isLast && { paddingBottom: 0 },
+                    ]}
+                  >
+                    <Text style={styles.timelineMessage}>{event.message}</Text>
+                    {event.location ? (
+                      <View style={styles.locationRow}>
+                        <Ionicons name="location-outline" size={12} color={colors.muted} />
+                        <Text style={styles.locationText} numberOfLines={1}>
+                          {event.location}
+                        </Text>
+                      </View>
+                    ) : null}
+                    <Text style={styles.timelineTime}>{formatDate(event.timestamp)}</Text>
+                  </View>
                 </View>
-              </View>
-            ))
+              );
+            })
           )}
-        </View>
+        </Card>
 
         {/* Shipping Address */}
-        <View style={styles.addressCard}>
-          <View style={styles.addressHeader}>
-            <Ionicons name="location-outline" size={18} color={colors.secondary} />
-            <Text style={styles.sectionTitle}> Delivery Address</Text>
-          </View>
+        <Card padded={false} style={styles.card}>
+          <SectionHeader title="Delivery Address" />
           <Text style={styles.addressText}>
             {tracking.shippingAddress.address}, {tracking.shippingAddress.city},{'\n'}
             {tracking.shippingAddress.state} - {tracking.shippingAddress.pincode},{'\n'}
             {tracking.shippingAddress.country}
           </Text>
-        </View>
+        </Card>
 
         {/* Items */}
-        <View style={styles.itemsCard}>
-          <Text style={styles.sectionTitle}>Items Ordered</Text>
+        <Card padded={false} style={styles.card}>
+          <SectionHeader title="Items Ordered" />
           {tracking.items.map((item, idx) => (
-            <View key={idx} style={styles.itemRow}>
-              <Text style={styles.itemName}>{item.product?.name || 'Product'}</Text>
-              <Text style={styles.itemDetail}>
+            <View
+              key={idx}
+              style={[styles.itemRow, idx === tracking.items.length - 1 && styles.itemRowLast]}
+            >
+              <Text style={styles.itemName} numberOfLines={2}>
+                {item.product?.name || 'Product'}
+              </Text>
+              <Text style={styles.itemDetail} numberOfLines={1}>
                 {item.quantity} {item.product?.unit} · ₹{(item.price * item.quantity).toFixed(2)}
               </Text>
             </View>
           ))}
-        </View>
+        </Card>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-

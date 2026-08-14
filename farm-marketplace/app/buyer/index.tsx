@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
   Alert,
   Platform,
@@ -18,6 +17,7 @@ import api from '../../services/api';
 import ThemeToggle from '../../components/ThemeToggle';
 import { registerForPushNotificationsAsync, savePushToken } from '../../services/notifications';
 import { useCart } from '../../context/CartContext';
+import { ScreenHeader, Card, Badge, StatCard, SectionHeader } from '../../components/ui';
 
 export default function BuyerDashboard() {
   const colors = useColors();
@@ -30,113 +30,75 @@ export default function BuyerDashboard() {
       flex: 1,
       backgroundColor: colors.background,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: Layout.spacing.xl,
-      paddingTop: Layout.spacing.xxl * 2,
-      paddingBottom: Layout.spacing.lg,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    headerTitle: {
-      fontSize: Typography.fontSize.xl,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
-    },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Layout.spacing.sm,
-    },
-    logoutButton: {
-      padding: Layout.spacing.sm,
-    },
     scrollContent: {
       padding: Layout.spacing.lg,
+      paddingBottom: Layout.spacing.xxl,
     },
     welcomeCard: {
-      backgroundColor: colors.card,
-      borderRadius: Layout.borderRadius.lg,
-      padding: Layout.spacing.xl,
-      alignItems: 'center',
-      marginBottom: Layout.spacing.lg,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
-    },
-    welcomeText: {
-      fontSize: Typography.fontSize.xxl,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
-      marginTop: Layout.spacing.md,
-      marginBottom: Layout.spacing.sm,
-    },
-    roleBadge: {
-      backgroundColor: colors.secondary + '15',
-      paddingHorizontal: Layout.spacing.md,
-      paddingVertical: Layout.spacing.xs,
-      borderRadius: Layout.borderRadius.md,
-    },
-    roleBadgeText: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.secondary,
-    },
-    statsContainer: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: Layout.spacing.md,
       marginBottom: Layout.spacing.lg,
-    },
-    statCard: {
-      flex: 1,
-      backgroundColor: colors.secondary + '10',
-      borderRadius: Layout.borderRadius.lg,
       padding: Layout.spacing.lg,
+    },
+    welcomeIconWell: {
+      width: 56,
+      height: 56,
+      borderRadius: Layout.borderRadius.lg,
+      backgroundColor: colors.primarySoft,
       alignItems: 'center',
-      marginHorizontal: Layout.spacing.xs,
-      borderWidth: 1,
-      borderColor: colors.secondary + '30',
-    },
-    statNumber: {
-      fontSize: Typography.fontSize.xxl,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.secondary,
-      marginTop: Layout.spacing.sm,
-    },
-    statLabel: {
-      fontSize: Typography.fontSize.sm,
-      color: colors.gray,
-      marginTop: Layout.spacing.xs,
-    },
-    actionContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    actionButton: {
-      flex: 1,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      alignItems: 'center',
-      marginHorizontal: Layout.spacing.xs,
-      flexDirection: 'row',
       justifyContent: 'center',
     },
-    actionButtonPrimary: {
-      backgroundColor: colors.secondary,
+    welcomeCopy: {
+      flex: 1,
+      minWidth: 0,
     },
-    actionButtonSecondary: {
-      backgroundColor: colors.primary,
+    welcomeText: {
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.text,
     },
-    actionButtonText: {
-      color: colors.white,
-      fontSize: Typography.fontSize.md,
+    welcomeHint: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      color: colors.textSecondary,
+      marginTop: 2,
+      marginBottom: Layout.spacing.sm,
+    },
+    statsRow: {
+      flexDirection: 'row',
+      gap: Layout.spacing.md,
+      marginBottom: Layout.spacing.xl,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      marginHorizontal: -Layout.spacing.sm,
+    },
+    tileCell: {
+      width: '50%',
+      paddingHorizontal: Layout.spacing.sm,
+      paddingBottom: Layout.spacing.md,
+    },
+    tile: {
+      minHeight: 124,
+      justifyContent: 'space-between',
+      padding: Layout.spacing.lg,
+    },
+    tileIconWell: {
+      width: 48,
+      height: 48,
+      borderRadius: Layout.borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: Layout.spacing.md,
+    },
+    tileLabel: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
       fontWeight: Typography.fontWeight.semibold,
-      marginLeft: Layout.spacing.sm,
+      color: colors.text,
     },
   }), [colors]);
 
@@ -226,65 +188,104 @@ export default function BuyerDashboard() {
     }
   };
 
+  const quickActions: {
+    label: string;
+    icon: keyof typeof Ionicons.glyphMap;
+    tint: string;
+    accent: string;
+    onPress: () => void;
+  }[] = [
+    {
+      label: 'Browse Products',
+      icon: 'search-outline',
+      tint: colors.primarySoft,
+      accent: colors.primary,
+      onPress: () => router.push('/buyer/browse'),
+    },
+    {
+      label: 'My Cart',
+      icon: 'cart-outline',
+      tint: colors.tintBlue,
+      accent: colors.info,
+      onPress: () => router.push('/buyer/cart'),
+    },
+    {
+      label: 'My Orders',
+      icon: 'receipt-outline',
+      tint: colors.tintAmber,
+      accent: colors.warning,
+      onPress: () => router.push('/buyer/orders'),
+    },
+  ];
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Buyer Dashboard</Text>
-        <View style={styles.headerActions}>
-          <ThemeToggle />
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color={colors.secondary} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader
+        title={`Hi, ${userName}`}
+        subtitle="Fresh from the farm, straight to you"
+        align="left"
+        iconActions={[
+          {
+            icon: 'log-out-outline',
+            onPress: handleLogout,
+            color: colors.error,
+            accessibilityLabel: 'Logout',
+          },
+        ]}
+        actions={<ThemeToggle />}
+      />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.welcomeCard}>
-          <Ionicons name="storefront-outline" size={40} color={colors.secondary} />
-          <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>Buyer</Text>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <Card elevation="sm" padded={false} style={styles.welcomeCard}>
+          <View style={styles.welcomeIconWell}>
+            <Ionicons name="storefront-outline" size={28} color={colors.primary} />
           </View>
-        </View>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Ionicons name="receipt-outline" size={32} color={colors.secondary} />
-            <Text style={styles.statNumber}>{ordersCount}</Text>
-            <Text style={styles.statLabel}>Orders</Text>
+          <View style={styles.welcomeCopy}>
+            <Text style={styles.welcomeText} numberOfLines={2}>
+              Welcome, {userName}!
+            </Text>
+            <Text style={styles.welcomeHint} numberOfLines={2}>
+              Your marketplace for verified farm produce.
+            </Text>
+            <Badge label="Buyer" tone="primary" icon="person-outline" />
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="cart-outline" size={32} color={colors.secondary} />
-            <Text style={styles.statNumber}>{summary.itemCount}</Text>
-            <Text style={styles.statLabel}>Cart Items</Text>
-          </View>
+        </Card>
+
+        <View style={styles.statsRow}>
+          <StatCard
+            icon="receipt-outline"
+            value={ordersCount}
+            label="Orders"
+            accent={colors.primary}
+            tint={colors.primarySoft}
+          />
+          <StatCard
+            icon="cart-outline"
+            value={summary.itemCount}
+            label="Cart Items"
+            accent={colors.info}
+            tint={colors.tintBlue}
+          />
         </View>
 
-        <View style={styles.actionContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonPrimary]}
-            onPress={() => router.push('/buyer/browse')}
-          >
-            <Ionicons name="search-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>Browse Products</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/buyer/cart')}
-          >
-            <Ionicons name="cart-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>My Cart</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader title="Quick Actions" />
 
-        <View style={[styles.actionContainer, { marginTop: Layout.spacing.lg }]}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/buyer/orders')}
-          >
-            <Ionicons name="receipt-outline" size={24} color={colors.white} />
-            <Text style={styles.actionButtonText}>My Orders</Text>
-          </TouchableOpacity>
+        <View style={styles.grid}>
+          {quickActions.map((action) => (
+            <View key={action.label} style={styles.tileCell}>
+              <Card elevation="sm" padded={false} onPress={action.onPress} style={styles.tile}>
+                <View style={[styles.tileIconWell, { backgroundColor: action.tint }]}>
+                  <Ionicons name={action.icon} size={24} color={action.accent} />
+                </View>
+                <Text style={styles.tileLabel} numberOfLines={2}>
+                  {action.label}
+                </Text>
+              </Card>
+            </View>
+          ))}
         </View>
       </ScrollView>
     </View>

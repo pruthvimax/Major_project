@@ -3,8 +3,8 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   ScrollView,
+  TouchableOpacity,
   Alert,
   Platform,
   RefreshControl,
@@ -17,7 +17,16 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import ThemeToggle from '../../components/ThemeToggle';
-import { AdminStatCardSkeleton } from '../../components/admin/AdminSkeleton';
+import {
+  ScreenHeader,
+  Card,
+  Badge,
+  StatCard,
+  SectionHeader,
+  ErrorState,
+  ListSkeleton,
+  StatRowSkeleton,
+} from '../../components/ui';
 
 interface DashboardCards {
   totalFarmers: number;
@@ -38,6 +47,15 @@ interface Activity {
   amount?: number;
   createdAt: string;
 }
+
+/** Splits the stat tiles into rows of two so the grid never overflows. */
+const chunkPairs = <T,>(items: T[]): T[][] => {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) {
+    rows.push(items.slice(i, i + 2));
+  }
+  return rows;
+};
 
 export default function AdminDashboard() {
   const colors = useColors();
@@ -64,170 +82,122 @@ export default function AdminDashboard() {
       flex: 1,
       backgroundColor: colors.background,
     },
-    header: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      paddingHorizontal: Layout.spacing.xl,
-      paddingTop: Layout.spacing.xxl * 2,
-      paddingBottom: Layout.spacing.lg,
-      backgroundColor: colors.card,
-      borderBottomWidth: 1,
-      borderBottomColor: colors.border,
-    },
-    headerTitle: {
-      fontSize: Typography.fontSize.xl,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
-    },
     headerActions: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: Layout.spacing.sm,
+      gap: Layout.spacing.xs,
     },
     logoutButton: {
-      padding: Layout.spacing.sm,
+      width: 40,
+      height: 40,
+      borderRadius: Layout.borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.surfaceAlt,
     },
     scrollContent: {
       padding: Layout.spacing.lg,
       paddingBottom: Layout.spacing.xxl,
     },
     welcomeCard: {
-      backgroundColor: colors.card,
-      borderRadius: Layout.borderRadius.lg,
-      padding: Layout.spacing.xl,
       alignItems: 'center',
+      paddingVertical: Layout.spacing.xl,
       marginBottom: Layout.spacing.lg,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 8,
-      elevation: 3,
-      borderWidth: 1,
-      borderColor: colors.border,
+    },
+    welcomeIcon: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
     },
     welcomeText: {
       fontSize: Typography.fontSize.xxl,
+      lineHeight: Typography.leading.xxl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.text,
       marginTop: Layout.spacing.md,
       marginBottom: Layout.spacing.sm,
-    },
-    roleBadge: {
-      backgroundColor: colors.admin + '15',
-      paddingHorizontal: Layout.spacing.md,
-      paddingVertical: Layout.spacing.xs,
-      borderRadius: Layout.borderRadius.md,
-    },
-    roleBadgeText: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.admin,
-    },
-    statsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      marginHorizontal: -4,
-      marginBottom: Layout.spacing.md,
-    },
-    statCard: {
-      width: '33.33%',
-      padding: 4,
-    },
-    statInner: {
-      borderRadius: Layout.borderRadius.lg,
-      padding: Layout.spacing.md,
-      alignItems: 'center',
-      minHeight: 110,
-      justifyContent: 'center',
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    statNumber: {
-      fontSize: Typography.fontSize.md,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
-      marginTop: Layout.spacing.xs,
-    },
-    statLabel: {
-      fontSize: 10,
-      color: colors.gray,
-      marginTop: 2,
       textAlign: 'center',
     },
-    sectionTitle: {
-      fontSize: Typography.fontSize.md,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
-      marginBottom: Layout.spacing.sm,
-      marginTop: Layout.spacing.sm,
+    statsBlock: {
+      marginBottom: Layout.spacing.lg,
+      gap: Layout.spacing.md,
     },
-    activityCard: {
-      backgroundColor: colors.card,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      marginBottom: Layout.spacing.xs,
-      borderWidth: 1,
-      borderColor: colors.border,
-      borderLeftWidth: 4,
-      borderLeftColor: colors.primary,
-    },
-    activityHeader: {
+    statsRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 4,
+      gap: Layout.spacing.md,
     },
-    activityText: { color: colors.black, fontSize: 13, fontWeight: '600', flex: 1 },
-    activityMeta: { color: colors.gray, fontSize: 11, marginTop: 2 },
-    actionContainer: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: Layout.spacing.sm,
-    },
-    actionButton: {
+    statSpacer: {
       flex: 1,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      alignItems: 'center',
-      marginHorizontal: Layout.spacing.xs,
+    },
+    errorBlock: {
+      marginBottom: Layout.spacing.lg,
+    },
+    navList: {
+      gap: Layout.spacing.sm + 2,
+      marginBottom: Layout.spacing.xl,
+    },
+    navCard: {
       flexDirection: 'row',
+      alignItems: 'center',
+      gap: Layout.spacing.md,
+      minHeight: Layout.touchTarget + 12,
+    },
+    navIcon: {
+      width: 44,
+      height: 44,
+      borderRadius: Layout.borderRadius.md,
+      alignItems: 'center',
       justifyContent: 'center',
     },
-    actionButtonPrimary: { backgroundColor: colors.admin },
-    actionButtonSecondary: { backgroundColor: colors.primary },
-    actionButtonTertiary: { backgroundColor: colors.secondary },
-    actionButtonQuaternary: { backgroundColor: colors.primaryDark },
-    actionButtonQuinary: { backgroundColor: '#7B1FA2' },
-    actionButtonText: {
-      color: colors.white,
-      fontSize: Typography.fontSize.sm,
+    navTitle: {
+      fontSize: Typography.fontSize.md,
+      lineHeight: Typography.leading.md,
       fontWeight: Typography.fontWeight.semibold,
-      marginLeft: Layout.spacing.sm,
+      color: colors.text,
+      flex: 1,
+      flexShrink: 1,
     },
-    errorCard: {
-      backgroundColor: '#FFEBEE',
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      marginBottom: Layout.spacing.md,
+    activityCard: {
+      marginBottom: Layout.spacing.sm + 2,
+    },
+    activityRow: {
       flexDirection: 'row',
       alignItems: 'center',
+      gap: Layout.spacing.md,
     },
-    errorText: {
-      color: '#C62828',
+    activityIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: Layout.borderRadius.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    activityText: {
       fontSize: Typography.fontSize.sm,
-      flex: 1,
-      marginLeft: Layout.spacing.sm,
+      lineHeight: Typography.leading.sm,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.text,
     },
-    viewAllButton: {
-      alignSelf: 'flex-end',
-      paddingVertical: Layout.spacing.xs,
-      paddingHorizontal: Layout.spacing.sm,
-    },
-    viewAllText: {
-      color: colors.admin,
+    activityMeta: {
       fontSize: Typography.fontSize.xs,
-      fontWeight: '700',
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
+    activityAmount: {
+      fontSize: Typography.fontSize.sm,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.primary,
+      flexShrink: 0,
+    },
+    emptyActivity: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      color: colors.textSecondary,
+      textAlign: 'center',
     },
   }), [colors]);
 
@@ -356,165 +326,211 @@ export default function AdminDashboard() {
   };
 
   const statItems = [
-    { icon: 'people-outline' as const, value: cards.totalFarmers, label: 'Farmers', color: colors.primary, bgColor: colors.primary + '15' },
-    { icon: 'person-outline' as const, value: cards.totalBuyers, label: 'Buyers', color: colors.secondary, bgColor: colors.secondary + '15' },
-    { icon: 'cube-outline' as const, value: cards.totalProducts, label: 'Products', color: colors.admin, bgColor: colors.admin + '15' },
-    { icon: 'receipt-outline' as const, value: cards.totalOrders, label: 'Orders', color: colors.warning, bgColor: colors.warning + '15' },
-    { icon: 'time-outline' as const, value: cards.pendingOrders, label: 'Pending', color: '#EF6C00', bgColor: '#FFF3E0' },
-    { icon: 'checkmark-done-outline' as const, value: cards.deliveredOrders, label: 'Delivered', color: '#2E7D32', bgColor: '#E8F5E9' },
-    { icon: 'close-circle-outline' as const, value: cards.cancelledOrders, label: 'Cancelled', color: '#C62828', bgColor: '#FFEBEE' },
-    { icon: 'cash-outline' as const, value: `₹${(cards.revenue / 1000).toFixed(1)}k`, label: 'Revenue', color: colors.success, bgColor: colors.success + '15' },
-    { icon: 'link-outline' as const, value: cards.blockchainTransactions, label: 'Chain Tx', color: colors.info, bgColor: colors.info + '15' },
+    { icon: 'people-outline' as const, value: cards.totalFarmers, label: 'Farmers', color: colors.primary, bgColor: colors.primarySoft },
+    { icon: 'person-outline' as const, value: cards.totalBuyers, label: 'Buyers', color: colors.secondary, bgColor: colors.secondarySoft },
+    { icon: 'cube-outline' as const, value: cards.totalProducts, label: 'Products', color: colors.info, bgColor: colors.tintBlue },
+    { icon: 'receipt-outline' as const, value: cards.totalOrders, label: 'Orders', color: colors.accent, bgColor: colors.tintAmber },
+    { icon: 'time-outline' as const, value: cards.pendingOrders, label: 'Pending', color: colors.warning, bgColor: colors.warningSoft },
+    { icon: 'checkmark-done-outline' as const, value: cards.deliveredOrders, label: 'Delivered', color: colors.success, bgColor: colors.successSoft },
+    { icon: 'close-circle-outline' as const, value: cards.cancelledOrders, label: 'Cancelled', color: colors.error, bgColor: colors.errorSoft },
+    { icon: 'cash-outline' as const, value: `₹${(cards.revenue / 1000).toFixed(1)}k`, label: 'Revenue', color: colors.primaryDark, bgColor: colors.tintGreen },
+    { icon: 'link-outline' as const, value: cards.blockchainTransactions, label: 'Chain Tx', color: colors.info, bgColor: colors.tintSky },
+  ];
+
+  const statRows = chunkPairs(statItems);
+
+  const navItems = [
+    {
+      icon: 'people-outline' as const,
+      label: 'Users',
+      route: '/admin/users' as const,
+      accent: colors.primary,
+      tint: colors.primarySoft,
+      badge: 0,
+    },
+    {
+      icon: 'cube-outline' as const,
+      label: 'Products',
+      route: '/admin/products' as const,
+      accent: colors.secondary,
+      tint: colors.secondarySoft,
+      badge: 0,
+    },
+    {
+      icon: 'receipt-outline' as const,
+      label: 'Orders',
+      route: '/admin/orders' as const,
+      accent: colors.accent,
+      tint: colors.tintAmber,
+      badge: cards.pendingOrders,
+    },
+    {
+      icon: 'bar-chart-outline' as const,
+      label: 'Analytics',
+      route: '/admin/analytics' as const,
+      accent: colors.info,
+      tint: colors.tintBlue,
+      badge: 0,
+    },
+    {
+      icon: 'warning-outline' as const,
+      label: 'Disputes',
+      route: '/admin/disputes' as const,
+      accent: colors.error,
+      tint: colors.errorSoft,
+      badge: cards.disputedOrders,
+    },
+    {
+      icon: 'settings-outline' as const,
+      label: 'Settings',
+      route: '/admin/settings' as const,
+      accent: colors.admin,
+      tint: colors.lighterGray,
+      badge: 0,
+    },
   ];
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Admin Dashboard</Text>
-        <View style={styles.headerActions}>
-          <ThemeToggle />
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={24} color={colors.admin} />
-          </TouchableOpacity>
-        </View>
-      </View>
+      <ScreenHeader
+        title="Admin Dashboard"
+        align="left"
+        actions={
+          <View style={styles.headerActions}>
+            <ThemeToggle />
+            <TouchableOpacity
+              onPress={handleLogout}
+              style={styles.logoutButton}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Logout"
+            >
+              <Ionicons name="log-out-outline" size={20} color={colors.admin} />
+            </TouchableOpacity>
+          </View>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.admin]} />
         }
       >
-        <View style={styles.welcomeCard}>
-          <Ionicons name="shield-checkmark-outline" size={40} color={colors.admin} />
-          <Text style={styles.welcomeText}>Welcome, {userName}!</Text>
-          <View style={styles.roleBadge}>
-            <Text style={styles.roleBadgeText}>Administrator</Text>
+        <Card style={styles.welcomeCard} elevation="sm">
+          <View style={styles.welcomeIcon}>
+            <Ionicons name="shield-checkmark-outline" size={32} color={colors.primary} />
           </View>
-        </View>
+          <Text style={styles.welcomeText} numberOfLines={2}>
+            Welcome, {userName}!
+          </Text>
+          <Badge label="Administrator" tone="primary" size="md" icon="ribbon-outline" />
+        </Card>
 
         {error && (
-          <View style={styles.errorCard}>
-            <Ionicons name="alert-circle-outline" size={20} color="#C62828" />
-            <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.errorBlock}>
+            <ErrorState
+              compact
+              icon="alert-circle-outline"
+              title="Live data unavailable"
+              message={error}
+              onRetry={fetchAnalytics}
+            />
           </View>
         )}
 
+        <SectionHeader title="Overview" subtitle="Marketplace at a glance" />
+
         {loading ? (
-          <AdminStatCardSkeleton count={9} />
+          <View style={styles.statsBlock}>
+            {[0, 1, 2, 3, 4].map((key) => (
+              <StatRowSkeleton key={key} count={2} />
+            ))}
+          </View>
         ) : (
-          <View style={styles.statsGrid}>
-            {statItems.map((item) => (
-              <View key={item.label} style={styles.statCard}>
-                <View style={[styles.statInner, { backgroundColor: item.bgColor }]}>
-                  <Ionicons name={item.icon} size={24} color={item.color} />
-                  <Text style={[styles.statNumber, { color: item.color }]}>{item.value}</Text>
-                  <Text style={styles.statLabel}>{item.label}</Text>
-                </View>
+          <View style={styles.statsBlock}>
+            {statRows.map((row, rowIdx) => (
+              <View key={`stat-row-${rowIdx}`} style={styles.statsRow}>
+                {row.map((item) => (
+                  <StatCard
+                    key={item.label}
+                    icon={item.icon}
+                    value={item.value}
+                    label={item.label}
+                    accent={item.color}
+                    tint={item.bgColor}
+                  />
+                ))}
+                {row.length === 1 && <View style={styles.statSpacer} />}
               </View>
             ))}
           </View>
         )}
 
-        <View style={styles.actionContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonPrimary]}
-            onPress={() => router.push('/admin/users')}
-          >
-            <Ionicons name="people-outline" size={20} color={colors.white} />
-            <Text style={styles.actionButtonText}>Users</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonSecondary]}
-            onPress={() => router.push('/admin/products')}
-          >
-            <Ionicons name="cube-outline" size={20} color={colors.white} />
-            <Text style={styles.actionButtonText}>Products</Text>
-          </TouchableOpacity>
-        </View>
+        <SectionHeader title="Management" subtitle="Jump into a section" />
 
-        <View style={styles.actionContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonTertiary]}
-            onPress={() => router.push('/admin/orders')}
-          >
-            <Ionicons name="receipt-outline" size={20} color={colors.white} />
-            <Text style={styles.actionButtonText}>Orders</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonQuaternary]}
-            onPress={() => router.push('/admin/analytics')}
-          >
-            <Ionicons name="bar-chart-outline" size={20} color={colors.white} />
-            <Text style={styles.actionButtonText}>Analytics</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.actionContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, styles.actionButtonQuinary]}
-            onPress={() => router.push('/admin/disputes')}
-          >
-            <Ionicons name="warning-outline" size={20} color={colors.white} />
-            <Text style={styles.actionButtonText}>Disputes</Text>
-            {cards.disputedOrders > 0 && (
-              <View style={{
-                backgroundColor: '#FFEBEE',
-                borderRadius: 10,
-                paddingHorizontal: 6,
-                paddingVertical: 2,
-                marginLeft: 6,
-              }}>
-                <Text style={{ color: '#C62828', fontSize: 10, fontWeight: '700' }}>
-                  {cards.disputedOrders}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: colors.gray }]}
-            onPress={() => router.push('/admin/settings')}
-          >
-            <Ionicons name="settings-outline" size={20} color={colors.white} />
-            <Text style={styles.actionButtonText}>Settings</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={styles.sectionTitle}>Latest Activities</Text>
-          <TouchableOpacity
-            style={styles.viewAllButton}
-            onPress={() => router.push('/admin/analytics')}
-          >
-            <Text style={styles.viewAllText}>View All</Text>
-          </TouchableOpacity>
-        </View>
-
-        {activities.slice(0, 8).map((a, idx) => {
-          const icon = getActivityIcon(a.type);
-          return (
-            <View key={idx} style={styles.activityCard}>
-              <View style={styles.activityHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-                  <Ionicons name={icon.name} size={16} color={icon.color} style={{ marginRight: 6 }} />
-                  <Text style={styles.activityText} numberOfLines={1}>{a.message}</Text>
+        <View style={styles.navList}>
+          {navItems.map((item) => (
+            <Card key={item.label} onPress={() => router.push(item.route)} elevation="xs">
+              <View style={styles.navCard}>
+                <View style={[styles.navIcon, { backgroundColor: item.tint }]}>
+                  <Ionicons name={item.icon} size={22} color={item.accent} />
                 </View>
-                {a.amount !== undefined && (
-                  <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 12 }}>
-                    ₹{a.amount}
-                  </Text>
+                <Text style={styles.navTitle} numberOfLines={1}>
+                  {item.label}
+                </Text>
+                {item.badge > 0 && (
+                  <Badge
+                    label={String(item.badge)}
+                    tone={item.label === 'Disputes' ? 'error' : 'warning'}
+                  />
                 )}
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </View>
-              <Text style={styles.activityMeta}>
-                {a.type} · {new Date(a.createdAt).toLocaleString()}
-              </Text>
-            </View>
-          );
-        })}
-        {activities.length === 0 && !loading && (
-          <View style={styles.activityCard}>
-            <Text style={styles.activityMeta}>No recent activity</Text>
-          </View>
+            </Card>
+          ))}
+        </View>
+
+        <SectionHeader
+          title="Latest Activities"
+          actionLabel="View All"
+          onAction={() => router.push('/admin/analytics')}
+        />
+
+        {loading ? (
+          <ListSkeleton count={3} />
+        ) : (
+          <>
+            {activities.slice(0, 8).map((a, idx) => {
+              const icon = getActivityIcon(a.type);
+              return (
+                <Card key={idx} style={styles.activityCard} elevation="xs">
+                  <View style={styles.activityRow}>
+                    <View style={[styles.activityIcon, { backgroundColor: colors.surfaceAlt }]}>
+                      <Ionicons name={icon.name} size={18} color={icon.color} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.activityText} numberOfLines={2}>
+                        {a.message}
+                      </Text>
+                      <Text style={styles.activityMeta} numberOfLines={1}>
+                        {a.type} · {new Date(a.createdAt).toLocaleString()}
+                      </Text>
+                    </View>
+                    {a.amount !== undefined && (
+                      <Text style={styles.activityAmount}>₹{a.amount}</Text>
+                    )}
+                  </View>
+                </Card>
+              );
+            })}
+            {activities.length === 0 && (
+              <Card style={styles.activityCard} elevation="xs">
+                <Text style={styles.emptyActivity}>No recent activity</Text>
+              </Card>
+            )}
+          </>
         )}
       </ScrollView>
     </View>

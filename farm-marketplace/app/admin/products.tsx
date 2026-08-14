@@ -5,12 +5,11 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   Modal,
   ScrollView,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
@@ -21,8 +20,14 @@ import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
 import StatusBadge from '../../components/admin/StatusBadge';
 import ConfirmDialog from '../../components/admin/ConfirmDialog';
-import EmptyState from '../../components/EmptyState';
 import { AdminListSkeleton } from '../../components/admin/AdminSkeleton';
+import {
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  friendlyError,
+} from '../../components/ui';
 
 interface Product {
   _id: string;
@@ -49,6 +54,7 @@ interface Product {
 
 export default function ManageProductsScreen() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,161 +72,218 @@ export default function ManageProductsScreen() {
 
   const styles = useMemo(() => StyleSheet.create({
     container: { flex: 1, backgroundColor: colors.background },
-    centerContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: Layout.spacing.xl,
+    listContainer: {
+      paddingHorizontal: Layout.spacing.md,
+      paddingTop: Layout.spacing.sm,
+      paddingBottom: Layout.spacing.xxl,
     },
-    loadingText: { marginTop: Layout.spacing.md, color: colors.gray },
-    listContainer: { padding: Layout.spacing.md },
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.lg,
-      marginBottom: Layout.spacing.md,
-      borderWidth: 1,
-      borderColor: colors.border,
-    },
-    cardHeader: {
+
+    // List card
+    card: { marginBottom: Layout.spacing.md - 2 },
+    cardTop: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
       alignItems: 'flex-start',
-      marginBottom: Layout.spacing.sm,
+      gap: Layout.spacing.md,
     },
+    iconWell: {
+      width: 46,
+      height: 46,
+      borderRadius: Layout.borderRadius.md,
+      backgroundColor: colors.primarySoft,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    cardHeadings: { flex: 1, minWidth: 0 },
     productName: {
       fontSize: Typography.fontSize.md,
+      lineHeight: Typography.leading.md,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
-      flex: 1,
-      marginRight: Layout.spacing.sm,
+      color: colors.text,
     },
-    productDetail: {
+    productCategory: {
       fontSize: Typography.fontSize.xs,
-      color: colors.gray,
-      marginVertical: 1,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+      letterSpacing: 0.4,
+    },
+    metaList: { marginTop: Layout.spacing.md, gap: Layout.spacing.xs + 2 },
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Layout.spacing.sm,
+    },
+    metaText: {
+      flex: 1,
+      minWidth: 0,
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      color: colors.textSecondary,
+    },
+    priceRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      marginTop: Layout.spacing.md,
     },
     priceText: {
-      fontSize: Typography.fontSize.md,
-      fontWeight: Typography.fontWeight.bold,
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
+      fontWeight: Typography.fontWeight.extrabold,
       color: colors.primary,
-      marginTop: 6,
     },
     unitText: {
       fontSize: Typography.fontSize.xs,
-      color: colors.gray,
-      fontWeight: 'normal',
+      color: colors.textSecondary,
+      fontWeight: Typography.fontWeight.medium,
+      marginLeft: Layout.spacing.xs,
     },
-    actionRow: {
+    cardActions: {
       flexDirection: 'row',
+      flexWrap: 'wrap',
       justifyContent: 'flex-end',
+      gap: Layout.spacing.sm,
       borderTopWidth: 1,
       borderTopColor: colors.border,
-      paddingTop: Layout.spacing.sm,
-      marginTop: Layout.spacing.sm,
+      marginTop: Layout.spacing.md,
+      paddingTop: Layout.spacing.md,
     },
-    actionButton: { padding: Layout.spacing.sm },
-    // Modal styles
+
+    errorBanner: { paddingHorizontal: Layout.spacing.md, paddingVertical: Layout.spacing.md },
+
+    // Modal
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: colors.overlay,
       justifyContent: 'flex-end',
     },
-    modalContent: {
+    modalSheet: {
       backgroundColor: colors.card,
-      borderTopLeftRadius: Layout.borderRadius.xl,
-      borderTopRightRadius: Layout.borderRadius.xl,
-      padding: Layout.spacing.xl,
-      maxHeight: '85%',
+      borderTopLeftRadius: Layout.borderRadius.xxl,
+      borderTopRightRadius: Layout.borderRadius.xxl,
+      paddingHorizontal: Layout.spacing.lg,
+      paddingTop: Layout.spacing.sm,
+      maxHeight: '88%',
+      ...Layout.shadow.lg,
+    },
+    sheetHandle: {
+      alignSelf: 'center',
+      width: 44,
+      height: 5,
+      borderRadius: Layout.borderRadius.full,
+      backgroundColor: colors.lightGray,
+      marginBottom: Layout.spacing.sm,
     },
     modalHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: Layout.spacing.md,
+      gap: Layout.spacing.md,
+      paddingBottom: Layout.spacing.md,
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
     },
     modalTitle: {
-      fontSize: Typography.fontSize.lg,
+      flex: 1,
+      fontSize: Typography.fontSize.xl,
+      lineHeight: Typography.leading.xl,
       fontWeight: Typography.fontWeight.bold,
-      color: colors.black,
+      color: colors.text,
     },
-    closeButton: { padding: Layout.spacing.xs },
+    closeButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: colors.surfaceAlt,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    sheetBody: {
+      paddingTop: Layout.spacing.lg,
+      paddingBottom: Layout.spacing.xl + insets.bottom,
+    },
     productImagePlaceholder: {
-      height: 120,
-      borderRadius: Layout.borderRadius.md,
-      backgroundColor: colors.primary + '10',
+      height: 132,
+      borderRadius: Layout.borderRadius.lg,
+      backgroundColor: colors.primaryTint,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: Layout.spacing.md,
     },
     productNameCenter: {
       fontSize: Typography.fontSize.lg,
-      fontWeight: '700',
-      color: colors.black,
+      lineHeight: Typography.leading.lg,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.text,
       textAlign: 'center',
     },
     badgeRow: {
       flexDirection: 'row',
       justifyContent: 'center',
       gap: Layout.spacing.sm,
-      marginTop: Layout.spacing.sm,
+      marginTop: Layout.spacing.md,
       flexWrap: 'wrap',
     },
     detailSection: {
       marginTop: Layout.spacing.lg,
-      borderTopWidth: 1,
-      borderTopColor: colors.border,
-      paddingTop: Layout.spacing.md,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: Layout.borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
     },
     detailRow: {
       flexDirection: 'row',
+      alignItems: 'flex-start',
       justifyContent: 'space-between',
-      marginVertical: 4,
+      gap: Layout.spacing.md,
+      paddingVertical: Layout.spacing.sm,
     },
-    detailLabel: { fontSize: Typography.fontSize.xs, color: colors.gray },
+    detailLabel: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      flexShrink: 0,
+    },
     detailValue: {
       fontSize: Typography.fontSize.sm,
-      color: colors.black,
-      fontWeight: '600',
+      lineHeight: Typography.leading.sm,
+      color: colors.text,
+      fontWeight: Typography.fontWeight.semibold,
       flex: 1,
+      flexShrink: 1,
       textAlign: 'right',
     },
+    sectionLabel: {
+      fontSize: Typography.fontSize.sm,
+      lineHeight: Typography.leading.sm,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.text,
+      marginTop: Layout.spacing.lg,
+      marginBottom: Layout.spacing.sm,
+    },
     descriptionBox: {
-      backgroundColor: colors.lighterGray,
-      borderRadius: Layout.borderRadius.sm,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: Layout.borderRadius.lg,
+      borderWidth: 1,
+      borderColor: colors.border,
       padding: Layout.spacing.md,
-      marginTop: Layout.spacing.sm,
     },
     descriptionText: {
       fontSize: Typography.fontSize.sm,
-      color: colors.black,
-      lineHeight: 20,
+      color: colors.text,
+      lineHeight: Typography.leading.sm,
     },
     actionButtonRow: {
       flexDirection: 'row',
       gap: Layout.spacing.sm,
-      marginTop: Layout.spacing.lg,
+      marginTop: Layout.spacing.xl,
       flexWrap: 'wrap',
     },
-    actionBtn: {
-      flex: 1,
-      minWidth: '45%',
-      paddingVertical: Layout.spacing.md,
-      borderRadius: Layout.borderRadius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    actionBtnText: { color: colors.white, fontWeight: '700', fontSize: Typography.fontSize.sm },
-    errorCard: {
-      backgroundColor: '#FFEBEE',
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.md,
-      margin: Layout.spacing.md,
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    errorText: { color: '#C62828', fontSize: Typography.fontSize.sm, flex: 1, marginLeft: Layout.spacing.sm },
-  }), [colors]);
+    actionBtn: { flex: 1, minWidth: '45%' },
+  }), [colors, insets.bottom]);
 
   const fetchProducts = useCallback(async () => {
     try {
@@ -359,74 +422,113 @@ export default function ManageProductsScreen() {
 
   const confirmProps = getConfirmDialogProps();
 
+  const hasFilters = search.trim() !== '' || selectedFilter !== 'all';
+
+  const clearFilters = () => {
+    setSearch('');
+    setSelectedFilter('all');
+  };
+
   const renderProductCard = ({ item }: { item: Product }) => {
     const status = getProductStatus(item);
     return (
-      <TouchableOpacity
+      <Card
         style={styles.card}
         onPress={() => {
           setSelectedProduct(item);
           setDetailVisible(true);
         }}
-        activeOpacity={0.7}
       >
-        <View style={styles.cardHeader}>
-          <Text style={styles.productName} numberOfLines={1}>{item.name}</Text>
+        <View style={styles.cardTop}>
+          <View style={styles.iconWell}>
+            <Ionicons name="leaf-outline" size={22} color={colors.primary} />
+          </View>
+
+          <View style={styles.cardHeadings}>
+            <Text style={styles.productName} numberOfLines={1}>
+              {item.name}
+            </Text>
+            <Text style={styles.productCategory} numberOfLines={1}>
+              {item.category.toUpperCase()}
+            </Text>
+          </View>
+
           <StatusBadge status={status} />
         </View>
-        <Text style={styles.productDetail}>Category: {item.category.toUpperCase()}</Text>
-        <Text style={styles.productDetail}>
-          Farmer: {item.farmer?.name || 'Unknown'}
-        </Text>
-        <Text style={styles.productDetail}>
-          Stock: {item.quantity} {item.unit}
-        </Text>
-        <Text style={styles.priceText}>
-          ₹{item.price} <Text style={styles.unitText}>/ {item.unit}</Text>
-        </Text>
-        {item.verificationStatus && (
-          <Text style={styles.productDetail}>
-            Verification: {item.verificationStatus.toUpperCase()}
-          </Text>
-        )}
 
-        <View style={styles.actionRow}>
+        <View style={styles.metaList}>
+          <View style={styles.metaRow}>
+            <Ionicons name="person-outline" size={14} color={colors.muted} />
+            <Text style={styles.metaText} numberOfLines={1}>
+              Farmer: {item.farmer?.name || 'Unknown'}
+            </Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Ionicons name="cube-outline" size={14} color={colors.muted} />
+            <Text style={styles.metaText} numberOfLines={1}>
+              Stock: {item.quantity} {item.unit}
+            </Text>
+          </View>
+          {item.verificationStatus && (
+            <View style={styles.metaRow}>
+              <Ionicons name="shield-checkmark-outline" size={14} color={colors.muted} />
+              <Text style={styles.metaText} numberOfLines={1}>
+                Verification: {item.verificationStatus.toUpperCase()}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.priceRow}>
+          <Text style={styles.priceText}>₹{item.price}</Text>
+          <Text style={styles.unitText}>/ {item.unit}</Text>
+        </View>
+
+        <View style={styles.cardActions}>
           {status !== 'approved' && (
-            <TouchableOpacity
-              style={[styles.actionButton, { marginRight: 6 }]}
+            <Button
+              title="Approve"
+              icon="checkmark-circle-outline"
+              variant="outline"
+              size="sm"
+              fullWidth={false}
               onPress={() => setConfirmAction({ type: 'approve', product: item })}
-            >
-              <Ionicons name="checkmark-circle-outline" size={20} color="#2E7D32" />
-            </TouchableOpacity>
+            />
           )}
           {status === 'blocked' ? (
-            <TouchableOpacity
-              style={[styles.actionButton, { marginRight: 6 }]}
+            <Button
+              title="Unblock"
+              icon="lock-open-outline"
+              variant="outline"
+              size="sm"
+              fullWidth={false}
               onPress={() => setConfirmAction({ type: 'unblock', product: item })}
-            >
-              <Ionicons name="lock-open-outline" size={20} color="#2E7D32" />
-            </TouchableOpacity>
+            />
           ) : (
-            <TouchableOpacity
-              style={[styles.actionButton, { marginRight: 6 }]}
+            <Button
+              title="Block"
+              icon="ban-outline"
+              variant="outline"
+              size="sm"
+              fullWidth={false}
               onPress={() => setConfirmAction({ type: 'block', product: item })}
-            >
-              <Ionicons name="ban-outline" size={20} color="#F57C00" />
-            </TouchableOpacity>
+            />
           )}
-          <TouchableOpacity
-            style={styles.actionButton}
+          <Button
+            title="Delete"
+            icon="trash-outline"
+            variant="danger"
+            size="sm"
+            fullWidth={false}
             onPress={() => setConfirmAction({ type: 'delete', product: item })}
-          >
-            <Ionicons name="trash-outline" size={20} color="#C62828" />
-          </TouchableOpacity>
+          />
         </View>
-      </TouchableOpacity>
+      </Card>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
       <AdminHeader
         title="Product Management"
         subtitle={`${products.length} products`}
@@ -453,20 +555,36 @@ export default function ManageProductsScreen() {
         onSelect={setSelectedFilter}
       />
 
-      {error && (
-        <View style={styles.errorCard}>
-          <Ionicons name="alert-circle-outline" size={20} color="#C62828" />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+      {error && !loading && filteredProducts.length > 0 && (
+        <ErrorState
+          compact
+          icon="alert-circle-outline"
+          title="Something went wrong"
+          message={friendlyError(error)}
+          onRetry={fetchProducts}
+          style={styles.errorBanner}
+        />
       )}
 
       {loading ? (
         <AdminListSkeleton count={5} />
+      ) : error && filteredProducts.length === 0 ? (
+        <ErrorState
+          title="Could not load products"
+          message={friendlyError(error)}
+          onRetry={fetchProducts}
+        />
       ) : filteredProducts.length === 0 ? (
         <EmptyState
           icon="cube-outline"
           title="No products found"
-          description={search ? 'Try a different search term' : 'No products listed yet'}
+          description={
+            hasFilters
+              ? 'No listings match this search or filter. Try widening it.'
+              : 'No products listed yet'
+          }
+          actionLabel={hasFilters ? 'Clear filters' : undefined}
+          onAction={hasFilters ? clearFilters : undefined}
         />
       ) : (
         <FlatList
@@ -489,20 +607,34 @@ export default function ManageProductsScreen() {
         onRequestClose={() => setDetailVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.modalSheet}>
+            <View style={styles.sheetHandle} />
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Product Details</Text>
-              <TouchableOpacity onPress={() => setDetailVisible(false)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={colors.gray} />
+              <Text style={styles.modalTitle} numberOfLines={1}>
+                Product Details
+              </Text>
+              <TouchableOpacity
+                onPress={() => setDetailVisible(false)}
+                style={styles.closeButton}
+                accessibilityRole="button"
+                accessibilityLabel="Close product details"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Ionicons name="close" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
             {selectedProduct && (
-              <ScrollView showsVerticalScrollIndicator={false}>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.sheetBody}
+              >
                 <View style={styles.productImagePlaceholder}>
                   <Ionicons name="leaf-outline" size={48} color={colors.primary} />
                 </View>
-                <Text style={styles.productNameCenter}>{selectedProduct.name}</Text>
+                <Text style={styles.productNameCenter} numberOfLines={2}>
+                  {selectedProduct.name}
+                </Text>
                 <View style={styles.badgeRow}>
                   <StatusBadge status={getProductStatus(selectedProduct)} />
                   {selectedProduct.verificationStatus && (
@@ -516,27 +648,33 @@ export default function ManageProductsScreen() {
                 <View style={styles.detailSection}>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Category</Text>
-                    <Text style={styles.detailValue}>{selectedProduct.category.toUpperCase()}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedProduct.category.toUpperCase()}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Price</Text>
-                    <Text style={styles.detailValue}>
+                    <Text style={styles.detailValue} numberOfLines={1}>
                       ₹{selectedProduct.price} / {selectedProduct.unit}
                     </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Quantity</Text>
-                    <Text style={styles.detailValue}>
+                    <Text style={styles.detailValue} numberOfLines={1}>
                       {selectedProduct.quantity} {selectedProduct.unit}
                     </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Farmer</Text>
-                    <Text style={styles.detailValue}>{selectedProduct.farmer?.name || 'Unknown'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedProduct.farmer?.name || 'Unknown'}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Farmer Email</Text>
-                    <Text style={styles.detailValue}>{selectedProduct.farmer?.email || 'N/A'}</Text>
+                    <Text style={styles.detailValue} numberOfLines={1}>
+                      {selectedProduct.farmer?.email || 'N/A'}
+                    </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Listed On</Text>
@@ -557,7 +695,7 @@ export default function ManageProductsScreen() {
                   {selectedProduct.blockchainTxHash ? (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>Tx Hash</Text>
-                      <Text style={styles.detailValue} numberOfLines={1}>
+                      <Text style={styles.detailValue} numberOfLines={1} ellipsizeMode="middle">
                         {selectedProduct.blockchainTxHash}
                       </Text>
                     </View>
@@ -565,49 +703,60 @@ export default function ManageProductsScreen() {
                 </View>
 
                 {selectedProduct.description ? (
-                  <View style={styles.descriptionBox}>
-                    <Text style={styles.descriptionText}>{selectedProduct.description}</Text>
-                  </View>
+                  <>
+                    <Text style={styles.sectionLabel}>Description</Text>
+                    <View style={styles.descriptionBox}>
+                      <Text style={styles.descriptionText}>{selectedProduct.description}</Text>
+                    </View>
+                  </>
                 ) : null}
 
                 <View style={styles.actionButtonRow}>
                   {getProductStatus(selectedProduct) !== 'approved' && (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: '#2E7D32' }]}
+                    <Button
+                      title="Approve"
+                      icon="checkmark-circle-outline"
+                      variant="primary"
+                      size="md"
+                      style={styles.actionBtn}
                       onPress={() =>
                         setConfirmAction({ type: 'approve', product: selectedProduct })
                       }
-                    >
-                      <Text style={styles.actionBtnText}>Approve</Text>
-                    </TouchableOpacity>
+                    />
                   )}
                   {getProductStatus(selectedProduct) === 'blocked' ? (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: '#2E7D32' }]}
+                    <Button
+                      title="Unblock"
+                      icon="lock-open-outline"
+                      variant="outline"
+                      size="md"
+                      style={styles.actionBtn}
                       onPress={() =>
                         setConfirmAction({ type: 'unblock', product: selectedProduct })
                       }
-                    >
-                      <Text style={styles.actionBtnText}>Unblock</Text>
-                    </TouchableOpacity>
+                    />
                   ) : (
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: '#F57C00' }]}
+                    <Button
+                      title="Block"
+                      icon="ban-outline"
+                      variant="outline"
+                      size="md"
+                      style={styles.actionBtn}
                       onPress={() =>
                         setConfirmAction({ type: 'block', product: selectedProduct })
                       }
-                    >
-                      <Text style={styles.actionBtnText}>Block</Text>
-                    </TouchableOpacity>
+                    />
                   )}
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: '#C62828' }]}
+                  <Button
+                    title="Delete"
+                    icon="trash-outline"
+                    variant="danger"
+                    size="md"
+                    style={styles.actionBtn}
                     onPress={() =>
                       setConfirmAction({ type: 'delete', product: selectedProduct })
                     }
-                  >
-                    <Text style={styles.actionBtnText}>Delete</Text>
-                  </TouchableOpacity>
+                  />
                 </View>
               </ScrollView>
             )}

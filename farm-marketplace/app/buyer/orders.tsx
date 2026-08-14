@@ -5,19 +5,28 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   Platform,
   Modal,
-  TextInput,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import {
+  ScreenHeader,
+  OrderCard,
+  Badge,
+  Button,
+  Input,
+  EmptyState,
+  ErrorState,
+  friendlyError,
+  ListSkeleton,
+} from '../../components/ui';
+import type { BadgeTone, OrderMetaRow } from '../../components/ui';
 
 interface OrderItem {
   product: {
@@ -49,319 +58,150 @@ interface Order {
 
 export default function OrdersScreen() {
   const colors = useColors();
-  const styles = useMemo(() => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Layout.spacing.lg,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Layout.spacing.md,
-    backgroundColor: colors.card,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    padding: Layout.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  centerContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Layout.spacing.xl,
-  },
-  loadingText: {
-    marginTop: Layout.spacing.md,
-    color: colors.gray,
-  },
-  noOrdersTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-    marginTop: Layout.spacing.md,
-  },
-  noOrdersDesc: {
-    color: colors.gray,
-    textAlign: 'center',
-    marginTop: Layout.spacing.xs,
-    lineHeight: 18,
-    marginBottom: Layout.spacing.lg,
-  },
-  shopBtn: {
-    backgroundColor: colors.secondary,
-    borderRadius: Layout.borderRadius.md,
-    paddingHorizontal: Layout.spacing.xl,
-    paddingVertical: Layout.spacing.sm,
-  },
-  shopBtnText: {
-    color: colors.white,
-    fontWeight: Typography.fontWeight.bold,
-  },
-  listContainer: {
-    padding: Layout.spacing.md,
-  },
-  card: {
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.lg,
-    marginBottom: Layout.spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: Layout.spacing.sm,
-    marginBottom: Layout.spacing.md,
-  },
-  orderNumber: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-  },
-  orderDate: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Layout.borderRadius.xs,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  itemsSection: {
-    marginBottom: Layout.spacing.md,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 4,
-  },
-  itemText: {
-    fontSize: Typography.fontSize.sm,
-    color: colors.black,
-    flex: 1,
-    marginRight: Layout.spacing.md,
-  },
-  itemPrice: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: '500',
-    color: colors.black,
-  },
-  paymentInfoRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: Layout.spacing.sm,
-    marginBottom: Layout.spacing.sm,
-  },
-  paymentMethodLabel: {
-    fontSize: Typography.fontSize.xs,
-    color: colors.gray,
-  },
-  paymentMethodValue: {
-    fontWeight: 'bold',
-    color: colors.black,
-  },
-  totalPrice: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.secondary,
-  },
-  blockchainDetails: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: Layout.borderRadius.sm,
-    padding: Layout.spacing.md,
-    marginVertical: Layout.spacing.sm,
-  },
-  blockchainHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  blockchainTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#2E7D32',
-    marginLeft: 4,
-  },
-  blockchainDetailText: {
-    fontSize: 10,
-    color: '#555',
-    marginVertical: 2,
-  },
-  blockchainValue: {
-    fontWeight: '700',
-    color: '#2E7D32',
-  },
-  txRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cancelBtn: {
-    borderWidth: 1,
-    borderColor: '#C62828',
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.sm,
-    paddingHorizontal: Layout.spacing.md,
-    alignItems: 'center',
-    flex: 1,
-    marginLeft: Layout.spacing.sm,
-  },
-  cancelBtnText: {
-    color: '#C62828',
-    fontWeight: Typography.fontWeight.bold,
-    fontSize: Typography.fontSize.sm,
-  },
-  actionBtnsRow: {
-    flexDirection: 'row',
-    marginTop: Layout.spacing.md,
-    alignItems: 'center',
-  },
-  trackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: Layout.borderRadius.md,
-    paddingVertical: Layout.spacing.sm,
-    paddingHorizontal: Layout.spacing.md,
-    flex: 1,
-    justifyContent: 'center',
-  },
-  trackBtnText: {
-    color: colors.secondary,
-    fontWeight: Typography.fontWeight.bold,
-    fontSize: Typography.fontSize.sm,
-    marginLeft: 4,
-  },
-  itemRowContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    paddingBottom: Layout.spacing.sm,
-    marginBottom: Layout.spacing.sm,
-  },
-  reviewBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: Layout.spacing.xs,
-    backgroundColor: '#E8F5E9',
-    alignSelf: 'flex-start',
-    paddingHorizontal: Layout.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: Layout.borderRadius.xs,
-  },
-  reviewBtnText: {
-    fontSize: 12,
-    color: colors.secondary,
-    fontWeight: '600',
-    marginLeft: Layout.spacing.xs,
-  },
-  cancelledNote: {
-    marginTop: Layout.spacing.xs,
-    color: '#C62828',
-    fontSize: Typography.fontSize.xs,
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: Layout.spacing.xl,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 400,
-    backgroundColor: colors.card,
-    borderRadius: Layout.borderRadius.lg,
-    padding: Layout.spacing.lg,
-    alignItems: 'center',
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    color: colors.black,
-    marginBottom: Layout.spacing.md,
-  },
-  starsContainer: {
-    flexDirection: 'row',
-    marginBottom: Layout.spacing.lg,
-  },
-  reviewInput: {
-    width: '100%',
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: Layout.borderRadius.md,
-    padding: Layout.spacing.md,
-    height: 100,
-    textAlignVertical: 'top',
-    fontSize: Typography.fontSize.sm,
-    color: colors.black,
-    backgroundColor: colors.lighterGray,
-    marginBottom: Layout.spacing.lg,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  modalBtn: {
-    flex: 1,
-    paddingVertical: Layout.spacing.md,
-    borderRadius: Layout.borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: Layout.spacing.xs,
-  },
-  cancelModalBtn: {
-    backgroundColor: colors.lighterGray,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cancelModalBtnText: {
-    color: colors.gray,
-    fontWeight: Typography.fontWeight.bold,
-  },
-  submitModalBtn: {
-    backgroundColor: colors.secondary,
-  },
-  submitModalBtnText: {
-    color: colors.white,
-    fontWeight: Typography.fontWeight.bold,
-  },
-}), [colors]);
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: colors.background,
+        },
+        listContainer: {
+          padding: Layout.spacing.lg,
+          paddingBottom: Layout.spacing.xxl,
+        },
+        skeletonWrap: {
+          padding: Layout.spacing.lg,
+        },
+        itemsSection: {
+          marginTop: Layout.spacing.md,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          paddingTop: Layout.spacing.sm,
+        },
+        itemRowContainer: {
+          paddingVertical: Layout.spacing.sm,
+        },
+        itemRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Layout.spacing.md,
+        },
+        itemText: {
+          flex: 1,
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.text,
+        },
+        itemPrice: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          fontWeight: Typography.fontWeight.semibold,
+          color: colors.text,
+        },
+        reviewBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.xs,
+          marginTop: Layout.spacing.sm,
+          backgroundColor: colors.primarySoft,
+          alignSelf: 'flex-start',
+          paddingHorizontal: Layout.spacing.md,
+          paddingVertical: Layout.spacing.sm,
+          borderRadius: Layout.borderRadius.full,
+        },
+        reviewBtnText: {
+          fontSize: Typography.fontSize.xs,
+          color: colors.primary,
+          fontWeight: Typography.fontWeight.bold,
+        },
+        blockchainDetails: {
+          backgroundColor: colors.primaryTint,
+          borderRadius: Layout.borderRadius.md,
+          borderWidth: 1,
+          borderColor: colors.primarySoft,
+          padding: Layout.spacing.md,
+          marginTop: Layout.spacing.md,
+          gap: Layout.spacing.xs,
+        },
+        blockchainDetailText: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+        },
+        blockchainValue: {
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.primary,
+        },
+        cancelledNote: {
+          marginTop: Layout.spacing.md,
+          color: colors.error,
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        actionsRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          flexShrink: 1,
+        },
+        modalOverlay: {
+          flex: 1,
+          backgroundColor: colors.overlay,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: Layout.spacing.lg,
+        },
+        modalContent: {
+          width: '100%',
+          maxWidth: 400,
+          backgroundColor: colors.card,
+          borderRadius: Layout.borderRadius.xl,
+          padding: Layout.spacing.xl,
+          ...Layout.shadow.lg,
+        },
+        modalTitle: {
+          fontSize: Typography.fontSize.xl,
+          lineHeight: Typography.leading.xl,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+          textAlign: 'center',
+        },
+        modalSubtitle: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          marginTop: Layout.spacing.xs,
+        },
+        starsContainer: {
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          marginTop: Layout.spacing.lg,
+          marginBottom: Layout.spacing.lg,
+        },
+        starBtn: {
+          padding: Layout.spacing.xs,
+        },
+        modalButtons: {
+          flexDirection: 'row',
+          gap: Layout.spacing.md,
+          marginTop: Layout.spacing.sm,
+        },
+        modalBtn: {
+          flex: 1,
+        },
+      }),
+    [colors]
+  );
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  /** Display-only: renders the failure the catch block already handles. */
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   // Review states
   const [reviewProductId, setReviewProductId] = useState<string | null>(null);
@@ -376,12 +216,14 @@ export default function OrdersScreen() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
+      setLoadError(null);
       const response = await api.get('/orders/buyer');
       if (response.data.success) {
         setOrders(response.data.orders);
       }
     } catch (error) {
       console.error('Error fetching orders:', error);
+      setLoadError(error);
     } finally {
       setLoading(false);
     }
@@ -393,9 +235,11 @@ export default function OrdersScreen() {
       const response = await api.get('/orders/buyer');
       if (response.data.success) {
         setOrders(response.data.orders);
+        setLoadError(null);
       }
     } catch (error) {
       console.error('Error refreshing orders:', error);
+      setLoadError(error);
     } finally {
       setRefreshing(false);
     }
@@ -479,24 +323,22 @@ export default function OrdersScreen() {
     return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusTone = (status: string): BadgeTone => {
     switch (status) {
       case 'delivered':
-        return '#2E7D32';
+        return 'success';
       case 'pending':
-        return '#EF6C00';
+        return 'warning';
       case 'accepted':
       case 'confirmed':
-        return '#1976D2';
       case 'packed':
       case 'processing':
-        return '#7B1FA2';
       case 'shipped':
-        return '#0277BD';
+        return 'info';
       case 'cancelled':
-        return '#C62828';
+        return 'error';
       default:
-        return colors.gray;
+        return 'neutral';
     }
   };
 
@@ -513,13 +355,15 @@ export default function OrdersScreen() {
         {showReviewBtn && (
           <TouchableOpacity
             style={styles.reviewBtn}
+            activeOpacity={0.85}
+            accessibilityRole="button"
             onPress={() => {
               setReviewProductId(item.product._id);
               setRating(5);
               setComment('');
             }}
           >
-            <Ionicons name="star-outline" size={14} color={colors.secondary} />
+            <Ionicons name="star-outline" size={14} color={colors.primary} />
             <Text style={styles.reviewBtnText}>Write a Review</Text>
           </TouchableOpacity>
         )}
@@ -527,109 +371,111 @@ export default function OrdersScreen() {
     );
   };
 
-  const renderOrderCard = ({ item }: { item: Order }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View>
-          <Text style={styles.orderNumber}>{item.orderNumber}</Text>
-          <Text style={styles.orderDate}>Ordered on {formatDate(item.createdAt)}</Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status.toUpperCase()}
-          </Text>
-        </View>
-      </View>
+  const renderOrderCard = ({ item }: { item: Order }) => {
+    const rows: OrderMetaRow[] = [
+      {
+        icon: 'card-outline',
+        label: 'Payment',
+        value: item.paymentMethod.replace('_', ' ').toUpperCase(),
+      },
+    ];
 
-      <View style={styles.itemsSection}>
-        {item.items.map((orderItem, idx) => renderOrderItem(orderItem, idx, item.status))}
-      </View>
-
-      <View style={styles.paymentInfoRow}>
-        <Text style={styles.paymentMethodLabel}>
-          Payment: <Text style={styles.paymentMethodValue}>{item.paymentMethod.replace('_', ' ').toUpperCase()}</Text>
-        </Text>
-        <Text style={styles.totalPrice}>₹{item.totalAmount.toFixed(2)}</Text>
-      </View>
-
-      {/* Blockchain Details Section */}
-      {item.paymentMethod === 'blockchain' && (
-        <View style={styles.blockchainDetails}>
-          <View style={styles.blockchainHeader}>
-            <Ionicons name="link-outline" size={14} color="#2E7D32" />
-            <Text style={styles.blockchainTitle}>Smart Escrow Verified</Text>
+    return (
+      <OrderCard
+        reference={item.orderNumber}
+        date={`Ordered on ${formatDate(item.createdAt)}`}
+        statusLabel={item.status.toUpperCase()}
+        statusTone={getStatusTone(item.status)}
+        rows={rows}
+        total={`₹${item.totalAmount.toFixed(2)}`}
+        actions={
+          <View style={styles.actionsRow}>
+            <Button
+              title={item.status === 'cancelled' ? 'Timeline' : 'Track'}
+              icon="navigate-outline"
+              variant="outline"
+              size="sm"
+              fullWidth={false}
+              onPress={() =>
+                router.push({ pathname: '/buyer/track-order', params: { orderId: item._id } })
+              }
+            />
+            {['pending', 'accepted'].includes(item.status) && (
+              <Button
+                title="Cancel"
+                variant="danger"
+                size="sm"
+                fullWidth={false}
+                onPress={() => handleCancelOrder(item._id)}
+              />
+            )}
           </View>
-          {item.blockchainOrderId !== undefined && item.blockchainOrderId !== null && (
-            <Text style={styles.blockchainDetailText}>
-              On-Chain Escrow ID: <Text style={styles.blockchainValue}>#{item.blockchainOrderId}</Text>
-            </Text>
-          )}
-          {item.blockchainTxHash ? (
-            <View style={styles.txRow}>
+        }
+      >
+        <View style={styles.itemsSection}>
+          {item.items.map((orderItem, idx) => renderOrderItem(orderItem, idx, item.status))}
+        </View>
+
+        {/* Blockchain Details Section */}
+        {item.paymentMethod === 'blockchain' && (
+          <View style={styles.blockchainDetails}>
+            <Badge label="Smart Escrow Verified" tone="primary" icon="link-outline" />
+            {item.blockchainOrderId !== undefined && item.blockchainOrderId !== null && (
               <Text style={styles.blockchainDetailText} numberOfLines={1}>
+                On-Chain Escrow ID: <Text style={styles.blockchainValue}>#{item.blockchainOrderId}</Text>
+              </Text>
+            )}
+            {item.blockchainTxHash ? (
+              <Text style={styles.blockchainDetailText} numberOfLines={1} ellipsizeMode="middle">
                 Tx Hash: <Text style={styles.blockchainValue}>{item.blockchainTxHash}</Text>
               </Text>
-            </View>
-          ) : (
-            <Text style={styles.blockchainDetailText}>
-              Tx Hash: <Text style={styles.blockchainValue}>Processing...</Text>
-            </Text>
-          )}
-        </View>
-      )}
-
-      {item.status === 'cancelled' && item.cancellationReason ? (
-        <Text style={styles.cancelledNote}>Cancellation note: {item.cancellationReason}</Text>
-      ) : null}
-
-      {/* Action Buttons */}
-      <View style={styles.actionBtnsRow}>
-        <TouchableOpacity
-          style={styles.trackBtn}
-          onPress={() => router.push({ pathname: '/buyer/track-order', params: { orderId: item._id } })}
-        >
-          <Ionicons name="navigate-outline" size={14} color={colors.secondary} />
-          <Text style={styles.trackBtnText}>{item.status === 'cancelled' ? 'View Timeline' : 'Track Order'}</Text>
-        </TouchableOpacity>
-        {['pending', 'accepted'].includes(item.status) && (
-          <TouchableOpacity
-            style={styles.cancelBtn}
-            onPress={() => handleCancelOrder(item._id)}
-          >
-            <Text style={styles.cancelBtnText}>Cancel Order</Text>
-          </TouchableOpacity>
+            ) : (
+              <Text style={styles.blockchainDetailText} numberOfLines={1}>
+                Tx Hash: <Text style={styles.blockchainValue}>Processing...</Text>
+              </Text>
+            )}
+          </View>
         )}
-      </View>
-    </View>
-  );
+
+        {item.status === 'cancelled' && item.cancellationReason ? (
+          <Text style={styles.cancelledNote}>Cancellation note: {item.cancellationReason}</Text>
+        ) : null}
+      </OrderCard>
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.replace('/buyer')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color={colors.secondary} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Orders</Text>
-        <View style={{ width: 24 }} />
-      </View>
+    <View style={styles.container}>
+      <ScreenHeader
+        title="My Orders"
+        onBack={() => router.replace('/buyer')}
+        iconActions={[
+          {
+            icon: 'refresh',
+            onPress: handleRefresh,
+            accessibilityLabel: 'Refresh orders',
+          },
+        ]}
+      />
 
       {loading && !refreshing ? (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.secondary} />
-          <Text style={styles.loadingText}>Fetching order details...</Text>
+        <View style={styles.skeletonWrap}>
+          <ListSkeleton count={3} />
         </View>
+      ) : loadError && orders.length === 0 ? (
+        <ErrorState
+          title="Could not load your orders"
+          message={friendlyError(loadError, 'We could not load your orders. Please try again.')}
+          onRetry={fetchOrders}
+        />
       ) : orders.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Ionicons name="receipt-outline" size={60} color={colors.gray} />
-          <Text style={styles.noOrdersTitle}>No Orders Placed Yet</Text>
-          <Text style={styles.noOrdersDesc}>When you purchase products, they will appear here along with blockchain transaction status.</Text>
-          <TouchableOpacity
-            style={styles.shopBtn}
-            onPress={() => router.push('/buyer/browse')}
-          >
-            <Text style={styles.shopBtnText}>Shop Now</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="receipt-outline"
+          title="No Orders Placed Yet"
+          description="When you purchase products, they will appear here along with blockchain transaction status."
+          actionLabel="Shop Now"
+          onAction={() => router.push('/buyer/browse')}
+        />
       ) : (
         <FlatList
           data={orders}
@@ -652,55 +498,57 @@ export default function OrdersScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Rate this Product</Text>
-            
+            <Text style={styles.modalSubtitle}>
+              Tap a star and tell other buyers about your experience.
+            </Text>
+
             <View style={styles.starsContainer}>
               {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity key={star} onPress={() => setRating(star)}>
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                >
                   <Ionicons
                     name={star <= rating ? 'star' : 'star-outline'}
-                    size={36}
-                    color="#FFD700"
-                    style={{ marginHorizontal: 6 }}
+                    size={34}
+                    color={colors.star}
                   />
                 </TouchableOpacity>
               ))}
             </View>
 
-            <TextInput
-              style={styles.reviewInput}
+            <Input
+              label="Your review"
               placeholder="Write your experience with this product..."
-              placeholderTextColor={colors.gray}
               value={comment}
               onChangeText={setComment}
               multiline={true}
               numberOfLines={4}
+              containerStyle={{ marginBottom: 0 }}
             />
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.cancelModalBtn]}
+              <Button
+                title="Cancel"
+                variant="outline"
                 onPress={handleCancelReview}
                 disabled={submittingReview}
-              >
-                <Text style={styles.cancelModalBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalBtn, styles.submitModalBtn]}
+                style={styles.modalBtn}
+              />
+              <Button
+                title="Submit"
                 onPress={handleSubmitReview}
+                loading={submittingReview}
                 disabled={submittingReview}
-              >
-                {submittingReview ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.submitModalBtnText}>Submit</Text>
-                )}
-              </TouchableOpacity>
+                style={styles.modalBtn}
+              />
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
-
-
