@@ -30,6 +30,10 @@ const ROLE_ICONS: Record<Role, keyof typeof Ionicons.glyphMap> = {
   admin: 'shield-checkmark-outline',
 };
 
+// Single authorized admin account — Admin can ONLY log in with these credentials
+const ADMIN_EMAIL = 'admin@farm.com';
+const ADMIN_PASSWORD = 'admin@123';
+
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -251,38 +255,21 @@ export default function LoginScreen() {
       return;
     }
 
+    // Restrict Admin login to the single authorized admin account only
+    if (selectedRole === 'admin') {
+      if (email.trim().toLowerCase() !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+        showAlert('Login Failed', 'Invalid admin credentials. Please use the authorized admin email and password.');
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
-      // All roles (farmer, buyer, admin) login via backend API
-      let response;
-      try {
-        response = await api.post('/auth/login', {
-          email,
-          password,
-        });
-      } catch (loginError: any) {
-        // If admin login fails because user doesn't exist, auto-register the admin
-        if (selectedRole === 'admin' && loginError.response?.status === 401) {
-          // Auto-register admin with default credentials
-          await api.post('/auth/register', {
-            name: 'Admin',
-            email,
-            password,
-            mobile: '0000000000',
-            address: 'Admin Office',
-            role: 'admin',
-            adminSecret: 'admin_secret_key_123',
-          });
-          // Login again after registration
-          response = await api.post('/auth/login', {
-            email,
-            password,
-          });
-        } else {
-          throw loginError;
-        }
-      }
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+      });
 
       if (response.data.success) {
         const user = response.data.user;

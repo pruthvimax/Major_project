@@ -21,7 +21,7 @@ const seedAdmin = async () => {
     await User.create({
       name: 'Admin',
       email: 'admin@farm.com',
-      password: 'admin123',
+      password: 'admin@123',
       mobile: '0000000000',
       address: 'Admin Office',
       role: 'admin',
@@ -30,7 +30,7 @@ const seedAdmin = async () => {
 
     console.log('✅ Admin user created successfully');
     console.log('📧 Email: admin@farm.com');
-    console.log('🔑 Password: admin123');
+    console.log('🔑 Password: admin@123');
     console.log('⚠️ Please change the password after first login');
 
     await mongoose.connection.close();

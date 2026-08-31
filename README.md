@@ -271,3 +271,15 @@ Successfully tested:
 - Product Traceability
 - Analytics Dashboard
 - Final Testing & Deployment
+
+
+
+cd blockchain
+npm run node   
+
+this runs >>>>>> hardhat node
+
+
+
+cd blockchain
+npm run deploy:local
