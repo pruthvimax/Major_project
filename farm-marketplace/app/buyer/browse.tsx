@@ -12,6 +12,7 @@ import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { logApiError } from '../../services/apiError';
 import { useCart } from '../../context/CartContext';
+import { useLanguage } from '../../context/LanguageContext';
 import {
   ScreenHeader,
   SearchField,
@@ -22,6 +23,7 @@ import {
   ErrorState,
   friendlyError,
   ProductCardSkeleton,
+  LanguageSelector,
 } from '../../components/ui';
 
 interface Product {
@@ -37,12 +39,12 @@ interface Product {
   images?: string[];
   averageRating?: number;
   reviewCount?: number;
-  location: {
-    address: string;
+  location?: {
+    address?: string;
   };
-  farmer: {
-    name: string;
-    email: string;
+  farmer?: {
+    name?: string;
+    email?: string;
   };
 }
 
@@ -51,6 +53,7 @@ const CATEGORIES = ['all', 'vegetables', 'fruits', 'grains', 'dairy', 'organic']
 export default function BrowseScreen() {
   const colors = useColors();
   const { addToCart, summary } = useCart();
+  const { t } = useLanguage();
   const styles = useMemo(() => StyleSheet.create({
   container: {
     flex: 1,
@@ -118,10 +121,12 @@ export default function BrowseScreen() {
 
     // Filter by search query
     if (search.trim() !== '') {
+      const lowerSearch = search.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.description.toLowerCase().includes(search.toLowerCase())
+          p.name?.toLowerCase().includes(lowerSearch) ||
+          p.description?.toLowerCase().includes(lowerSearch) ||
+          p.farmer?.name?.toLowerCase().includes(lowerSearch)
       );
     }
 
@@ -145,7 +150,7 @@ export default function BrowseScreen() {
         name: product.name,
         price: product.price.toString(),
         unit: product.unit,
-        farmerName: product.farmer.name,
+        farmerName: product.farmer?.name || 'Farmer',
         availableQuantity: product.quantity.toString(),
       },
     });
@@ -172,10 +177,10 @@ export default function BrowseScreen() {
   const categoryOptions = useMemo(
     () =>
       CATEGORIES.map((item) => ({
-        label: item.charAt(0).toUpperCase() + item.slice(1),
+        label: t(`marketplace.categories.${item}` as any) || item,
         value: item,
       })),
-    []
+    [t]
   );
 
   const hasFilters = search.trim() !== '' || selectedCategory !== 'all';
@@ -191,10 +196,10 @@ export default function BrowseScreen() {
       price={item.price}
       unit={item.unit}
       imageUri={item.images && item.images[0] ? item.images[0] : undefined}
-      subtitle={`by ${item.farmer.name}`}
+      subtitle={item.farmer?.name ? `${t('marketplace.byFarmer')} ${item.farmer.name}` : undefined}
       description={item.description}
-      location={item.location.address}
-      stockLabel={`Stock: ${item.quantity} ${item.unit}`}
+      location={item.location?.address}
+      stockLabel={`${t('marketplace.stock')}: ${item.quantity} ${item.unit}`}
       isOrganic={item.isOrganic}
       blockchainId={item.blockchainId}
       rating={item.averageRating}
@@ -203,7 +208,7 @@ export default function BrowseScreen() {
       footer={
         <View style={styles.cardActions}>
           <Button
-            title="Add"
+            title={t('marketplace.addToCart')}
             variant="ghost"
             size="sm"
             icon="cart-outline"
@@ -213,7 +218,7 @@ export default function BrowseScreen() {
             onPress={() => handleAddToCart(item)}
           />
           <Button
-            title={item.quantity > 0 ? 'Buy' : 'Out'}
+            title={item.quantity > 0 ? t('marketplace.buyNow') : t('marketplace.outOfStock')}
             variant="primary"
             size="sm"
             fullWidth={false}
@@ -228,7 +233,7 @@ export default function BrowseScreen() {
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="Browse Marketplace"
+        title={t('marketplace.browseTitle')}
         onBack={() => router.back()}
         iconActions={[
           {
@@ -245,7 +250,7 @@ export default function BrowseScreen() {
           <SearchField
             value={search}
             onChangeText={setSearch}
-            placeholder="Search fresh products…"
+            placeholder={t('marketplace.searchPlaceholder')}
           />
         </View>
         <ChipRow
@@ -263,16 +268,16 @@ export default function BrowseScreen() {
         </View>
       ) : loadError ? (
         <ErrorState
-          title="Could not load products"
+          title={t('common.error')}
           message={friendlyError(loadError, 'We could not load the marketplace. Please try again.')}
           onRetry={fetchProducts}
         />
       ) : filteredProducts.length === 0 ? (
         <EmptyState
           icon="search-outline"
-          title="No Products Found"
-          description="Try selecting another category or check your search keyword."
-          actionLabel={hasFilters ? 'Clear filters' : undefined}
+          title={t('marketplace.noProducts')}
+          description={t('marketplace.noProductsDesc')}
+          actionLabel={hasFilters ? t('common.clear') : undefined}
           onAction={hasFilters ? clearFilters : undefined}
         />
       ) : (

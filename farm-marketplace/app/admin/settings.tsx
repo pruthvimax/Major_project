@@ -20,12 +20,15 @@ import {
   Input,
   Button,
   SectionHeader,
+  LanguageSelector,
 } from '../../components/ui';
+import { useLanguage } from '../../context/LanguageContext';
 
 export default function AdminSettingsScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { isDark, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const styles = useMemo(() => StyleSheet.create({
   container: {
     flex: 1,
@@ -99,14 +102,14 @@ export default function AdminSettingsScreen() {
   return (
     <View style={styles.container}>
       <ScreenHeader
-        title="System Settings"
+        title={t('nav.settings')}
         onBack={() => router.replace('/admin')}
       />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Appearance */}
+        {/* Appearance & Language */}
         <View style={styles.section}>
-          <SectionHeader title="Appearance" />
+          <SectionHeader title="Appearance & Language" />
           <Card elevation="xs">
             <View style={styles.settingRow}>
               <View style={[styles.iconWell, { backgroundColor: colors.tintPurple }]}>
@@ -128,6 +131,21 @@ export default function AdminSettingsScreen() {
                 trackColor={{ false: colors.borderStrong, true: colors.primaryLight }}
                 thumbColor={isDark ? colors.primary : colors.white}
               />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.settingRow}>
+              <View style={[styles.iconWell, { backgroundColor: colors.primarySoft }]}>
+                <Ionicons name="language-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.settingTextCol}>
+                <Text style={styles.settingLabel}>{t('common.language')}</Text>
+                <Text style={styles.settingDesc}>
+                  {t('common.selectLanguage')} (English, हिंदी, ಕನ್ನಡ, മലയാളം)
+                </Text>
+              </View>
+              <LanguageSelector />
             </View>
           </Card>
         </View>
