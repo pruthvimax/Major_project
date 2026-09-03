@@ -12,6 +12,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import {
   ScreenHeader,
   ProductCard,
@@ -88,7 +89,7 @@ export default function MyProductsScreen() {
         setProducts(response.data.products);
       }
     } catch (error) {
-      console.error('Error fetching my products:', error);
+      logApiError('Farmer load products', error);
       setLoadError(error);
     } finally {
       setLoading(false);
@@ -103,7 +104,7 @@ export default function MyProductsScreen() {
         setProducts(response.data.products);
       }
     } catch (error) {
-      console.error('Error refreshing products:', error);
+      logApiError('Farmer refresh products', error);
     } finally {
       setRefreshing(false);
     }
@@ -125,7 +126,7 @@ export default function MyProductsScreen() {
           fetchMyProducts();
         }
       } catch (error: any) {
-        console.error('Delete product failed:', error);
+        logApiError('Farmer delete product', error);
         const errMsg = error.response?.data?.message || 'Failed to delete product.';
         showAlert('Error', errMsg);
         setLoading(false);

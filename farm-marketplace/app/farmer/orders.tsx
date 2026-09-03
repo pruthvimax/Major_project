@@ -14,6 +14,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import {
   ScreenHeader,
   OrderCard,
@@ -126,7 +127,7 @@ export default function FarmerOrdersScreen() {
       const res = await api.get('/orders/farmer');
       if (res.data.success) setOrders(res.data.orders);
     } catch (e) {
-      console.error(e);
+      logApiError('Farmer fetch orders', e);
       setLoadError(e);
     } finally {
       setLoading(false);

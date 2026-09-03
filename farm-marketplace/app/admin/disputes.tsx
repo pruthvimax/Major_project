@@ -15,6 +15,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import AdminHeader from '../../components/admin/AdminHeader';
 import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
@@ -305,7 +306,7 @@ export default function AdminDisputesScreen() {
         setFilteredDisputes(disputed);
       }
     } catch (error) {
-      console.error('Error fetching disputes:', error);
+      logApiError('Admin fetch disputes', error);
       setError('Failed to load disputes. Please check your connection.');
     } finally {
       setLoading(false);
@@ -323,7 +324,7 @@ export default function AdminDisputesScreen() {
       const matchesFilter = selectedFilter === 'all' || d.verificationStatus === selectedFilter;
       const matchesSearch =
         normalizedSearch === '' ||
-        d.orderNumber.toLowerCase().includes(normalizedSearch) ||
+        (d.orderNumber || '').toLowerCase().includes(normalizedSearch) ||
         (d.buyer?.name && d.buyer.name.toLowerCase().includes(normalizedSearch)) ||
         (d.farmer?.name && d.farmer.name.toLowerCase().includes(normalizedSearch)) ||
         (d.disputeReason && d.disputeReason.toLowerCase().includes(normalizedSearch));
@@ -352,7 +353,7 @@ export default function AdminDisputesScreen() {
         fetchDisputes();
       }
     } catch (error: any) {
-      console.error('Error resolving dispute:', error);
+      logApiError('Admin resolve dispute', error);
       setError(error.response?.data?.message || 'Failed to resolve dispute');
     } finally {
       setResolveLoading(false);

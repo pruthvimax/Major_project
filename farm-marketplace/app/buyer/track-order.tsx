@@ -12,6 +12,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import {
   ScreenHeader,
   SectionHeader,
@@ -267,7 +268,7 @@ export default function TrackOrderScreen() {
         setLoadError(null);
       }
     } catch (error) {
-      console.error('Fetch tracking error:', error);
+      logApiError('Fetch tracking error', error);
       setLoadError(error);
     } finally {
       setLoading(false);

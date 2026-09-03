@@ -15,6 +15,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import AdminHeader from '../../components/admin/AdminHeader';
 import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
@@ -400,7 +401,7 @@ export default function ManageOrdersScreen() {
         setFilteredOrders(response.data.orders);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      logApiError('Admin fetch orders', error);
       setError('Failed to load orders. Please check your connection.');
     } finally {
       setLoading(false);
@@ -418,8 +419,8 @@ export default function ManageOrdersScreen() {
       const matchesFilter = selectedFilter === 'all' || order.status === selectedFilter;
       const matchesSearch =
         normalizedSearch === '' ||
-        order.orderNumber.toLowerCase().includes(normalizedSearch) ||
-        order.status.toLowerCase().includes(normalizedSearch) ||
+        (order.orderNumber || '').toLowerCase().includes(normalizedSearch) ||
+        (order.status || '').toLowerCase().includes(normalizedSearch) ||
         (order.buyer?.name && order.buyer.name.toLowerCase().includes(normalizedSearch)) ||
         (order.farmer?.name && order.farmer.name.toLowerCase().includes(normalizedSearch)) ||
         (order.paymentMethod && order.paymentMethod.toLowerCase().includes(normalizedSearch));
@@ -446,7 +447,7 @@ export default function ManageOrdersScreen() {
         fetchOrders();
       }
     } catch (error: any) {
-      console.error('Cancel order failed:', error);
+      logApiError('Admin cancel order', error);
       setError(error.response?.data?.message || 'Failed to cancel order.');
     } finally {
       setCancelLoading(false);
@@ -511,7 +512,7 @@ export default function ManageOrdersScreen() {
       </View>
 
       <View style={styles.itemsSection}>
-        {item.items.map((orderItem, idx) => renderOrderItem(orderItem, idx))}
+        {(item.items || []).map((orderItem, idx) => renderOrderItem(orderItem, idx))}
       </View>
 
       <View style={styles.paymentInfoRow}>
@@ -770,7 +771,7 @@ export default function ManageOrdersScreen() {
 
                 <Text style={styles.sectionLabel}>Items</Text>
                 <View style={styles.detailCard}>
-                  {selectedOrder.items.map((item, idx) => (
+                  {(selectedOrder.items || []).map((item, idx) => (
                     <View key={idx} style={styles.detailRow}>
                       <Text style={styles.itemText} numberOfLines={1}>
                         {item.product?.name || 'Product'} x {item.quantity}

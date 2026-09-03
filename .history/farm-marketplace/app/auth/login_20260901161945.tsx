@@ -250,107 +250,81 @@ export default function LoginScreen() {
     }
   };
 
-const handleLogin = async () => {
-  if (!email || !password) {
-    showAlert('Error', 'Please fill in all fields');
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    // =========================
-    // ADMIN LOGIN (LOCAL ONLY)
-    // =========================
-    if (selectedRole === 'admin') {
-      if (
-        email.trim().toLowerCase() === ADMIN_EMAIL &&
-        password === ADMIN_PASSWORD
-      ) {
-        const adminUser = {
-          _id: 'admin-local',
-          name: 'System Admin',
-          email: ADMIN_EMAIL,
-          role: 'admin',
-        };
-
-        await AsyncStorage.setItem(
-          'user',
-          JSON.stringify(adminUser)
-        );
-        await AsyncStorage.setItem(
-          'currentUser',
-          JSON.stringify(adminUser)
-        );
-        await AsyncStorage.setItem(
-          'token',
-          'admin-local-token'
-        );
-
-        redirectTo('/admin');
-        return;
-      }
-
-      showAlert(
-        'Login Failed',
-        'Invalid admin credentials.\n\nEmail: admin@farm.com\nPassword: admin@123'
-      );
+  const handleLogin = async () => {
+    if (!email || !password) {
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
-    // =========================
-    // FARMER / BUYER LOGIN
-    // =========================
-    const response = await api.post('/auth/login', {
-      email,
-      password,
-    });
+    // Restrict Admin login to the single authorized admin account only
+  const ADMIN_EMAIL = "admin@farm.com";
+const ADMIN_PASSWORD = "admin123";
 
-    if (response.data.success) {
-      const user = response.data.user;
-
-      if (user.role !== selectedRole) {
-        showAlert(
-          'Error',
-          `This account is registered as ${user.role}, not ${selectedRole}`
-        );
-        return;
-      }
-
-      await AsyncStorage.setItem(
-        'token',
-        response.data.token
-      );
-
-      await AsyncStorage.setItem(
-        'user',
-        JSON.stringify(user)
-      );
-
-      await AsyncStorage.setItem(
-        'currentUser',
-        JSON.stringify(user)
-      );
-
-      if (selectedRole === 'farmer') {
-        redirectTo('/farmer');
-      } else if (selectedRole === 'buyer') {
-        redirectTo('/buyer');
-      }
-    }
-  } catch (error: any) {
-    logApiError('LOGIN FAILED', error);
-
-    const userMessage = getApiErrorMessage(
-      error,
-      'Something went wrong. Please try again later.'
+if (selectedRole === 'admin') {
+  if (
+    email.trim().toLowerCase() !== ADMIN_EMAIL ||
+    password !== ADMIN_PASSWORD
+  ) {
+    showAlert(
+      'Login Failed',
+      'Invalid admin credentials. Use admin@farm.com / admin123'
     );
-
-    showAlert('Login Failed', userMessage);
-  } finally {
-    setIsLoading(false);
+    return;
   }
-};
+
+  // Navigate to Admin Dashboard
+  router.replace('/admin');
+  return;
+}
+
+    setIsLoading(true);
+
+    try {
+      const response = await api.post('/auth/login', {
+        email,
+        password,
+      });
+
+      if (response.data.success) {
+        const user = response.data.user;
+
+        // Check if role matches selected role
+        if (user.role !== selectedRole) {
+          showAlert('Error', `This account is registered as ${user.role}, not ${selectedRole}`);
+          setIsLoading(false);
+          return;
+        }
+
+        // Store token and user data
+        await AsyncStorage.setItem('token', response.data.token);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+
+        if (selectedRole === 'farmer') {
+          redirectTo('/farmer');
+        } else if (selectedRole === 'buyer') {
+          redirectTo('/buyer');
+        } else {
+          redirectTo('/admin');
+        }
+      }
+    } catch (error: any) {
+      // Safe logging — passing the raw Axios error to console.error crashes
+      // Hermes/LogBox with "Property 'c' doesn't exist" and hides the real
+      // message. We log flat primitives and show the backend's message
+      // ("Invalid credentials", "User not found", "Incorrect password", etc.).
+      logApiError('LOGIN FAILED', error);
+
+      const userMessage = getApiErrorMessage(
+        error,
+        'Something went wrong. Please try again later.'
+      );
+
+      showAlert('Login Failed', userMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const navigateToRegister = () => {
     router.push('/auth/register');

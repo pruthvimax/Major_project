@@ -17,6 +17,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import { useCart } from '../../context/CartContext';
 import {
   ScreenHeader,
@@ -398,7 +399,7 @@ export default function CheckoutScreen() {
               }
             }
           } catch (payErr) {
-            console.error('Razorpay initiation error:', payErr);
+            logApiError('Razorpay initiation', payErr);
             showAlert('Payment Error', 'Could not initiate payment. Please try another method.');
           }
         } else {
@@ -412,7 +413,7 @@ export default function CheckoutScreen() {
         }
       }
     } catch (error: any) {
-      console.error('Order creation failed:', error);
+      logApiError('Order creation failed', error);
       const errorMsg = error.response?.data?.message || 'Something went wrong. Please try again.';
       showAlert('Order Failed', errorMsg);
     } finally {

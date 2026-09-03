@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import api from './api';
+import { logApiError } from './apiError';
 
 /**
  * Returns true if the app is running inside Expo Go.
@@ -26,7 +27,7 @@ if (Platform.OS !== 'web' && !isRunningInExpoGo()) {
       }),
     });
   } catch (error) {
-    console.error('[Notifications] Failed to initialize expo-notifications:', error);
+    logApiError('Notifications init', error);
   }
 }
 
@@ -88,7 +89,7 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     console.log('[Notifications] Push token obtained:', tokenData.data);
     return tokenData.data;
   } catch (error) {
-    console.error('[Notifications] Failed to retrieve Expo push token:', error);
+    logApiError('Notifications push token', error);
     return null;
   }
 }
@@ -103,7 +104,7 @@ export async function savePushToken(token: string): Promise<void> {
       console.log('[Notifications] Push token successfully registered to backend.');
     }
   } catch (error) {
-    console.error('[Notifications] Failed to save push token to backend:', error);
+    logApiError('Notifications save token', error);
   }
 }
 

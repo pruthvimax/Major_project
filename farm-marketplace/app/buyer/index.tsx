@@ -14,6 +14,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import ThemeToggle from '../../components/ThemeToggle';
 import { registerForPushNotificationsAsync, savePushToken } from '../../services/notifications';
 import { useCart } from '../../context/CartContext';
@@ -126,7 +127,7 @@ export default function BuyerDashboard() {
       setUserName(user.name || 'Buyer');
       fetchStats();
     } catch (error) {
-      console.error('Role validation error:', error);
+      logApiError('Buyer role validation', error);
       router.replace('/auth/login');
     }
   };
@@ -138,7 +139,7 @@ export default function BuyerDashboard() {
         setOrdersCount(response.data.orders.length);
       }
     } catch (error) {
-      console.error('Error fetching order stats:', error);
+      logApiError('Buyer order stats', error);
     }
   };
 
@@ -150,7 +151,7 @@ export default function BuyerDashboard() {
         setUserName(user.name || 'Buyer');
       }
     } catch (error) {
-      console.error('Error getting user name:', error);
+      logApiError('Buyer get user name', error);
     }
   };
 
@@ -160,7 +161,7 @@ export default function BuyerDashboard() {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
       } catch (error) {
-        console.error('Logout error:', error);
+        logApiError('Buyer logout', error);
       }
     };
 

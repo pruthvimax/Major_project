@@ -16,6 +16,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import AdminHeader from '../../components/admin/AdminHeader';
 import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
@@ -290,7 +291,7 @@ export default function ManageUsersScreen() {
         setFilteredUsers(response.data.users);
       }
     } catch (error) {
-      console.error('Error fetching users:', error);
+      logApiError('Admin fetch users', error);
       setError('Failed to load users. Please check your connection.');
     } finally {
       setLoading(false);
@@ -313,10 +314,10 @@ export default function ManageUsersScreen() {
         (selectedFilter === 'active' && !u.isSuspended);
       const matchesSearch =
         normalizedSearch === '' ||
-        u.name.toLowerCase().includes(normalizedSearch) ||
-        u.email.toLowerCase().includes(normalizedSearch) ||
+        (u.name || '').toLowerCase().includes(normalizedSearch) ||
+        (u.email || '').toLowerCase().includes(normalizedSearch) ||
         (u.mobile && u.mobile.includes(normalizedSearch)) ||
-        u.role.toLowerCase().includes(normalizedSearch);
+        (u.role || '').toLowerCase().includes(normalizedSearch);
       return matchesFilter && matchesSearch;
     });
     setFilteredUsers(next);
@@ -343,7 +344,7 @@ export default function ManageUsersScreen() {
         orders: userOrders.length,
       });
     } catch (error) {
-      console.error('Error fetching user stats:', error);
+      logApiError('Admin fetch user stats', error);
       setUserStats({ products: 0, orders: 0 });
     } finally {
       setStatsLoading(false);
@@ -369,7 +370,7 @@ export default function ManageUsersScreen() {
         fetchUsers();
       }
     } catch (error: any) {
-      console.error('Error updating user:', error);
+      logApiError('Admin update user', error);
       setError(error.response?.data?.message || 'Failed to update user');
     } finally {
       setActionLoading(false);
@@ -389,7 +390,7 @@ export default function ManageUsersScreen() {
         fetchUsers();
       }
     } catch (error: any) {
-      console.error('Error deleting user:', error);
+      logApiError('Admin delete user', error);
       setError(error.response?.data?.message || 'Failed to delete user');
     } finally {
       setActionLoading(false);
@@ -413,7 +414,7 @@ export default function ManageUsersScreen() {
     <Card style={styles.card} onPress={() => openUserDetails(item)}>
       <View style={styles.cardTop}>
         <View style={styles.avatarWell}>
-          <Text style={styles.avatarWellText}>{item.name.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.avatarWellText}>{(item.name || '?').charAt(0).toUpperCase()}</Text>
         </View>
 
         <View style={styles.cardHeadings}>
@@ -597,7 +598,7 @@ export default function ManageUsersScreen() {
               >
                 <View style={styles.avatarCircle}>
                   <Text style={styles.avatarText}>
-                    {selectedUser.name.charAt(0).toUpperCase()}
+                    {(selectedUser.name || '?').charAt(0).toUpperCase()}
                   </Text>
                 </View>
                 <Text style={styles.userNameCenter} numberOfLines={2}>

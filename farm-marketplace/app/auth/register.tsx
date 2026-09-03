@@ -20,6 +20,7 @@ import Layout from '../../constants/Layout';
 import { gradients } from '../../constants/ThemeColors';
 import { Button, Input } from '../../components/ui';
 import api from '../../services/api';
+import { getApiErrorMessage, logApiError } from '../../services/apiError';
 import ThemeToggle from '../../components/ThemeToggle';
 
 type Role = 'farmer' | 'buyer';
@@ -278,7 +279,7 @@ export default function RegisterScreen() {
         role: selectedRole,
       });
 
-      console.log('✅ SUCCESS:', response.data);
+      console.log('✅ SUCCESS: status', response.status, '| user id:', response.data?.user?._id ?? 'n/a');
       console.log('========================================');
 
       if (response.data.success) {
@@ -302,33 +303,15 @@ export default function RegisterScreen() {
         );
       }
     } catch (error: any) {
-      console.log('========================================');
-      console.log('❌ REGISTRATION FAILED');
-      console.log('❌ Error object:', error);
+      // Safe logging — passing the raw Axios error to console.log crashes
+      // Hermes/LogBox with "Property 'c' doesn't exist". We only log flat
+      // primitives and surface the real backend message to the user.
+      logApiError('REGISTRATION FAILED', error);
 
-      if (error.response) {
-        console.log('❌ Response status:', error.response.status);
-        console.log('❌ Response data:', JSON.stringify(error.response.data, null, 2));
-        console.log('❌ Response headers:', error.response.headers);
-      } else if (error.request) {
-        console.log('❌ No response received');
-        console.log('❌ Request:', error.request);
-        console.log('❌ URL attempted:', error.config?.url);
-        console.log('❌ Base URL:', api.defaults.baseURL);
-      } else {
-        console.log('❌ Error message:', error.message);
-      }
-      console.log('========================================');
-
-      let errorMessage = 'Something went wrong. Please try again.';
-      if (error.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error.response?.data?.error) {
-        errorMessage = error.response.data.error;
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
+      const errorMessage = getApiErrorMessage(
+        error,
+        'Something went wrong. Please try again.'
+      );
       showAlert('Registration Failed', errorMessage);
     } finally {
       setIsLoading(false);

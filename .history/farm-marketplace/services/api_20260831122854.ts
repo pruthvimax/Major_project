@@ -6,7 +6,7 @@ import { getApiErrorMessage } from './apiError';
 // For physical Android device: http://<your-PC-LAN-IP>:5000/api
 // For Android emulator:        http://10.0.2.2:5000/api
 // Run `ipconfig` on your PC to find the correct LAN IP.
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.6.232:5000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.137.1:5000/api';
 
 console.log('📡 API Base URL:', BASE_URL);
 

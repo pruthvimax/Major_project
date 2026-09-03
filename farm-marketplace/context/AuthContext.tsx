@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { logApiError } from '../services/apiError';
 import { AuthContextType, User, RegisterData } from '../types/auth.types';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,7 +36,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } catch (error) {
-      console.error('Error loading user:', error);
+      logApiError('Auth load user', error);
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +82,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await AsyncStorage.removeItem('token');
       setUser(null);
     } catch (error) {
-      console.error('Logout error:', error);
+      logApiError('Auth logout', error);
       throw error;
     }
   };

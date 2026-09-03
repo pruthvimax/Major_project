@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import useColors from '../../constants/Colors';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import { useCart } from '../../context/CartContext';
 import {
   ScreenHeader,
@@ -102,7 +103,7 @@ export default function BrowseScreen() {
         setFilteredProducts(response.data.products);
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      logApiError('Buyer browse products', error);
       setLoadError(error);
       if (Platform.OS === 'web') {
         window.alert('Error: Failed to load products. Make sure backend is running.');

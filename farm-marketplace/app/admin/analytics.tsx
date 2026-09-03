@@ -4,6 +4,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import AdminHeader from '../../components/admin/AdminHeader';
 import StatusBadge from '../../components/admin/StatusBadge';
 import {
@@ -166,7 +167,7 @@ export default function AdminAnalyticsScreen() {
       const res = await api.get('/admin/analytics');
       if (res.data.success) setAnalytics(res.data.analytics);
     } catch (e) {
-      console.error('Error fetching analytics:', e);
+      logApiError('Admin analytics', e);
       setError('Failed to load analytics data. Showing placeholder data.');
       setAnalytics(null);
     } finally {

@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { logApiError } from './apiError';
 
 /**
  * Client-side uploads must use an *unsigned* upload preset.
@@ -61,7 +62,7 @@ export const uploadImageToCloudinary = async (imageUri: string): Promise<string>
 
     throw new Error('Cloudinary response did not contain secure_url');
   } catch (error: any) {
-    console.error('Cloudinary upload error:', error);
+    logApiError('Cloudinary upload', error);
     const errorMsg = error.response?.data?.error?.message || error.message || 'Image upload failed';
     throw new Error(errorMsg);
   }

@@ -16,6 +16,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import ThemeToggle from '../../components/ThemeToggle';
 import {
   ScreenHeader,
@@ -216,15 +217,15 @@ export default function AdminDashboard() {
         return;
       }
       const user = JSON.parse(userData);
-      if (user.role !== 'admin') {
+      if (user?.role !== 'admin') {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
         return;
       }
-      setUserName(user.name || 'Admin');
+      setUserName(user?.name || 'Admin');
       await fetchAnalytics();
     } catch (error) {
-      console.error('Role validation error:', error);
+      logApiError('Admin role validation', error);
       router.replace('/auth/login');
     }
   }, []);
@@ -251,7 +252,7 @@ export default function AdminDashboard() {
         setActivities(analytics.latestActivities || []);
       }
     } catch (error) {
-      console.error('Error fetching admin analytics:', error);
+      logApiError('Admin fetch analytics', error);
       setError('Failed to load dashboard data. Showing fallback data.');
       // Fallback to basic counts
       try {
@@ -273,7 +274,7 @@ export default function AdminDashboard() {
           cancelledOrders: orders.filter((o: any) => o.status === 'cancelled').length,
         }));
       } catch (e) {
-        console.error(e);
+        logApiError('Admin analytics fallback', e);
       }
     } finally {
       setLoading(false);
@@ -296,7 +297,7 @@ export default function AdminDashboard() {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
       } catch (error) {
-        console.error('Logout error:', error);
+        logApiError('Admin logout', error);
       }
     };
 

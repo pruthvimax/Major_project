@@ -19,6 +19,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import { uploadImageToCloudinary } from '../../services/cloudinary';
 import { ScreenHeader, Card, Input, Button, Chip } from '../../components/ui';
 
@@ -255,7 +256,7 @@ export default function AddProductScreen() {
         setImageUrl(''); // Clear manual text URL if local image is selected
       }
     } catch (err: any) {
-      console.error('Gallery picker error:', err);
+      logApiError('Gallery picker', err);
       showAlert('Error', 'Failed to open image gallery.');
     }
   };
@@ -276,7 +277,7 @@ export default function AddProductScreen() {
         setImageUrl(''); // Clear manual text URL if camera photo is taken
       }
     } catch (err: any) {
-      console.error('Camera capture error:', err);
+      logApiError('Camera capture', err);
       showAlert('Error', 'Failed to open camera.');
     }
   };
@@ -344,7 +345,7 @@ export default function AddProductScreen() {
         });
       }
     } catch (error: any) {
-      console.error('Add product failed:', error);
+      logApiError('Add product failed', error);
       const errMsg = error.response?.data?.message || 'Failed to list product. Please try again.';
       showAlert('Error', errMsg);
     } finally {

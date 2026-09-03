@@ -15,6 +15,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import {
   ScreenHeader,
   OrderCard,
@@ -222,7 +223,7 @@ export default function OrdersScreen() {
         setOrders(response.data.orders);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
+      logApiError('Buyer load orders', error);
       setLoadError(error);
     } finally {
       setLoading(false);
@@ -238,7 +239,7 @@ export default function OrdersScreen() {
         setLoadError(null);
       }
     } catch (error) {
-      console.error('Error refreshing orders:', error);
+      logApiError('Buyer refresh orders', error);
       setLoadError(error);
     } finally {
       setRefreshing(false);
@@ -265,7 +266,7 @@ export default function OrdersScreen() {
           fetchOrders();
         }
       } catch (error: any) {
-        console.error('Cancel order failed:', error);
+        logApiError('Cancel order failed', error);
         const errorMsg = error.response?.data?.message || 'Failed to cancel order.';
         showAlert('Error', errorMsg);
         setLoading(false);
@@ -310,7 +311,7 @@ export default function OrdersScreen() {
         fetchOrders();
       }
     } catch (error: any) {
-      console.error('Submit review error:', error);
+      logApiError('Submit review error', error);
       const errorMsg = error.response?.data?.message || 'Failed to submit review.';
       showAlert('Error', errorMsg);
     } finally {

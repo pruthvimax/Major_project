@@ -15,6 +15,7 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
+import { logApiError } from '../../services/apiError';
 import AdminHeader from '../../components/admin/AdminHeader';
 import SearchBar from '../../components/admin/SearchBar';
 import FilterChips from '../../components/admin/FilterChips';
@@ -294,7 +295,7 @@ export default function ManageProductsScreen() {
         setFilteredProducts(response.data.products);
       }
     } catch (error) {
-      console.error('Error fetching products:', error);
+      logApiError('Admin fetch products', error);
       setError('Failed to load products. Please check your connection.');
     } finally {
       setLoading(false);
@@ -319,8 +320,8 @@ export default function ManageProductsScreen() {
         (selectedFilter === 'rejected' && p.verificationStatus === 'rejected');
       const matchesSearch =
         normalizedSearch === '' ||
-        p.name.toLowerCase().includes(normalizedSearch) ||
-        p.category.toLowerCase().includes(normalizedSearch) ||
+        (p.name || '').toLowerCase().includes(normalizedSearch) ||
+        (p.category || '').toLowerCase().includes(normalizedSearch) ||
         (p.farmer?.name && p.farmer.name.toLowerCase().includes(normalizedSearch)) ||
         (p.farmer?.email && p.farmer.email.toLowerCase().includes(normalizedSearch));
       return matchesFilter && matchesSearch;
@@ -354,7 +355,7 @@ export default function ManageProductsScreen() {
         fetchProducts();
       }
     } catch (error: any) {
-      console.error('Error moderating product:', error);
+      logApiError('Admin moderate product', error);
       setError(error.response?.data?.message || 'Failed to update product');
     } finally {
       setActionLoading(false);
@@ -449,7 +450,7 @@ export default function ManageProductsScreen() {
               {item.name}
             </Text>
             <Text style={styles.productCategory} numberOfLines={1}>
-              {item.category.toUpperCase()}
+              {(item.category || '').toUpperCase()}
             </Text>
           </View>
 
@@ -649,7 +650,7 @@ export default function ManageProductsScreen() {
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>Category</Text>
                     <Text style={styles.detailValue} numberOfLines={1}>
-                      {selectedProduct.category.toUpperCase()}
+                      {(selectedProduct.category || '').toUpperCase()}
                     </Text>
                   </View>
                   <View style={styles.detailRow}>
