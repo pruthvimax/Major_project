@@ -27,6 +27,7 @@ import {
   Card,
   Rating,
   EmptyState,
+  LanguageSelector,
 } from '../../components/ui';
 
 interface Review {
@@ -430,7 +431,8 @@ export default function FarmerDashboard() {
         subtitle="Farmer"
         align="left"
         actions={
-          <>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <LanguageSelector />
             <ThemeToggle />
             <TouchableOpacity
               onPress={handleLogout}
@@ -441,7 +443,7 @@ export default function FarmerDashboard() {
             >
               <Ionicons name="log-out-outline" size={20} color={colors.primary} />
             </TouchableOpacity>
-          </>
+          </View>
         }
       />
 

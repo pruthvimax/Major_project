@@ -8,7 +8,8 @@
     "start": "node dist/app.js",
     "dev": "nodemon src/app.ts",
     "watch": "tsc --watch",
-    "seed:admin": "ts-node src/scripts/seedAdmin.ts"
+    "seed:admin": "ts-node src/scripts/seedAdmin.ts",
+    "reset-password": "ts-node src/scripts/resetPassword.ts"
   },
   "keywords": [
     "blockchain",

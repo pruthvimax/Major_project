@@ -19,3 +19,5 @@ export { default as ErrorState, friendlyError } from './ErrorState';
 export { default as Loading, ListSkeleton, StatRowSkeleton } from './Loading';
 export { default as EmptyState } from '../EmptyState';
 export { Skeleton, ProductCardSkeleton, StatCardSkeleton } from '../SkeletonLoader';
+export { default as LanguageSelector } from '../LanguageSelector';
+export { default as ChatbotWidget } from '../ChatbotWidget';

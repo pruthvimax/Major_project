@@ -18,7 +18,7 @@ import { logApiError } from '../../services/apiError';
 import ThemeToggle from '../../components/ThemeToggle';
 import { registerForPushNotificationsAsync, savePushToken } from '../../services/notifications';
 import { useCart } from '../../context/CartContext';
-import { ScreenHeader, Card, Badge, StatCard, SectionHeader } from '../../components/ui';
+import { ScreenHeader, Card, Badge, StatCard, SectionHeader, LanguageSelector } from '../../components/ui';
 
 export default function BuyerDashboard() {
   const colors = useColors();
@@ -233,7 +233,12 @@ export default function BuyerDashboard() {
             accessibilityLabel: 'Logout',
           },
         ]}
-        actions={<ThemeToggle />}
+        actions={
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <LanguageSelector />
+            <ThemeToggle />
+          </View>
+        }
       />
 
       <ScrollView

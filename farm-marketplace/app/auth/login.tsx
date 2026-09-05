@@ -18,10 +18,11 @@ import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import { gradients } from '../../constants/ThemeColors';
-import { Button, Input } from '../../components/ui';
+import { Button, Input, LanguageSelector } from '../../components/ui';
 import api from '../../services/api';
 import { getApiErrorMessage, logApiError } from '../../services/apiError';
 import ThemeToggle from '../../components/ThemeToggle';
+import { useLanguage } from '../../context/LanguageContext';
 
 type Role = 'farmer' | 'buyer' | 'admin';
 
@@ -38,6 +39,7 @@ const ADMIN_PASSWORD = 'admin@123';
 export default function LoginScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [selectedRole, setSelectedRole] = useState<Role>('farmer');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -250,107 +252,56 @@ export default function LoginScreen() {
     }
   };
 
-const handleLogin = async () => {
-  if (!email || !password) {
-    showAlert('Error', 'Please fill in all fields');
-    return;
-  }
-
-  setIsLoading(true);
-
-  try {
-    // =========================
-    // ADMIN LOGIN (LOCAL ONLY)
-    // =========================
-    if (selectedRole === 'admin') {
-      if (
-        email.trim().toLowerCase() === ADMIN_EMAIL &&
-        password === ADMIN_PASSWORD
-      ) {
-        const adminUser = {
-          _id: 'admin-local',
-          name: 'System Admin',
-          email: ADMIN_EMAIL,
-          role: 'admin',
-        };
-
-        await AsyncStorage.setItem(
-          'user',
-          JSON.stringify(adminUser)
-        );
-        await AsyncStorage.setItem(
-          'currentUser',
-          JSON.stringify(adminUser)
-        );
-        await AsyncStorage.setItem(
-          'token',
-          'admin-local-token'
-        );
-
-        redirectTo('/admin');
-        return;
-      }
-
-      showAlert(
-        'Login Failed',
-        'Invalid admin credentials.\n\nEmail: admin@farm.com\nPassword: admin@123'
-      );
+  const handleLogin = async () => {
+    if (!email || !password) {
+      showAlert('Error', 'Please fill in all fields');
       return;
     }
 
-    // =========================
-    // FARMER / BUYER LOGIN
-    // =========================
-    const response = await api.post('/auth/login', {
-      email,
-      password,
-    });
+    setIsLoading(true);
 
-    if (response.data.success) {
-      const user = response.data.user;
+    try {
+      const response = await api.post('/auth/login', {
+        email: email.trim().toLowerCase(),
+        password,
+      });
 
-      if (user.role !== selectedRole) {
-        showAlert(
-          'Error',
-          `This account is registered as ${user.role}, not ${selectedRole}`
-        );
-        return;
+      if (response.data.success) {
+        const user = response.data.user;
+
+        if (user.role !== selectedRole) {
+          showAlert(
+            'Role Mismatch',
+            `This account is registered as ${user.role}, not ${selectedRole}. Please select the ${user.role} role tab.`
+          );
+          return;
+        }
+
+        await AsyncStorage.setItem('token', response.data.token);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        await AsyncStorage.setItem('currentUser', JSON.stringify(user));
+
+        if (selectedRole === 'farmer') {
+          redirectTo('/farmer');
+        } else if (selectedRole === 'buyer') {
+          redirectTo('/buyer');
+        } else if (selectedRole === 'admin') {
+          redirectTo('/admin');
+        }
       }
+    } catch (error: any) {
+      logApiError('LOGIN FAILED', error);
 
-      await AsyncStorage.setItem(
-        'token',
-        response.data.token
+      const userMessage = getApiErrorMessage(
+        error,
+        'Invalid email or password. Please try again.'
       );
 
-      await AsyncStorage.setItem(
-        'user',
-        JSON.stringify(user)
-      );
-
-      await AsyncStorage.setItem(
-        'currentUser',
-        JSON.stringify(user)
-      );
-
-      if (selectedRole === 'farmer') {
-        redirectTo('/farmer');
-      } else if (selectedRole === 'buyer') {
-        redirectTo('/buyer');
-      }
+      showAlert('Login Failed', userMessage);
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error: any) {
-    logApiError('LOGIN FAILED', error);
-
-    const userMessage = getApiErrorMessage(
-      error,
-      'Something went wrong. Please try again later.'
-    );
-
-    showAlert('Login Failed', userMessage);
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   const navigateToRegister = () => {
     router.push('/auth/register');
@@ -382,18 +333,21 @@ const handleLogin = async () => {
             <View style={styles.logoWell}>
               <Ionicons name="leaf" size={28} color={colors.white} />
             </View>
-            <ThemeToggle />
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <LanguageSelector />
+              <ThemeToggle />
+            </View>
           </View>
           <Text style={styles.heroBrand} numberOfLines={1}>
-            Farm Marketplace
+            {t('common.appName')}
           </Text>
         </LinearGradient>
 
         <View style={styles.sheet}>
-          <Text style={styles.title}>Welcome back!</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+          <Text style={styles.title}>{t('auth.welcomeBack')}</Text>
+          <Text style={styles.subtitle}>{t('auth.signInSubtitle')}</Text>
 
-          <Text style={styles.fieldLabel}>I am a</Text>
+          <Text style={styles.fieldLabel}>{t('auth.role')}</Text>
           <View style={styles.roleContainer}>
             {(['farmer', 'buyer', 'admin'] as Role[]).map((role) => (
               <TouchableOpacity
@@ -419,16 +373,16 @@ const handleLogin = async () => {
                     selectedRole === role && styles.roleButtonTextActive,
                   ]}
                 >
-                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                  {t(`auth.${role}Role`)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
           <Input
-            label="Email"
+            label={t('auth.email')}
             icon="mail-outline"
-            placeholder="Enter your email"
+            placeholder={t('auth.email')}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -436,9 +390,9 @@ const handleLogin = async () => {
           />
 
           <Input
-            label="Password"
+            label={t('auth.password')}
             icon="lock-closed-outline"
-            placeholder="Enter your password"
+            placeholder={t('auth.password')}
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -477,7 +431,7 @@ const handleLogin = async () => {
           </View>
 
           <Button
-            title="Login"
+            title={t('auth.loginBtn')}
             onPress={handleLogin}
             size="lg"
             fullWidth
@@ -487,9 +441,9 @@ const handleLogin = async () => {
 
           {selectedRole !== 'admin' && (
             <View style={styles.registerContainer}>
-              <Text style={styles.registerText}>Don't have an account? </Text>
+              <Text style={styles.registerText}>{t('auth.dontHaveAccount')} </Text>
               <TouchableOpacity onPress={navigateToRegister}>
-                <Text style={styles.registerLink}>Register</Text>
+                <Text style={styles.registerLink}>{t('common.register')}</Text>
               </TouchableOpacity>
             </View>
           )}
