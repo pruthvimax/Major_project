@@ -27,6 +27,7 @@ import {
   ErrorState,
   ListSkeleton,
   StatRowSkeleton,
+  LanguageSelector,
 } from '../../components/ui';
 
 interface DashboardCards {
@@ -211,7 +212,7 @@ export default function AdminDashboard() {
         return;
       }
       // Detect stale hardcoded admin token from old login bypass
-      if (token === 'admin-token-hardcoded') {
+      if (token === 'admin-token-hardcoded' || token === 'admin-local-token') {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
         return;
@@ -398,6 +399,7 @@ export default function AdminDashboard() {
         align="left"
         actions={
           <View style={styles.headerActions}>
+            <LanguageSelector />
             <ThemeToggle />
             <TouchableOpacity
               onPress={handleLogout}
@@ -473,7 +475,7 @@ export default function AdminDashboard() {
 
         <View style={styles.navList}>
           {navItems.map((item) => (
-            <Card key={item.label} onPress={() => router.push(item.route)} elevation="xs">
+            <Card key={item.label} onPress={() => router.push(item.route as any)} elevation="xs">
               <View style={styles.navCard}>
                 <View style={[styles.navIcon, { backgroundColor: item.tint }]}>
                   <Ionicons name={item.icon} size={22} color={item.accent} />

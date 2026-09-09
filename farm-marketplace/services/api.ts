@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { getApiErrorMessage } from './apiError';
 
 // Set EXPO_PUBLIC_API_URL in farm-marketplace/.env
@@ -43,7 +44,7 @@ api.interceptors.response.use(
     console.log('✅ API Response:', response.status, response.config?.method?.toUpperCase(), response.config?.url);
     return response;
   },
-  (error) => {
+  async (error) => {
     // Crash-resistant logging.
     //
     // Never pass the raw Axios `error` or `error.response.data` here — they can
@@ -64,6 +65,20 @@ api.interceptors.response.use(
           url: typeof url === 'string' ? url : undefined,
           serverMessage: typeof serverMessage === 'string' ? serverMessage : undefined,
         });
+
+        // Handle 401 Unauthorized - clear invalid token and redirect to login
+        // But exclude login and register endpoints since 401 there means wrong credentials, not invalid token
+        const requestUrl = (typeof url === 'string' ? url : '') || '';
+        const isAuthEndpoint = requestUrl.includes('/auth/login') || requestUrl.includes('/auth/register');
+
+        if (status === 401 && !isAuthEndpoint) {
+          console.log('🔒 Token invalid, clearing storage and redirecting to login');
+          await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
+          // Use setTimeout to avoid navigation during request processing
+          setTimeout(() => {
+            router.replace('/auth/login');
+          }, 100);
+        }
       } else if (error?.request) {
         console.error('❌ No response (network/timeout):', {
           code: typeof code === 'string' ? code : undefined,

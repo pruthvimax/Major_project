@@ -150,7 +150,7 @@ export default function MyProductsScreen() {
       unit={item.unit}
       imageUri={item.images && item.images[0] ? item.images[0] : undefined}
       description={item.description}
-      location={item.location.address}
+      location={item.location?.address}
       stockLabel={`Stock: ${item.quantity} ${item.unit}`}
       isOrganic={item.isOrganic}
       blockchainId={item.blockchainId}
