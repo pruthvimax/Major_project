@@ -5,7 +5,7 @@ import { AuthProvider } from '../context/AuthContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { LanguageProvider } from '../context/LanguageContext';
 import { CartProvider } from '../context/CartContext';
-import { AssistantHost } from '../components/chatbot';
+import ChatbotWidget from '../components/ChatbotWidget';
 
 function ThemedStatusBar() {
   const { isDark } = useTheme();
@@ -26,7 +26,7 @@ export default function RootLayout() {
                   animation: 'slide_from_right',
                 }}
               />
-              <AssistantHost />
+              <ChatbotWidget />
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

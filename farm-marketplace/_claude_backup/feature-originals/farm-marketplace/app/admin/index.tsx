@@ -375,14 +375,6 @@ export default function AdminDashboard() {
       badge: 0,
     },
     {
-      icon: 'link-outline' as const,
-      label: 'Transactions',
-      route: '/admin/transactions' as const,
-      accent: colors.secondary,
-      tint: colors.secondarySoft,
-      badge: 0,
-    },
-    {
       icon: 'warning-outline' as const,
       label: 'Disputes',
       route: '/admin/disputes' as const,

@@ -215,26 +215,3 @@ export const getProductHistoryOnChain = async (onChainProductId: number): Promis
     return [];
   }
 };
-
-// Read-only receipt lookup used by the Transaction History module to show
-// block numbers. Returns null when blockchain is disabled or the hash is unknown.
-export const getTransactionReceiptOnChain = async (
-  txHash: string
-): Promise<{ blockNumber: number; gasUsed: number; status: number | null } | null> => {
-  if (!isBlockchainEnabled || !provider) {
-    return null;
-  }
-
-  try {
-    const receipt = await provider.getTransactionReceipt(txHash);
-    if (!receipt) return null;
-    return {
-      blockNumber: receipt.blockNumber,
-      gasUsed: Number(receipt.gasUsed),
-      status: receipt.status,
-    };
-  } catch (error) {
-    console.error(`❌ Failed to retrieve transaction receipt:`, error);
-    return null;
-  }
-};

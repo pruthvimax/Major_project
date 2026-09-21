@@ -92,7 +92,7 @@ export default function Button({
           overflow: 'hidden',
         },
         gradient: {
-          ...StyleSheet.absoluteFill,
+          ...StyleSheet.absoluteFillObject,
           borderRadius: Layout.borderRadius.md,
         },
         label: {

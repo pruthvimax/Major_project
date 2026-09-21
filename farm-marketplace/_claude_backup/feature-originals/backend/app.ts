@@ -14,7 +14,6 @@ import paymentRoutes from './routes/paymentRoutes';
 import cartRoutes from './routes/cartRoutes';
 import adminRoutes from './routes/adminRoutes';
 import aiRoutes from './routes/aiRoutes';
-import transactionRoutes from './routes/transactionRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -47,7 +46,6 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
-app.use('/api/transactions', transactionRoutes);
 
 // Health check - Fixed unused req parameter
 app.get('/api/health', (_req, res) => {

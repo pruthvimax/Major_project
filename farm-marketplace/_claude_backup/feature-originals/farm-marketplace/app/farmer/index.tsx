@@ -535,16 +535,6 @@ export default function FarmerDashboard() {
                 </Text>
               </Card>
             </View>
-            <View style={styles.gridItem}>
-              <Card onPress={() => router.push('/farmer/transactions')} style={styles.actionTile}>
-                <View style={[styles.actionIconWell, { backgroundColor: colors.secondarySoft }]}>
-                  <Ionicons name="link-outline" size={22} color={colors.secondary} />
-                </View>
-                <Text style={styles.actionLabel} numberOfLines={2}>
-                  Blockchain Transactions
-                </Text>
-              </Card>
-            </View>
           </View>
         </View>
 

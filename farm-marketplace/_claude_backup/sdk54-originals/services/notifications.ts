@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import * as Device from 'expo-device';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import Constants from 'expo-constants';
 import api from './api';
 import { logApiError } from './apiError';
 
@@ -10,8 +10,7 @@ import { logApiError } from './apiError';
  * They only work in custom development builds or production APK/IPA builds.
  */
 function isRunningInExpoGo(): boolean {
-  // SDK 57: Constants.appOwnership is deprecated; executionEnvironment is the supported check.
-  return Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+  return Constants.appOwnership === 'expo';
 }
 
 // Configure how notifications are shown when the app is in the foreground

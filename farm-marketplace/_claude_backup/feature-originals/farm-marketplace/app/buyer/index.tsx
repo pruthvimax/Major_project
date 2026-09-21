@@ -217,13 +217,6 @@ export default function BuyerDashboard() {
       accent: colors.warning,
       onPress: () => router.push('/buyer/orders'),
     },
-    {
-      label: 'Blockchain Transactions',
-      icon: 'link-outline',
-      tint: colors.secondarySoft,
-      accent: colors.secondary,
-      onPress: () => router.push('/buyer/transactions'),
-    },
   ];
 
   return (

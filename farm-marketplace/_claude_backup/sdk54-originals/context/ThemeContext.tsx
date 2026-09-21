@@ -17,8 +17,7 @@ const THEME_STORAGE_KEY = '@app_theme';
 
 export const ThemeProvider = ({ children }: { children: ReactNode }) => {
   const systemTheme = useColorScheme();
-  // RN 0.86: useColorScheme() can also return 'unspecified', so narrow to our Theme union.
-  const [theme, setTheme] = useState<Theme>(systemTheme === 'dark' ? 'dark' : 'light');
+  const [theme, setTheme] = useState<Theme>(systemTheme || 'light');
 
   useEffect(() => {
     loadTheme();

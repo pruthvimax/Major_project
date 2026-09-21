@@ -93,7 +93,7 @@ export default function ProductCard({
           gap: Layout.spacing.sm,
         },
         outOfStockVeil: {
-          ...StyleSheet.absoluteFill,
+          ...StyleSheet.absoluteFillObject,
           backgroundColor: colors.overlay,
           alignItems: 'center',
           justifyContent: 'center',
