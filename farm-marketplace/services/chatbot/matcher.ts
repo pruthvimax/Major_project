@@ -17,7 +17,7 @@ const STOP_WORDS = new Set([
   'a', 'an', 'the', 'i', 'me', 'my', 'we', 'our', 'you', 'your', 'it', 'is', 'are', 'am', 'be',
   'do', 'does', 'did', 'can', 'could', 'will', 'would', 'should', 'to', 'of', 'in', 'on', 'for',
   'and', 'or', 'with', 'about', 'please', 'pls', 'plz', 'tell', 'know', 'want', 'need', 'like',
-  'this', 'that', 'there', 'here', 'how', 'what', 'when', 'where', 'why', 'which', 'who', 'any',
+  'this', 'that', 'there', 'here', 'how', 'what', 'when', 'why', 'which', 'who', 'any',
   'some', 'get', 'have', 'has', 'from', 'by', 'at', 'as', 'so', 'if', 'then', 'just', 'also',
 ]);
 

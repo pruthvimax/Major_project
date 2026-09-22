@@ -38,7 +38,7 @@ export const buyerFaqs: FAQEntry[] = [
     role: 'buyer',
     category: 'payments',
     question: 'Which payment method should I choose?',
-    keywords: ['which payment', 'best payment', 'choose payment', 'pay online', 'upi', 'card', 'cash on delivery', 'cod'],
+    keywords: ['which payment', 'best payment', 'choose payment', 'which is better', 'better', 'best', 'compare', 'recommended', 'safest', 'cash or blockchain', 'cash', 'pay online', 'upi', 'card', 'cash on delivery', 'cod'],
     answer:
       'At checkout you can pick:\n• Blockchain Escrow — your money is locked in a smart contract and only released after delivery. Safest option.\n• Razorpay (UPI / card / net banking) — paid instantly online.\n• Cash on Delivery — pay the farmer when produce arrives.\n• Bank Transfer — transfer directly to the farmer.\nOnly Blockchain Escrow gives you an on-chain transaction record and automatic refunds.',
     followUps: ['How does escrow protect me?'],
@@ -58,7 +58,7 @@ export const buyerFaqs: FAQEntry[] = [
     role: 'buyer',
     category: 'orders',
     question: 'How do I track my order?',
-    keywords: ['track', 'track order', 'track my order', 'where is my order', 'order status', 'timeline', 'shipped', 'packed', 'delivery status', 'eta', 'expected delivery'],
+    keywords: ['track', 'track order', 'track my order', 'where is my order', 'where order', 'where my order', 'find my order', 'order location', 'order status', 'timeline', 'shipped', 'packed', 'delivery status', 'eta', 'expected delivery'],
     answer:
       'Dashboard → "My Orders" → tap "Track" on an order. The timeline shows every status change and any updates the farmer adds (location, expected delivery).\nStatus flow: Pending → Accepted → Packed → Shipped → Delivered.\nYou will also get a push notification when the status changes (in a development build).',
     route: 'Dashboard → My Orders → Track',

@@ -15,6 +15,8 @@ export { default as Chip, ChipRow } from './Chip';
 export { default as ProductCard } from './ProductCard';
 export { default as OrderCard } from './OrderCard';
 export type { OrderMetaRow } from './OrderCard';
+export { default as ReviewAnalytics } from './ReviewAnalytics';
+export type { FarmerReview } from './ReviewAnalytics';
 export { default as ErrorState, friendlyError } from './ErrorState';
 export { default as Loading, ListSkeleton, StatRowSkeleton } from './Loading';
 export { default as EmptyState } from '../EmptyState';
