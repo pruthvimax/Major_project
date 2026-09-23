@@ -71,6 +71,19 @@ export default function FarmerDashboard() {
       flexBasis: '45%',
       minWidth: 0,
     },
+    gridItemWide: {
+      flexBasis: '100%',
+    },
+    schemeTileText: {
+      flex: 1,
+      minWidth: 0,
+    },
+    schemeTileSub: {
+      fontSize: Typography.fontSize.xs,
+      lineHeight: Typography.leading.xs,
+      color: colors.textSecondary,
+      marginTop: 2,
+    },
     skeletonStack: {
       gap: Layout.spacing.md,
     },
@@ -331,6 +344,23 @@ export default function FarmerDashboard() {
                 <Text style={styles.actionLabel} numberOfLines={2}>
                   Blockchain Transactions
                 </Text>
+              </Card>
+            </View>
+            {/* Government Schemes — subsidies, insurance & benefits (see app/farmer/schemes.tsx) */}
+            <View style={[styles.gridItem, styles.gridItemWide]}>
+              <Card onPress={() => router.push('/farmer/schemes' as any)} style={styles.actionTile}>
+                <View style={[styles.actionIconWell, { backgroundColor: colors.tintGreen }]}>
+                  <Ionicons name="ribbon-outline" size={22} color={colors.primaryDark} />
+                </View>
+                <View style={styles.schemeTileText}>
+                  <Text style={styles.actionLabel} numberOfLines={1}>
+                    🌾 Government Schemes
+                  </Text>
+                  <Text style={styles.schemeTileSub} numberOfLines={1}>
+                    Subsidies, crop insurance & benefits
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
               </Card>
             </View>
           </View>

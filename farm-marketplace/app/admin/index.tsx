@@ -17,6 +17,11 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { logApiError } from '../../services/apiError';
+import { fetchSchemeAnalytics } from '../../services/schemes';
+import { fetchBusinessAnalytics, formatINR, formatINRShort } from '../../services/businessAnalytics';
+import { TrendPill } from '../../components/admin/AnalyticsCharts';
+import type { BusinessAnalytics } from '../../types/analytics.types';
+import type { SchemeAnalytics } from '../../types/scheme.types';
 import ThemeToggle from '../../components/ThemeToggle';
 import {
   ScreenHeader,
@@ -78,6 +83,8 @@ export default function AdminDashboard() {
     disputedOrders: 0,
   });
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [schemeStats, setSchemeStats] = useState<SchemeAnalytics | null>(null);
+  const [bizStats, setBizStats] = useState<BusinessAnalytics | null>(null);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -126,6 +133,59 @@ export default function AdminDashboard() {
     statsBlock: {
       marginBottom: Layout.spacing.lg,
       gap: Layout.spacing.md,
+    },
+    bizCard: {
+      marginBottom: Layout.spacing.lg,
+    },
+    bizHead: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Layout.spacing.sm,
+    },
+    bizEyebrow: {
+      flex: 1,
+      fontSize: Typography.fontSize.xs,
+      fontWeight: Typography.fontWeight.bold,
+      color: colors.textSecondary,
+      letterSpacing: 0.6,
+    },
+    bizValue: {
+      fontSize: Typography.fontSize.huge,
+      lineHeight: Typography.leading.huge,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.text,
+      marginTop: Layout.spacing.xs,
+    },
+    bizTrendRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: Layout.spacing.sm,
+      marginTop: Layout.spacing.xs,
+    },
+    bizTiles: {
+      flexDirection: 'row',
+      gap: Layout.spacing.sm,
+      marginTop: Layout.spacing.md,
+    },
+    bizTile: {
+      flex: 1,
+      minWidth: 0,
+      backgroundColor: colors.surfaceAlt,
+      borderRadius: Layout.borderRadius.md,
+      padding: Layout.spacing.sm + 2,
+    },
+    bizTileLabel: {
+      fontSize: 9,
+      fontWeight: Typography.fontWeight.semibold,
+      color: colors.textSecondary,
+      letterSpacing: 0.4,
+    },
+    bizTileValue: {
+      fontSize: Typography.fontSize.md,
+      lineHeight: Typography.leading.md,
+      fontWeight: Typography.fontWeight.extrabold,
+      color: colors.text,
+      marginTop: 2,
     },
     statsRow: {
       flexDirection: 'row',
@@ -232,6 +292,14 @@ export default function AdminDashboard() {
   }, []);
 
   const fetchAnalytics = useCallback(async () => {
+    // Government-scheme numbers load on their own so a failure there never
+    // affects the marketplace analytics below.
+    fetchSchemeAnalytics()
+      .then(setSchemeStats)
+      .catch((e) => logApiError('Admin scheme analytics', e));
+    fetchBusinessAnalytics()
+      .then(setBizStats)
+      .catch((e) => logApiError('Admin business analytics', e));
     try {
       setError(null);
       const res = await api.get('/admin/analytics');
@@ -367,6 +435,14 @@ export default function AdminDashboard() {
       badge: cards.pendingOrders,
     },
     {
+      icon: 'trending-up-outline' as const,
+      label: 'Revenue & Growth',
+      route: '/admin/revenue-analytics' as const,
+      accent: colors.primaryDark,
+      tint: colors.tintGreen,
+      badge: 0,
+    },
+    {
       icon: 'bar-chart-outline' as const,
       label: 'Analytics',
       route: '/admin/analytics' as const,
@@ -389,6 +465,22 @@ export default function AdminDashboard() {
       accent: colors.error,
       tint: colors.errorSoft,
       badge: cards.disputedOrders,
+    },
+    {
+      icon: 'ribbon-outline' as const,
+      label: 'Government Schemes',
+      route: '/admin/schemes' as const,
+      accent: colors.primaryDark,
+      tint: colors.tintGreen,
+      badge: 0,
+    },
+    {
+      icon: 'chatbubbles-outline' as const,
+      label: 'Scheme Queries',
+      route: '/admin/scheme-queries' as const,
+      accent: colors.info,
+      tint: colors.tintSky,
+      badge: schemeStats?.openQueries ?? 0,
     },
     {
       icon: 'settings-outline' as const,
@@ -451,6 +543,56 @@ export default function AdminDashboard() {
           </View>
         )}
 
+        {bizStats && (
+          <>
+            <SectionHeader
+              title="📊 Revenue & Growth"
+              subtitle="Platform business intelligence"
+              actionLabel="Open"
+              onAction={() => router.push('/admin/revenue-analytics' as any)}
+            />
+            <Card style={styles.bizCard} elevation="sm" onPress={() => router.push('/admin/revenue-analytics' as any)}>
+              <View style={styles.bizHead}>
+                <Ionicons name="cash-outline" size={16} color={colors.primary} />
+                <Text style={styles.bizEyebrow}>TOTAL REVENUE</Text>
+                <Badge label={`${bizStats.commission.ratePercent}% commission`} tone="warning" icon="wallet-outline" />
+              </View>
+              <Text style={styles.bizValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
+                {formatINR(bizStats.revenue.total)}
+              </Text>
+              <View style={styles.bizTrendRow}>
+                <TrendPill value={bizStats.revenue.monthlyGrowth} suffix="from last month" />
+              </View>
+              <View style={styles.bizTiles}>
+                <View style={styles.bizTile}>
+                  <Text style={styles.bizTileLabel}>COMMISSION</Text>
+                  <Text style={styles.bizTileValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {formatINRShort(bizStats.commission.total)}
+                  </Text>
+                </View>
+                <View style={styles.bizTile}>
+                  <Text style={styles.bizTileLabel}>THIS MONTH</Text>
+                  <Text style={styles.bizTileValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
+                    {formatINRShort(bizStats.revenue.thisMonth)}
+                  </Text>
+                </View>
+                <View style={styles.bizTile}>
+                  <Text style={styles.bizTileLabel}>NEW FARMERS</Text>
+                  <Text style={styles.bizTileValue} numberOfLines={1}>
+                    {bizStats.farmers.newThisMonth}
+                  </Text>
+                </View>
+                <View style={styles.bizTile}>
+                  <Text style={styles.bizTileLabel}>NEW BUYERS</Text>
+                  <Text style={styles.bizTileValue} numberOfLines={1}>
+                    {bizStats.buyers.newThisMonth}
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          </>
+        )}
+
         <SectionHeader title="Overview" subtitle="Marketplace at a glance" />
 
         {loading ? (
@@ -502,6 +644,43 @@ export default function AdminDashboard() {
             </Card>
           ))}
         </View>
+
+        {schemeStats && (
+          <>
+            <SectionHeader
+              title="Government Schemes"
+              subtitle="Farmer awareness programme"
+              actionLabel="Manage"
+              onAction={() => router.push('/admin/schemes' as any)}
+            />
+            <View style={styles.statsBlock}>
+              <View style={styles.statsRow}>
+                <StatCard icon="ribbon-outline" value={schemeStats.totalSchemes} label="Total Schemes" accent={colors.primary} tint={colors.primarySoft} />
+                <StatCard icon="checkmark-circle-outline" value={schemeStats.activeSchemes} label="Active Schemes" accent={colors.success} tint={colors.successSoft} />
+              </View>
+              <View style={styles.statsRow}>
+                <StatCard icon="chatbubbles-outline" value={schemeStats.totalQueries} label="Farmer Queries" accent={colors.info} tint={colors.tintBlue} />
+                <StatCard icon="checkmark-done-outline" value={schemeStats.resolvedQueries} label="Resolved Queries" accent={colors.secondary} tint={colors.secondarySoft} />
+              </View>
+              <Card elevation="xs">
+                <View style={styles.activityRow}>
+                  <View style={[styles.activityIcon, { backgroundColor: colors.tintAmber }]}>
+                    <Ionicons name="eye-outline" size={18} color={colors.accent} />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={styles.activityMeta}>Most viewed scheme</Text>
+                    <Text style={styles.activityText} numberOfLines={1}>
+                      {schemeStats.mostViewedScheme?.name || 'No views recorded yet'}
+                    </Text>
+                  </View>
+                  {schemeStats.mostViewedScheme && (
+                    <Text style={styles.activityAmount}>{schemeStats.mostViewedScheme.viewCount} views</Text>
+                  )}
+                </View>
+              </Card>
+            </View>
+          </>
+        )}
 
         <SectionHeader
           title="Latest Activities"

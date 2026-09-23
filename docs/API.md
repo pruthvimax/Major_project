@@ -966,3 +966,30 @@ X-RateLimit-Limit: 100
 X-RateLimit-Remaining: 95
 X-RateLimit-Reset: 1642234567
 ```
+
+## Government Schemes (`/api/schemes`) — all routes require a JWT
+
+| Method | Path | Role | Notes |
+|---|---|---|---|
+| GET | `/api/schemes?category&search&saved=true&label&status` | any | farmers/buyers receive active schemes only; `status=active\|inactive` is admin-only |
+| POST | `/api/schemes` | admin | create |
+| GET | `/api/schemes/:id` | any | increments `viewCount` for non-admins |
+| PUT | `/api/schemes/:id` | admin | partial update — also used for `isActive` and `labels` (`new`, `popular`, `expiring_soon`) |
+| DELETE | `/api/schemes/:id` | admin | cascades to the scheme's queries |
+| POST | `/api/schemes/:id/save` | farmer | toggle favourite |
+| POST | `/api/schemes/:id/queries` | farmer | `{ question }` |
+| GET | `/api/schemes/queries/mine?schemeId` | farmer | own questions |
+| GET | `/api/schemes/queries?status` | admin | inbox |
+| PUT | `/api/schemes/queries/:queryId` | admin | `{ adminResponse?, status? }` — `resolved` requires a reply |
+| GET | `/api/schemes/analytics` | admin | totals, resolved/open counts, most viewed |
+
+Collections: `schemes`, `schemeQueries`.
+
+## Revenue & Growth Analytics (`/api/admin`) — admin only
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/api/admin/business-analytics` | revenue, commission, 6-month series, farmer/buyer growth, top farmers/products, category share, blockchain, insights |
+| GET | `/api/admin/reports/:type/export` | CSV download; `type` = `revenue` \| `farmers` \| `buyers` \| `monthly` |
+
+Revenue = orders with `paymentStatus: paid` and `status != cancelled`. Commission = revenue × `PLATFORM_COMMISSION_RATE` (percent, default `2`). Aggregated live from `users`, `products`, `orders`, `reviews`, `transactions`.
