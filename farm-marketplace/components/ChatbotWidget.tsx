@@ -11,9 +11,12 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { speakText, stopSpeech } from '../services/speech';
 import api from '../services/api';
 import useColors from '../constants/Colors';
@@ -37,6 +40,7 @@ const QUICK_SUGGESTIONS: Record<string, string[]> = {
 };
 
 export default function ChatbotWidget() {
+  const { user } = useAuth();
   const { language, t } = useLanguage();
   const colors = useColors();
   const [modalVisible, setModalVisible] = useState(false);
@@ -44,9 +48,36 @@ export default function ChatbotWidget() {
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
   
   const scrollViewRef = useRef<ScrollView>(null);
   const recognitionRef = useRef<any>(null);
+
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
+      },
+      onPanResponderGrant: () => {
+        setIsDragging(true);
+        pan.extractOffset();
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: () => {
+        setIsDragging(false);
+        pan.flattenOffset();
+      },
+      onPanResponderTerminate: () => {
+        setIsDragging(false);
+        pan.flattenOffset();
+      },
+    })
+  ).current;
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -60,10 +91,13 @@ export default function ChatbotWidget() {
   const styles = useMemo(
     () =>
       StyleSheet.create({
-        fab: {
+        fabContainer: {
           position: 'absolute',
           bottom: 80,
           right: Layout.spacing.lg,
+          zIndex: 999,
+        },
+        fab: {
           width: 56,
           height: 56,
           borderRadius: 28,
@@ -75,7 +109,6 @@ export default function ChatbotWidget() {
           shadowOpacity: 0.25,
           shadowRadius: 8,
           elevation: 8,
-          zIndex: 999,
         },
         modalOverlay: {
           flex: 1,
@@ -395,17 +428,34 @@ export default function ChatbotWidget() {
 
   const suggestions = QUICK_SUGGESTIONS[language] || QUICK_SUGGESTIONS.en;
 
+  if (!user) {
+    return null;
+  }
+
   return (
     <>
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => setModalVisible(true)}
-        activeOpacity={0.8}
-        accessibilityRole="button"
-        accessibilityLabel="Open AI Voice Assistant"
+      <Animated.View
+        style={[
+          styles.fabContainer,
+          {
+            transform: pan.getTranslateTransform(),
+          },
+        ]}
+        {...panResponder.panHandlers}
       >
-        <Ionicons name="sparkles" size={26} color="#FFFFFF" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.fab,
+            Platform.OS === 'web' && ({ cursor: isDragging ? 'grabbing' : 'grab' } as any),
+          ]}
+          onPress={() => setModalVisible(true)}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Open AI Voice Assistant"
+        >
+          <Ionicons name="sparkles" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
+      </Animated.View>
 
       <Modal
         visible={modalVisible}
