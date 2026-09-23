@@ -1,151 +1,155 @@
-# Blockchain-Based Farm Marketplace
+# 🌾 Blockchain-Based Farm Marketplace
 
-This repository contains a complete full-stack marketplace for connecting farmers and buyers, with JWT-based authentication, MongoDB persistence, and blockchain-backed product and escrow flows.
+A full-stack blockchain-enabled marketplace that directly connects farmers and buyers, eliminating unnecessary middlemen and enabling secure, transparent agricultural trade.
 
-## Project structure
+The platform supports:
 
-```text
-Major_project/
-├── backend/            # Express + TypeScript API, MongoDB models, auth, orders, payments
-├── blockchain/         # Hardhat + Solidity smart contracts and deployment scripts
-├── farm-marketplace/   # Expo Router mobile app for buyer, farmer, and admin roles
-├── docs/               # API and setup documentation
-└── README.md
-```
-
-## Completed modules
-
-### Authentication and access control
-- Multi-role login for buyer, farmer, and admin
-- JWT authentication with protected routes
-- Suspended-user handling and role checks
-
-### Cart and orders
-- Add, update, remove, and summarize cart items
-- Buyer checkout and order placement
-- Farmer order review, accept/reject, and status progression
-- Buyer order history, cancellation, and order tracking
-
-### Blockchain integration
-- Product registration on-chain
-- Escrow-based purchases and delivery confirmation
-- Refund flow for cancelled orders
-- Ownership history and traceability getters
-
-### Admin panel
-- Dashboard cards and analytics
-- User management with search, suspend, and delete
-- Product moderation with approve/block/delete
-- Order management and dispute visibility
-
-### UI polish
-- Consistent cards, responsive layouts, empty states, and loading states
-- Role-based navigation and modern agriculture styling
-
-## Tech stack
-
-- Mobile: React Native, Expo Router, TypeScript
-- API: Node.js, Express, MongoDB, Mongoose, JWT
-- Blockchain: Solidity, Hardhat, Ethers.js
-
-## Setup
-
-### Backend
-```bash
-cd backend
-npm install
-cp .env.example .env
-npm run dev
-```
-
-### Mobile app
-```bash
-cd farm-marketplace
-npm install
-cp .env.example .env
-npx expo start
-```
-
-### Blockchain
-```bash
-cd blockchain
-npm install
-npx hardhat node
-npx hardhat test
-```
-
-## Environment variables
-
-### Backend
-- PORT
-- MONGODB_URI
-- JWT_SECRET
-- JWT_EXPIRE
-- ETHEREUM_NODE_URL or BLOCKCHAIN_RPC_URL
-- ETHEREUM_PRIVATE_KEY or PRIVATE_KEY
-- CONTRACT_ADDRESS
-
-### Frontend
-- EXPO_PUBLIC_API_URL
-
-## Notes
-
-- The backend automatically falls back to database-only mode if blockchain configuration is missing.
-- The blockchain service is designed to work with a local Hardhat node or a configured RPC endpoint.
-
-## Verification
-
-The current implementation was verified with:
-```bash
-cd backend && npm run build
-cd blockchain && npx hardhat test
-```
-
-updated on 29/07/2026 11:37
-
-# 🚀 Latest Development Progress
-
-## ✅ Completed Features
-
-### 🛒 Order Management
-
-Successfully implemented and verified the complete order placement workflow.
-
-### Features Completed
-
-- Buyer can place orders successfully.
-- Orders are stored in MongoDB.
-- Unique order numbers are automatically generated.
-- Order details include:
-  - Order Number
-  - Buyer
-  - Farmer
-  - Product Details
-  - Quantity
-  - Total Amount
-  - Payment Method
-  - Shipping Address
-  - Order Status
-  - Created Date
+- 👨‍🌾 Farmers
+- 🛒 Buyers
+- 👨‍💼 Administrators
+- ⛓️ Blockchain Escrow Transactions
+- 📊 Analytics & Monitoring
+- ⭐ Reviews & Ratings
 
 ---
 
-## 🔧 Backend Improvements
+# 📂 Project Structure
 
-### Order Number Generation
+```text
+Major_project/
+├── backend/                # Express + TypeScript Backend
+├── blockchain/             # Solidity Smart Contracts (Hardhat)
+├── farm-marketplace/       # Expo React Native Mobile App
+├── docs/                   # Project Documentation
+└── README.md
+```
 
-Fixed an issue where order creation failed due to the required `orderNumber` field not being generated before validation.
+---
 
-### Root Cause
+# 🚀 Tech Stack
 
-- Mongoose validated the document before `orderNumber` was assigned.
-- Validation failed because `orderNumber` was `undefined`.
+## Mobile Application
 
-### Solution
+- React Native
+- Expo SDK 54
+- Expo Router
+- TypeScript
+- AsyncStorage
 
-Implemented automatic order number generation inside the Order model before validation.
+## Backend
 
-Example Format:
+- Node.js
+- Express.js
+- MongoDB
+- Mongoose
+- JWT Authentication
+- Bcrypt
+
+## Blockchain
+
+- Solidity
+- Hardhat
+- Ethers.js
+- Ethereum Local Network
+
+---
+
+# ✅ Completed Features
+
+---
+
+## 🔐 Authentication Module
+
+### Multi Role Login
+
+- Farmer Login
+- Buyer Login
+- Admin Login
+
+### Security
+
+- JWT Authentication
+- Password Hashing
+- Protected Routes
+- Role Validation
+- Suspended User Handling
+
+---
+
+# 👨‍🌾 Farmer Module
+
+### Product Management
+
+- Add Product
+- Edit Product
+- Delete Product
+- Product Inventory
+
+### Dashboard
+
+- Product Statistics
+- Revenue Overview
+- Order Summary
+
+### Reviews
+
+- View Product Reviews
+- View Customer Feedback
+- Farmer Rating Data
+
+---
+
+# 🛒 Buyer Module
+
+### Marketplace
+
+- Browse Products
+- Search Products
+- Product Details
+- Product Categories
+
+### Cart
+
+- Add To Cart
+- Update Quantity
+- Remove Items
+- Cart Summary
+
+### Orders
+
+- Checkout
+- Place Orders
+- View Order History
+- Cancel Orders
+- Track Orders
+
+---
+
+# 📦 Order Management
+
+### Features
+
+- Order Placement
+- Order Tracking
+- Order Cancellation
+- Order History
+
+### Order Details Stored
+
+- Order Number
+- Buyer
+- Farmer
+- Product Information
+- Quantity
+- Total Amount
+- Payment Method
+- Shipping Address
+- Status
+- Created Date
+
+### Automatic Order Number Generation
+
+Format:
 
 ```text
 ORD-<timestamp>-<random>
@@ -157,129 +161,417 @@ Example:
 ORD-MS5L9LXM-UPHH
 ```
 
-Result:
+---
 
-- No frontend changes required.
-- Every new order receives a unique order number automatically.
-- Order creation now completes successfully.
+# ⭐ Review & Rating System
+
+### Buyers
+
+- Submit Product Reviews
+- Rate Products
+- Provide Feedback
+
+### Farmers
+
+- View Reviews
+- Monitor Product Ratings
+- Customer Feedback Tracking
 
 ---
 
-## 🗄 Database
+# 👨‍💼 Admin Panel
 
-Verified successful storage of orders in MongoDB.
+## Dashboard Analytics
 
-Each order now stores:
+Displays:
 
+- Total Farmers
+- Total Buyers
+- Total Products
+- Total Orders
+- Pending Orders
+- Delivered Orders
+- Cancelled Orders
+- Revenue
+- Blockchain Transactions
+
+---
+
+## User Management
+
+Admin can:
+
+- Search Users
+- Filter Users
+- View User Details
+- Suspend Users
+- Activate Users
+- Delete Users
+
+---
+
+## Product Moderation
+
+Admin can:
+
+- Approve Products
+- Block Products
+- Unblock Products
+- Reject Products
+- Delete Products
+
+---
+
+## Order Management
+
+Admin can:
+
+- View Orders
+- Search Orders
+- Filter Orders
+- View Full Order Details
+- Cancel Orders
+- Monitor Payments
+
+---
+
+## Dispute Management
+
+Admin can:
+
+- View Disputes
+- Resolve Disputes
+- Add Resolution Notes
+- Monitor Dispute Status
+
+---
+
+## Analytics Module
+
+Displays:
+
+- Revenue Analytics
+- Category Analytics
+- Product Performance
+- User Growth
+- Marketplace Statistics
+
+---
+
+# ⛓️ Blockchain Module
+
+## Smart Contract Features
+
+### Product Registration
+
+Products are registered on-chain.
+
+### Escrow Transactions
+
+Buyer funds are securely locked.
+
+### Delivery Confirmation
+
+Funds released after delivery confirmation.
+
+### Refund Support
+
+Automatic refund processing.
+
+### Product Traceability
+
+Track ownership history and transaction records.
+
+---
+
+# ⛓️ Blockchain Transaction History
+
+Displays:
+
+- Transaction ID
 - Order Number
-- Buyer Information
+- Wallet Address
+- Amount
+- Status
+- Date
+- Escrow Information
+
+---
+
+# 🗄 Database
+
+MongoDB Collections
+
+### Users
+
+Stores:
+
+- Farmer Accounts
+- Buyer Accounts
+- Admin Accounts
+
+### Products
+
+Stores:
+
+- Product Information
 - Farmer Information
-- Ordered Products
-- Total Amount
-- Payment Method
-- Shipping Address
-- Order Status
-- Created Timestamp
+- Inventory
+
+### Orders
+
+Stores:
+
+- Complete Order Records
+
+### Reviews
+
+Stores:
+
+- Product Reviews
+- Ratings
+- Feedback
+
+### Transactions
+
+Stores:
+
+- Blockchain Transaction Data
 
 ---
 
-## 🔗 Backend Verification
+# ⚙️ Environment Variables
 
-Verified:
+## Backend
 
-- Backend starts successfully.
-- MongoDB connection established.
-- Order creation API returns success.
-- Orders persist correctly in the database.
+```env
+PORT=
+MONGODB_URI=
+JWT_SECRET=
+JWT_EXPIRE=
 
----
+ETHEREUM_NODE_URL=
+BLOCKCHAIN_RPC_URL=
 
-## 📱 Mobile Verification
+ETHEREUM_PRIVATE_KEY=
+PRIVATE_KEY=
 
-Verified on Expo Go:
-
-- Buyer Login
-- Product Selection
-- Cart
-- Checkout
-- Place Order
-- Order Successfully Created
+CONTRACT_ADDRESS=
+```
 
 ---
 
-## 🧪 Testing Completed
+## Frontend
 
-Successfully tested:
-
-- Order Placement
-- MongoDB Storage
-- Backend Validation
-- Order Number Generation
-- API Request Flow
+```env
+EXPO_PUBLIC_API_URL=
+```
 
 ---
 
-## 📂 Files Updated
+# 🚀 Backend Setup
 
-### Backend
+```bash
+cd backend
 
-- Order Model
-- Order Creation Flow
+npm install
 
-### Database
-
-- Orders Collection
-
----
-
-## 🔜 Next Development Tasks
-
-- Order Tracking (Trace Order)
-- Order Cancellation with Confirmation Dialog
-- Admin Dashboard Enhancement
-- Order Status Timeline
-- Blockchain Transaction Integration
-- Escrow Workflow
-- Product Traceability
+npm run dev
+```
 
 ---
 
-## 📌 Current Project Status
+# 📱 Mobile App Setup
 
-### ✅ Completed
+```bash
+cd farm-marketplace
 
-- Authentication Module
-- JWT Authentication
-- MongoDB Integration
-- Farmer Module
-- Buyer Module
-- Product CRUD
-- Cart
-- Order Placement
-- Order Storage
-- Automatic Order Number Generation
+npm install
 
-### 🚧 In Progress
+npx expo start
+```
 
-- Order Tracking
-- Admin Dashboard Improvements
+---
 
-### ⏳ Planned
+# ⛓️ Blockchain Setup
 
-- Blockchain Smart Contract Integration
-- Escrow Payments
-- Product Traceability
-- Analytics Dashboard
-- Final Testing & Deployment
+Install Dependencies
 
-
-
+```bash
 cd blockchain
-npm run node   
 
-this runs >>>>>> hardhat node
+npm install
+```
 
+---
 
+## Start Local Blockchain
 
+```bash
 cd blockchain
+
+npm run node
+```
+
+This runs:
+
+```bash
+hardhat node
+```
+
+---
+
+## Deploy Smart Contract
+
+Open another terminal:
+
+```bash
+cd blockchain
+
 npm run deploy:local
+```
+
+This deploys:
+
+```bash
+hardhat run scripts/deploy.ts --network localhost
+```
+
+---
+
+## Run Smart Contract Tests
+
+```bash
+cd blockchain
+
+npm test
+```
+
+or
+
+```bash
+npx hardhat test
+```
+
+---
+
+# 🧪 Verification Completed
+
+Successfully Tested:
+
+✅ Authentication
+
+✅ JWT Security
+
+✅ MongoDB Connection
+
+✅ Product CRUD
+
+✅ Cart Management
+
+✅ Order Placement
+
+✅ Order Tracking
+
+✅ Order Storage
+
+✅ Order Number Generation
+
+✅ Review System
+
+✅ Admin Dashboard
+
+✅ User Management
+
+✅ Product Moderation
+
+✅ Blockchain Smart Contract Tests
+
+✅ Escrow Workflow
+
+✅ Product Traceability
+
+---
+
+# 📈 Current Project Status
+
+## Completed
+
+✅ Authentication Module
+
+✅ MongoDB Integration
+
+✅ Farmer Dashboard
+
+✅ Buyer Dashboard
+
+✅ Admin Dashboard
+
+✅ Product CRUD
+
+✅ Cart Module
+
+✅ Order Management
+
+✅ Review System
+
+✅ Analytics Dashboard
+
+✅ Blockchain Smart Contracts
+
+✅ Escrow Payments
+
+✅ Product Traceability
+
+✅ Transaction History
+
+---
+
+## In Progress
+
+🚧 Farmer Rating Analytics
+
+🚧 AI Agriculture Assistant
+
+🚧 Government Scheme Module
+
+🚧 Revenue & Commission Analytics
+
+---
+
+## Planned
+
+⏳ Multi Language Support
+
+⏳ Crop Disease Detection
+
+⏳ Push Notifications
+
+⏳ Real Time Tracking
+
+⏳ Production Deployment
+
+---
+
+# 📅 Latest Update
+
+Updated On:
+
+**29 July 2026 – 11:37 AM**
+
+### Recent Work
+
+- Fixed Order Creation Validation
+- Added Automatic Order Number Generation
+- Improved Admin Dashboard
+- Added Dispute Management
+- Added Blockchain Traceability
+- Added Transaction Monitoring
+- Enhanced Analytics
+- Improved UI & Responsiveness
+
+---
+
+# 🌾 Vision
+
+To create a transparent, secure, and scalable agricultural marketplace that empowers farmers, connects buyers directly, and leverages blockchain technology to ensure trust in every transaction.
