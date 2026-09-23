@@ -1,0 +1,9 @@
+{
+  "externalOrderId": "665f1c2b9a1e4b0012345678",
+  "logisticsStatus": "IN_TRANSIT",
+  "currentLocation": { "latitude": 12.3106, "longitude": 76.6512, "updatedAt": "2026-09-24T10:15:00.000Z" },
+  "trackingEvents": [
+    { "status": "PICKED_UP", "message": "Picked up from farm", "latitude": 12.2958, "longitude": 76.6394, "timestamp": "2026-09-24T09:40:00.000Z" },
+    { "status": "IN_TRANSIT", "message": "On the way to Mysuru city", "latitude": 12.3106, "longitude": 76.6512, "timestamp": "2026-09-24T10:15:00.000Z" }
+  ]
+}

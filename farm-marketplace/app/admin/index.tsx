@@ -48,6 +48,15 @@ interface DashboardCards {
   disputedOrders: number;
 }
 
+interface DeliveryMetrics {
+  ordersAssigned: number;
+  ordersInTransit: number;
+  deliveredOrders: number;
+  failedDeliveries: number;
+  sync?: { synced: number; failed: number; pending: number; notSynced: number };
+  integrationConfigured?: boolean;
+}
+
 interface Activity {
   type: string;
   message: string;
@@ -85,6 +94,7 @@ export default function AdminDashboard() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [schemeStats, setSchemeStats] = useState<SchemeAnalytics | null>(null);
   const [bizStats, setBizStats] = useState<BusinessAnalytics | null>(null);
+  const [delivery, setDelivery] = useState<DeliveryMetrics | null>(null);
 
   const styles = useMemo(() => StyleSheet.create({
     container: {
@@ -319,6 +329,7 @@ export default function AdminDashboard() {
           disputedOrders: c.disputedOrders || 0,
         });
         setActivities(analytics.latestActivities || []);
+        setDelivery(analytics.delivery || null);
       }
     } catch (error) {
       logApiError('Admin fetch analytics', error);
@@ -619,6 +630,39 @@ export default function AdminDashboard() {
               </View>
             ))}
           </View>
+        )}
+
+        {delivery && (
+          <>
+            <SectionHeader title="🚚 Deliveries" subtitle="Live from Agri Agent logistics" />
+            <View style={styles.statsBlock}>
+              <View style={styles.statsRow}>
+                <StatCard icon="person-outline" value={delivery.ordersAssigned} label="Orders Assigned" accent={colors.info} tint={colors.tintBlue} />
+                <StatCard icon="car-outline" value={delivery.ordersInTransit} label="In Transit" accent={colors.accent} tint={colors.tintAmber} />
+              </View>
+              <View style={styles.statsRow}>
+                <StatCard icon="checkmark-done-outline" value={delivery.deliveredOrders} label="Delivered" accent={colors.success} tint={colors.successSoft} />
+                <StatCard icon="alert-circle-outline" value={delivery.failedDeliveries} label="Failed Deliveries" accent={colors.error} tint={colors.errorSoft} />
+              </View>
+              {(delivery.sync?.failed || 0) > 0 || delivery.integrationConfigured === false ? (
+                <Card elevation="xs">
+                  <View style={styles.activityRow}>
+                    <View style={[styles.activityIcon, { backgroundColor: colors.warningSoft }]}>
+                      <Ionicons name="sync-outline" size={18} color={colors.warning} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.activityMeta}>Logistics sync</Text>
+                      <Text style={styles.activityText} numberOfLines={2}>
+                        {delivery.integrationConfigured === false
+                          ? 'Agri Agent URL / API key not configured on the server'
+                          : `${delivery.sync?.failed} order(s) failed to sync to Agri Agent`}
+                      </Text>
+                    </View>
+                  </View>
+                </Card>
+              ) : null}
+            </View>
+          </>
         )}
 
         <SectionHeader title="Management" subtitle="Jump into a section" />

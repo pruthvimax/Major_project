@@ -5,6 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
+  Linking,
+  TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,12 +25,30 @@ import {
   friendlyError,
 } from '../../components/ui';
 import type { BadgeTone } from '../../components/ui';
+import {
+  LOGISTICS_TONES,
+  LOGISTICS_ICONS,
+  logisticsLabel,
+  type LogisticsStatus,
+} from '../../constants/logistics';
 
 interface TrackingEvent {
   status: string;
   message: string;
   location?: string;
   timestamp: string;
+}
+
+interface LogisticsInfo {
+  provider?: string;
+  trackingId?: string;
+  logisticsStatus?: LogisticsStatus | null;
+  syncStatus?: string;
+  driver?: { name?: string; phone?: string };
+  vehicle?: { number?: string; type?: string };
+  eta?: string | null;
+  currentLocation?: { latitude: number; longitude: number; updatedAt?: string } | null;
+  lastUpdate?: string | null;
 }
 
 interface TrackingData {
@@ -54,6 +74,8 @@ interface TrackingData {
     quantity: number;
     price: number;
   }[];
+  /** Present on backends with the Agri Agent integration. */
+  logistics?: LogisticsInfo;
 }
 
 const STATUS_ORDER = ['pending', 'accepted', 'packed', 'shipped', 'delivered'];
@@ -244,6 +266,24 @@ export default function TrackOrderScreen() {
           color: colors.text,
           fontWeight: Typography.fontWeight.medium,
         },
+        linkValue: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.primary,
+          fontWeight: Typography.fontWeight.semibold,
+        },
+        subtleText: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          color: colors.textSecondary,
+          marginTop: 2,
+        },
+        logisticsHeader: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: Layout.spacing.sm,
+        },
         itemDetail: {
           fontSize: Typography.fontSize.sm,
           lineHeight: Typography.leading.sm,
@@ -333,6 +373,22 @@ export default function TrackOrderScreen() {
   }
 
   const isCancelled = tracking.status === 'cancelled';
+  const logistics = tracking.logistics;
+  const hasLogistics = Boolean(
+    logistics && (logistics.logisticsStatus || logistics.driver?.name || logistics.vehicle?.number)
+  );
+  const location = logistics?.currentLocation;
+  const openMaps = () => {
+    if (!location) return;
+    Linking.openURL(
+      `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`
+    ).catch(() => undefined);
+  };
+  const callDriver = () => {
+    if (logistics?.driver?.phone) {
+      Linking.openURL(`tel:${logistics.driver.phone}`).catch(() => undefined);
+    }
+  };
   const currentStatusIndex = STATUS_ORDER.indexOf(tracking.status);
 
   return (
@@ -405,6 +461,116 @@ export default function TrackOrderScreen() {
             />
           </View>
         </Card>
+
+        {/* Delivery Partner (Agri Agent logistics) */}
+        {hasLogistics && logistics && (
+          <Card padded={false} style={styles.card}>
+            <View style={styles.logisticsHeader}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <SectionHeader title="Delivery Partner" />
+              </View>
+              {logistics.logisticsStatus ? (
+                <Badge
+                  label={logisticsLabel(logistics.logisticsStatus)}
+                  tone={LOGISTICS_TONES[logistics.logisticsStatus] || 'neutral'}
+                  icon={LOGISTICS_ICONS[logistics.logisticsStatus]}
+                />
+              ) : null}
+            </View>
+
+            {logistics.driver?.name ? (
+              <View style={styles.metaRow}>
+                <View style={styles.metaIconWell}>
+                  <Ionicons name="person-outline" size={16} color={colors.primary} />
+                </View>
+                <View style={styles.metaBody}>
+                  <Text style={styles.metaLabel}>Driver</Text>
+                  <Text style={styles.metaValue} numberOfLines={1}>
+                    {logistics.driver.name}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {logistics.driver?.phone ? (
+              <TouchableOpacity
+                style={styles.metaRow}
+                onPress={callDriver}
+                accessibilityRole="button"
+                accessibilityLabel={`Call driver ${logistics.driver.phone}`}
+              >
+                <View style={styles.metaIconWell}>
+                  <Ionicons name="call-outline" size={16} color={colors.primary} />
+                </View>
+                <View style={styles.metaBody}>
+                  <Text style={styles.metaLabel}>Driver phone</Text>
+                  <Text style={styles.linkValue} numberOfLines={1}>
+                    {logistics.driver.phone}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+              </TouchableOpacity>
+            ) : null}
+
+            {logistics.vehicle?.number ? (
+              <View style={styles.metaRow}>
+                <View style={styles.metaIconWell}>
+                  <Ionicons name="car-outline" size={16} color={colors.primary} />
+                </View>
+                <View style={styles.metaBody}>
+                  <Text style={styles.metaLabel}>Vehicle number</Text>
+                  <Text style={styles.metaValue} numberOfLines={1}>
+                    {logistics.vehicle.number}
+                    {logistics.vehicle.type ? ` · ${logistics.vehicle.type}` : ''}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {logistics.eta && !isCancelled && tracking.status !== 'delivered' ? (
+              <View style={styles.metaRow}>
+                <View style={styles.metaIconWell}>
+                  <Ionicons name="time-outline" size={16} color={colors.primary} />
+                </View>
+                <View style={styles.metaBody}>
+                  <Text style={styles.metaLabel}>ETA</Text>
+                  <Text style={styles.metaValue} numberOfLines={1}>
+                    {formatDate(logistics.eta)}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {location ? (
+              <TouchableOpacity
+                style={styles.metaRow}
+                onPress={openMaps}
+                accessibilityRole="link"
+                accessibilityLabel="Open driver location in maps"
+              >
+                <View style={styles.metaIconWell}>
+                  <Ionicons name="navigate-outline" size={16} color={colors.primary} />
+                </View>
+                <View style={styles.metaBody}>
+                  <Text style={styles.metaLabel}>Current location</Text>
+                  <Text style={styles.linkValue} numberOfLines={1}>
+                    {location.latitude.toFixed(5)}, {location.longitude.toFixed(5)}
+                  </Text>
+                  {location.updatedAt ? (
+                    <Text style={styles.subtleText}>Updated {formatDate(location.updatedAt)}</Text>
+                  ) : null}
+                </View>
+                <Ionicons name="open-outline" size={16} color={colors.muted} />
+              </TouchableOpacity>
+            ) : null}
+
+            {logistics.trackingId ? (
+              <Text style={[styles.subtleText, { marginTop: Layout.spacing.md }]} numberOfLines={1}>
+                Tracking ID: {logistics.trackingId}
+              </Text>
+            ) : null}
+          </Card>
+        )}
 
         {/* Visual Progress Stepper */}
         {!isCancelled && (

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Order from '../models/Order';
 import { createRazorpayOrder, verifyRazorpayPayment } from '../services/paymentService';
 import { sendPushNotification } from '../services/notificationService';
+import { idOf } from '../services/logisticsIntegrationService';
 
 interface AuthRequest extends Request {
   user?: any;
@@ -205,10 +206,11 @@ export const getOrderTracking = async (req: AuthRequest, res: Response): Promise
     // Access control: only the buyer, farmer, or admin can view tracking
     const userId = req.user?._id.toString();
     const userRole = req.user?.role;
+    // buyer/farmer are populated here, so compare their _id (not toString()).
     if (
       userRole !== 'admin' &&
-      order.buyer.toString() !== userId &&
-      order.farmer.toString() !== userId
+      idOf(order.buyer) !== userId &&
+      idOf(order.farmer) !== userId
     ) {
       res.status(403).json({ success: false, message: 'Unauthorized' });
       return;
@@ -231,6 +233,30 @@ export const getOrderTracking = async (req: AuthRequest, res: Response): Promise
           (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
         ),
         items: order.items,
+        // Logistics (Agri Agent) — additive; older clients ignore it.
+        logistics: {
+          provider: order.deliveryProvider || '',
+          trackingId: order.trackingId || '',
+          logisticsStatus: order.logisticsStatus || null,
+          syncStatus: order.syncStatus || 'NOT_SYNCED',
+          driver: {
+            name: order.assignedDriver?.name || '',
+            phone: order.assignedDriver?.phone || '',
+          },
+          vehicle: {
+            number: order.vehicle?.number || '',
+            type: order.vehicle?.type || '',
+          },
+          eta: order.estimatedDelivery || null,
+          currentLocation:
+            order.currentLocation?.latitude != null && order.currentLocation?.longitude != null
+              ? order.currentLocation
+              : null,
+          lastUpdate: order.lastLogisticsUpdate || null,
+          deliveryEvents: [...(order.deliveryEvents || [])].sort(
+            (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          ),
+        },
       },
     });
   } catch (error: any) {

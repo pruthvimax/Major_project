@@ -19,6 +19,61 @@ export interface IStatusHistoryEntry {
   timestamp: Date;
 }
 
+// ── Logistics integration (Agri Agent) ─────────────────────────
+export type LogisticsStatus =
+  | 'PENDING'
+  | 'PICKUP_ASSIGNED'
+  | 'ACCEPTED'
+  | 'PICKED_UP'
+  | 'IN_TRANSIT'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'CANCELLED'
+  | 'FAILED_DELIVERY'
+  | 'RETURNED';
+
+export const LOGISTICS_STATUSES: LogisticsStatus[] = [
+  'PENDING',
+  'PICKUP_ASSIGNED',
+  'ACCEPTED',
+  'PICKED_UP',
+  'IN_TRANSIT',
+  'OUT_FOR_DELIVERY',
+  'DELIVERED',
+  'CANCELLED',
+  'FAILED_DELIVERY',
+  'RETURNED',
+];
+
+export type SyncStatus = 'NOT_SYNCED' | 'PENDING' | 'SYNCED' | 'FAILED';
+
+export interface IDeliveryEvent {
+  status: string;
+  message: string;
+  location?: string;
+  latitude?: number;
+  longitude?: number;
+  timestamp: Date;
+}
+
+export interface IAssignedDriver {
+  id?: string;
+  name?: string;
+  phone?: string;
+}
+
+export interface IVehicle {
+  id?: string;
+  number?: string;
+  type?: string;
+}
+
+export interface ICurrentLocation {
+  latitude?: number;
+  longitude?: number;
+  updatedAt?: Date;
+}
+
 export type OrderStatus =
   | 'pending'
   | 'accepted'
@@ -63,11 +118,26 @@ export interface IOrder extends Document {
   trackingEvents: ITrackingEvent[];
   statusHistory: IStatusHistoryEntry[];
   cancellationReason?: string;
-  cancelledBy?: 'buyer' | 'admin';
+  cancelledBy?: 'buyer' | 'admin' | 'logistics';
   cancelledAt?: Date;
   estimatedDelivery?: Date;
   deliveryDate?: Date;
   notes?: string;
+  // Logistics integration (Agri Agent) — all optional, additive
+  assignedAgent?: string;
+  assignedDriver?: IAssignedDriver;
+  vehicle?: IVehicle;
+  trackingId?: string;
+  deliveryProvider?: string;
+  deliveryPartnerId?: string;
+  logisticsStatus?: LogisticsStatus | null;
+  syncStatus: SyncStatus;
+  syncError?: string;
+  syncAttempts: number;
+  lastSyncAttempt?: Date;
+  lastLogisticsUpdate?: Date;
+  deliveryEvents: IDeliveryEvent[];
+  currentLocation?: ICurrentLocation;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -206,7 +276,7 @@ const OrderSchema = new Schema<IOrder>(
     cancellationReason: { type: String, default: '' },
     cancelledBy: {
       type: String,
-      enum: ['buyer', 'admin'],
+      enum: ['buyer', 'admin', 'logistics'],
       default: 'buyer',
     },
     cancelledAt: { type: Date },
@@ -217,6 +287,53 @@ const OrderSchema = new Schema<IOrder>(
     notes: {
       type: String,
       maxlength: [500, 'Notes cannot exceed 500 characters'],
+    },
+
+    // ── Logistics integration (Agri Agent / Supabase) ──────────
+    // MongoDB stays the source of truth for the order; these fields mirror
+    // delivery state pushed back by Agri Agent via the status callback.
+    assignedAgent: { type: String, default: '' },
+    assignedDriver: {
+      id: { type: String, default: '' },
+      name: { type: String, default: '' },
+      phone: { type: String, default: '' },
+    },
+    vehicle: {
+      id: { type: String, default: '' },
+      number: { type: String, default: '' },
+      type: { type: String, default: '' },
+    },
+    trackingId: { type: String, default: '' },
+    deliveryProvider: { type: String, default: '' },
+    deliveryPartnerId: { type: String, default: '' },
+    logisticsStatus: {
+      type: String,
+      enum: [...LOGISTICS_STATUSES, null],
+      default: null,
+    },
+    syncStatus: {
+      type: String,
+      enum: ['NOT_SYNCED', 'PENDING', 'SYNCED', 'FAILED'],
+      default: 'NOT_SYNCED',
+    },
+    syncError: { type: String, default: '' },
+    syncAttempts: { type: Number, default: 0 },
+    lastSyncAttempt: { type: Date },
+    lastLogisticsUpdate: { type: Date },
+    deliveryEvents: [
+      {
+        status: { type: String, required: true },
+        message: { type: String, default: '' },
+        location: { type: String, default: '' },
+        latitude: { type: Number },
+        longitude: { type: Number },
+        timestamp: { type: Date, default: Date.now },
+      },
+    ],
+    currentLocation: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+      updatedAt: { type: Date },
     },
   },
   {
@@ -230,6 +347,8 @@ OrderSchema.index({ buyer: 1 });
 OrderSchema.index({ farmer: 1 });
 OrderSchema.index({ status: 1 });
 OrderSchema.index({ createdAt: -1 });
+OrderSchema.index({ logisticsStatus: 1 });
+OrderSchema.index({ syncStatus: 1 });
 
 // Ensure a unique order number exists before validation/save
 OrderSchema.pre<IOrder>('validate', function (next) {

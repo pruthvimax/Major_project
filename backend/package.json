@@ -9,7 +9,11 @@
     "dev": "nodemon src/app.ts",
     "watch": "tsc --watch",
     "seed:admin": "ts-node src/scripts/seedAdmin.ts",
-    "reset-password": "ts-node src/scripts/resetPassword.ts"
+    "reset-password": "ts-node src/scripts/resetPassword.ts",
+    "test:logistics": "ts-node src/scripts/testLogisticsMapping.ts",
+    "mock:agri-agent": "ts-node src/scripts/mockAgriAgent.ts",
+    "simulate:logistics": "ts-node src/scripts/simulateLogisticsCallbacks.ts",
+    "test:logistics:flow": "ts-node src/scripts/testLogisticsFlow.ts"
   },
   "keywords": [
     "blockchain",

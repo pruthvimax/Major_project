@@ -1,0 +1,8 @@
+{
+  "externalOrderId": "665f1c2b9a1e4b0012345678",
+  "logisticsStatus": "FAILED_DELIVERY",
+  "reason": "Buyer not reachable after 3 attempts",
+  "trackingEvents": [
+    { "status": "FAILED_DELIVERY", "message": "Buyer not reachable", "timestamp": "2026-09-24T12:20:00.000Z" }
+  ]
+}

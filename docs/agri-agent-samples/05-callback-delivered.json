@@ -1,0 +1,8 @@
+{
+  "externalOrderId": "665f1c2b9a1e4b0012345678",
+  "logisticsStatus": "DELIVERED",
+  "currentLocation": { "latitude": 12.3203, "longitude": 76.6644, "updatedAt": "2026-09-24T12:05:00.000Z" },
+  "trackingEvents": [
+    { "status": "DELIVERED", "message": "Delivered to Asha Rao", "timestamp": "2026-09-24T12:05:00.000Z" }
+  ]
+}

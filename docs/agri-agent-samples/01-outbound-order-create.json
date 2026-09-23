@@ -1,0 +1,18 @@
+{
+  "externalOrderId": "665f1c2b9a1e4b0012345678",
+  "orderNumber": "ORD-LX2K9P-7QF3",
+  "orderStatus": "pending",
+  "farmerName": "Ramesh Gowda",
+  "farmerPhone": "9123456780",
+  "pickupAddress": "Survey No. 42, Hunsur Road, Mysuru",
+  "buyerName": "Asha Rao",
+  "buyerPhone": "9876543210",
+  "shippingAddress": { "address": "12 MG Road", "city": "Mysuru", "state": "Karnataka", "pincode": "570001", "country": "India" },
+  "products": [
+    { "name": "Tomato", "category": "vegetables", "quantity": 5, "unit": "kg" }
+  ],
+  "estimatedDelivery": "2026-09-28T10:00:00.000Z",
+  "priority": "HIGH",
+  "notes": "Call before arriving",
+  "callbackUrl": "https://your-backend.example.com/api/integration/order-status"
+}

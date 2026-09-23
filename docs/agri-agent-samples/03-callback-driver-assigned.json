@@ -1,0 +1,12 @@
+{
+  "externalOrderId": "665f1c2b9a1e4b0012345678",
+  "logisticsStatus": "PICKUP_ASSIGNED",
+  "trackingId": "AGRI-7QF3",
+  "driver": { "id": "drv_101", "name": "Manjunath K", "phone": "9845012345" },
+  "vehicle": { "id": "veh_7", "number": "KA-09-AB-1234", "type": "Tata Ace" },
+  "eta": "2026-09-24T12:30:00.000Z",
+  "currentLocation": { "latitude": 12.3052, "longitude": 76.6552, "updatedAt": "2026-09-24T09:00:00.000Z" },
+  "trackingEvents": [
+    { "status": "PICKUP_ASSIGNED", "message": "Manjunath K assigned for pickup", "timestamp": "2026-09-24T09:00:00.000Z" }
+  ]
+}

@@ -16,6 +16,7 @@ import adminRoutes from './routes/adminRoutes';
 import aiRoutes from './routes/aiRoutes';
 import transactionRoutes from './routes/transactionRoutes';
 import schemeRoutes from './routes/schemeRoutes';
+import integrationRoutes from './routes/integrationRoutes';
 import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
@@ -50,6 +51,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/schemes', schemeRoutes);
+app.use('/api/integration', integrationRoutes); // Agri Agent logistics
 
 // Health check - Fixed unused req parameter
 app.get('/api/health', (_req, res) => {

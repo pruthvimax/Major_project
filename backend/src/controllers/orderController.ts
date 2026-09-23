@@ -5,6 +5,7 @@ import Cart from '../models/Cart';
 import { createEscrow, releaseEscrow, refundEscrow } from '../services/escrowService';
 import { getUserWalletAddress } from '../services/blockchainService';
 import { sendPushNotification } from '../services/notificationService';
+import { triggerOrderSync } from '../services/logisticsIntegrationService';
 
 interface AuthRequest extends Request {
   user?: any;
@@ -184,6 +185,9 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
         `A buyer has placed a new order (${order.orderNumber}) for a total of ₹${order.totalAmount}.`
       ).catch((err) => console.error('Error sending farmer notification:', err));
     }
+
+    // Hand the order to Agri Agent for pickup/delivery (non-blocking).
+    triggerOrderSync(order._id.toString());
 
     res.status(201).json({
       success: true,
@@ -380,6 +384,11 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     await order.save();
 
+    // Farmer rejected an order already handed to logistics → tell Agri Agent.
+    if (status === 'cancelled' && order.syncStatus && order.syncStatus !== 'NOT_SYNCED') {
+      triggerOrderSync(order._id.toString());
+    }
+
     const updatedOrder = await Order.findById(order._id)
       .populate('buyer', 'name email mobile')
       .populate('farmer', 'name email mobile')
@@ -485,6 +494,11 @@ export const cancelOrder = async (req: AuthRequest, res: Response): Promise<void
     });
 
     await order.save();
+
+    // Keep Agri Agent in step so no driver is sent for a cancelled order.
+    if (order.syncStatus && order.syncStatus !== 'NOT_SYNCED') {
+      triggerOrderSync(order._id.toString());
+    }
 
     if (order.farmer && order.buyer) {
       const cancellerRole = req.user?.role === 'admin' ? 'Administrator' : 'Buyer';

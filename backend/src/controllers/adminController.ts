@@ -3,6 +3,7 @@ import User from '../models/User';
 import Product from '../models/Product';
 import Order from '../models/Order';
 import Transaction from '../models/Transaction';
+import { getDeliveryMetrics } from '../services/logisticsIntegrationService';
 
 // @desc    Admin dashboard analytics
 // @route   GET /api/admin/analytics
@@ -142,6 +143,12 @@ export const getAnalytics = async (_req: Request, res: Response): Promise<void> 
 
     const revenue = revenueAgg[0]?.revenue || 0;
 
+    // Logistics metrics must never break the main dashboard.
+    const delivery = await getDeliveryMetrics().catch((err) => {
+      console.error('Delivery metrics error:', err);
+      return null;
+    });
+
     // Simple monthly revenue for chart (last 6 months)
     const sixMonthsAgo = new Date();
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
@@ -208,6 +215,7 @@ export const getAnalytics = async (_req: Request, res: Response): Promise<void> 
         topBuyers,
         latestActivities: activities,
         disputedOrders,
+        delivery,
       },
     });
   } catch (error: any) {

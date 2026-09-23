@@ -25,6 +25,13 @@ import {
   ListSkeleton,
 } from '../../components/ui';
 import type { BadgeTone, OrderMetaRow } from '../../components/ui';
+import {
+  FARMER_LOGISTICS_STAGES,
+  farmerStageIndex,
+  isLogisticsFailure,
+  logisticsLabel,
+  type LogisticsStatus,
+} from '../../constants/logistics';
 
 type OrderStatus = 'pending' | 'accepted' | 'packed' | 'shipped' | 'delivered' | 'cancelled';
 
@@ -37,7 +44,10 @@ interface Order {
   escrowStatus?: string;
   blockchainTxHash?: string;
   cancellationReason?: string;
-  cancelledBy?: 'buyer' | 'admin';
+  cancelledBy?: 'buyer' | 'admin' | 'logistics';
+  logisticsStatus?: LogisticsStatus | null;
+  assignedDriver?: { name?: string; phone?: string };
+  vehicle?: { number?: string; type?: string };
   cancelledAt?: string;
   buyer: { name: string; email: string; mobile?: string };
   items: { product: { name: string }; quantity: number; price: number; unit: string }[];
@@ -110,6 +120,47 @@ export default function FarmerOrdersScreen() {
           fontWeight: Typography.fontWeight.semibold,
           color: colors.error,
         },
+        logistics: {
+          marginTop: Layout.spacing.md,
+          padding: Layout.spacing.sm + 2,
+          borderRadius: Layout.borderRadius.md,
+          backgroundColor: colors.surfaceAlt,
+        },
+        logisticsTitle: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          fontWeight: Typography.fontWeight.semibold,
+          color: colors.textSecondary,
+          marginBottom: Layout.spacing.sm,
+        },
+        stageRow: {
+          flexDirection: 'row',
+          alignItems: 'flex-start',
+        },
+        stage: {
+          flex: 1,
+          alignItems: 'center',
+          gap: 4,
+        },
+        stageDot: {
+          width: 26,
+          height: 26,
+          borderRadius: 13,
+          borderWidth: 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        stageLabel: {
+          fontSize: Typography.fontSize.xxs,
+          lineHeight: Typography.leading.xs,
+          textAlign: 'center',
+        },
+        stageFailText: {
+          fontSize: Typography.fontSize.xs,
+          lineHeight: Typography.leading.xs,
+          fontWeight: Typography.fontWeight.semibold,
+          color: colors.error,
+        },
         actions: {
           flexDirection: 'row',
           flexWrap: 'wrap',
@@ -175,6 +226,17 @@ export default function FarmerOrdersScreen() {
     if (item.escrowStatus && item.escrowStatus !== 'none') {
       rows.push({ icon: 'lock-closed-outline', label: 'Escrow', value: item.escrowStatus });
     }
+    if (item.assignedDriver?.name) {
+      rows.push({
+        icon: 'car-outline',
+        label: 'Driver',
+        value: [item.assignedDriver.name, item.assignedDriver.phone, item.vehicle?.number]
+          .filter(Boolean)
+          .join(' · '),
+      });
+    }
+    const stageIdx = farmerStageIndex(item.logisticsStatus);
+    const logisticsFailed = isLogisticsFailure(item.logisticsStatus);
 
     return (
       <OrderCard
@@ -236,11 +298,47 @@ export default function FarmerOrdersScreen() {
           </View>
         ) : null}
 
+        {item.logisticsStatus ? (
+          <View style={styles.logistics}>
+            <Text style={styles.logisticsTitle}>
+              Delivery · {logisticsLabel(item.logisticsStatus)}
+            </Text>
+            {logisticsFailed ? (
+              <Text style={styles.stageFailText}>{logisticsLabel(item.logisticsStatus)}</Text>
+            ) : (
+              <View style={styles.stageRow}>
+                {FARMER_LOGISTICS_STAGES.map((stage, idx) => {
+                  const done = idx <= stageIdx;
+                  const tint = done ? colors.primary : colors.lightGray;
+                  return (
+                    <View key={stage.label} style={styles.stage}>
+                      <View
+                        style={[
+                          styles.stageDot,
+                          { borderColor: tint, backgroundColor: done ? tint : colors.surface },
+                        ]}
+                      >
+                        <Ionicons name={stage.icon} size={13} color={done ? colors.white : colors.muted} />
+                      </View>
+                      <Text
+                        style={[styles.stageLabel, { color: done ? colors.text : colors.muted }]}
+                        numberOfLines={2}
+                      >
+                        {stage.label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        ) : null}
+
         {item.status === 'cancelled' && (
           <View style={styles.cancelledNote}>
             <Ionicons name="alert-circle-outline" size={15} color={colors.error} />
             <Text style={styles.cancelledText}>
-              Cancelled {item.cancelledBy === 'admin' ? 'by admin' : 'by buyer'}
+              Cancelled {item.cancelledBy === 'admin' ? 'by admin' : item.cancelledBy === 'logistics' ? 'by logistics partner' : 'by buyer'}
               {item.cancellationReason ? ` — ${item.cancellationReason}` : ''}
             </Text>
           </View>
