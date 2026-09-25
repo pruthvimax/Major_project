@@ -278,6 +278,7 @@ export const syncOrderToAgriAgent = async (orderId: string): Promise<SyncResult>
 
     await Order.updateOne({ _id: orderId }, { $set: { syncStatus: 'PENDING' } });
 
+    console.log(`[Logistics] Syncing order ${order.orderNumber} (${orderId}) → POST ${apiUrl}${orderPath}`);
     const response = await fetch(`${apiUrl}${orderPath}`, {
       method: 'POST',
       headers: {
@@ -296,6 +297,7 @@ export const syncOrderToAgriAgent = async (orderId: string): Promise<SyncResult>
     } catch {
       body = null;
     }
+    console.log(`[Logistics] Agri Agent responded ${response.status} for ${order.orderNumber}:`, body);
 
     if (!response.ok || body?.success === false) {
       const msg = body?.message || body?.error || response.statusText || 'Unknown error';

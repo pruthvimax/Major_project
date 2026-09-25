@@ -187,6 +187,7 @@ export const createOrder = async (req: AuthRequest, res: Response): Promise<void
     }
 
     // Hand the order to Agri Agent for pickup/delivery (non-blocking).
+    console.log(`[Logistics] Order created ${order.orderNumber} (${order._id}) — handing to Agri Agent`);
     triggerOrderSync(order._id.toString());
 
     res.status(201).json({
