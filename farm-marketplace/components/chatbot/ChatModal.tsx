@@ -17,7 +17,7 @@ import useColors from '../../constants/Colors';
 import Layout from '../../constants/Layout';
 import Typography from '../../constants/Typography';
 import { useLanguage } from '../../context/LanguageContext';
-import { speakText, stopSpeech } from '../../services/speech';
+import { speakText, stopSpeech, subscribeSpeechState } from '../../services/speech';
 import { askAssistant, getWelcomeMessage } from '../../services/chatbot';
 import { useVoiceInput } from '../../services/chatbot/voice';
 import { QUICK_ACTIONS } from '../../data/faqs';
@@ -48,9 +48,19 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
   const [input, setInput] = useState('');
   const [typing, setTyping] = useState(false);
   const [interim, setInterim] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
   const lastEntryId = useRef<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const slide = useRef(new Animated.Value(0)).current;
+
+  // Track active TTS speech playback state
+  useEffect(() => {
+    const unsubscribe = subscribeSpeechState((speaking) => {
+      setIsSpeaking(speaking);
+    });
+    return unsubscribe;
+  }, []);
 
   // Open / close animation for the sheet.
   useEffect(() => {
@@ -63,7 +73,7 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
   useEffect(() => {
     if (!visible) return;
     lastEntryId.current = null;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    stopSpeech();
     setMessages([{ id: 'welcome', sender: 'bot', text: getWelcomeMessage(role, userName), time: now(), source: 'local' }]);
     setSuggestions(QUICK_ACTIONS[role]);
     setInput('');
@@ -79,6 +89,7 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
       const text = raw.trim();
       if (!text || typing) return;
 
+      stopSpeech();
       setMessages((prev) => [...prev, { id: `u-${Date.now()}`, sender: 'user', text, time: now() }]);
       setInput('');
       setInterim('');
@@ -95,7 +106,6 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
       setSuggestions(reply.suggestions);
       setTyping(false);
       scrollToEnd();
-      speakText(reply.text, language);
     },
     [role, language, typing, scrollToEnd]
   );
@@ -135,7 +145,7 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
         header: {
           flexDirection: 'row',
           alignItems: 'center',
-          gap: Layout.spacing.sm,
+          gap: Layout.spacing.xs,
           paddingHorizontal: Layout.spacing.md,
           paddingVertical: Layout.spacing.sm,
           backgroundColor: colors.primary,
@@ -158,26 +168,63 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
           fontSize: Typography.fontSize.xxs,
           color: 'rgba(255,255,255,0.85)',
         },
+        stopAudioBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          backgroundColor: colors.error,
+          paddingHorizontal: Layout.spacing.xs + 2,
+          paddingVertical: 5,
+          borderRadius: Layout.borderRadius.sm,
+        },
+        stopAudioText: {
+          fontSize: Typography.fontSize.xxs,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.white,
+        },
         headerBtn: {
-          width: 36,
-          height: 36,
-          borderRadius: 18,
+          width: 34,
+          height: 34,
+          borderRadius: 17,
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: 'rgba(255,255,255,0.18)',
         },
-        listening: {
+        listeningBanner: {
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: Layout.spacing.md,
+          paddingVertical: 8,
+          backgroundColor: colors.error + '15',
+          borderBottomWidth: 1,
+          borderBottomColor: colors.error + '30',
+        },
+        listeningLeft: {
+          flexDirection: 'row',
+          alignItems: 'center',
           gap: Layout.spacing.xs,
-          paddingVertical: 6,
-          backgroundColor: colors.primarySoft,
+          flex: 1,
         },
         listeningText: {
           fontSize: Typography.fontSize.xs,
-          color: colors.primaryDark,
+          color: colors.error,
           fontWeight: Typography.fontWeight.semibold,
+          flex: 1,
+        },
+        stopMicBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          backgroundColor: colors.error,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: Layout.borderRadius.xs,
+        },
+        stopMicText: {
+          fontSize: Typography.fontSize.xxs,
+          color: colors.white,
+          fontWeight: Typography.fontWeight.bold,
         },
         messages: { flex: 1 },
         messagesContent: {
@@ -251,16 +298,39 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
                   {role === 'farmer' ? 'Farmer help · selling & farming tips' : 'Buyer help · orders, escrow & delivery'}
                 </Text>
               </View>
+
+              {/* Reactive Stop Audio Button */}
+              {isSpeaking && (
+                <TouchableOpacity
+                  style={styles.stopAudioBtn}
+                  onPress={() => stopSpeech()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Stop speech playback"
+                >
+                  <Ionicons name="volume-mute" size={14} color={colors.white} />
+                  <Text style={styles.stopAudioText}>Stop Voice</Text>
+                </TouchableOpacity>
+              )}
+
               <LanguageSelector />
               <TouchableOpacity style={styles.headerBtn} onPress={handleClose} accessibilityRole="button" accessibilityLabel="Close">
                 <Ionicons name="close" size={20} color={colors.white} />
               </TouchableOpacity>
             </View>
 
+            {/* Voice Input Listening Banner */}
             {voice.isListening && (
-              <View style={styles.listening}>
-                <Ionicons name="mic" size={14} color={colors.primaryDark} />
-                <Text style={styles.listeningText}>{interim ? `"${interim}"` : 'Listening… speak now'}</Text>
+              <View style={styles.listeningBanner}>
+                <View style={styles.listeningLeft}>
+                  <Ionicons name="mic" size={16} color={colors.error} />
+                  <Text style={styles.listeningText} numberOfLines={1}>
+                    {interim ? `"${interim}"` : 'Listening to voice input… speak now'}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.stopMicBtn} onPress={voice.stop} accessibilityRole="button" accessibilityLabel="Stop microphone">
+                  <Ionicons name="stop-circle" size={14} color={colors.white} />
+                  <Text style={styles.stopMicText}>Stop Mic</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -274,7 +344,12 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
               onContentSizeChange={scrollToEnd}
             >
               {messages.map((m) => (
-                <ChatMessage key={m.id} message={m} onListen={(text) => speakText(text, language)} />
+                <ChatMessage
+                  key={m.id}
+                  message={m}
+                  onListen={(text) => speakText(text, language)}
+                  onStop={() => stopSpeech()}
+                />
               ))}
               {typing && <TypingIndicator />}
             </ScrollView>
@@ -287,21 +362,25 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
               disabled={typing}
             />
 
-            {/* Composer */}
+            {/* Composer with Voice Input & Send */}
             <View style={styles.inputRow}>
               <TouchableOpacity
                 style={[styles.iconBtn, voice.isListening && styles.micActive]}
                 onPress={voice.toggle}
                 accessibilityRole="button"
-                accessibilityLabel={voice.isListening ? 'Stop listening' : 'Speak your question'}
+                accessibilityLabel={voice.isListening ? 'Stop voice input' : 'Start voice input'}
               >
-                <Ionicons name={voice.isListening ? 'mic' : 'mic-outline'} size={20} color={voice.isListening ? colors.white : colors.primary} />
+                <Ionicons
+                  name={voice.isListening ? 'stop' : 'mic-outline'}
+                  size={20}
+                  color={voice.isListening ? colors.white : colors.primary}
+                />
               </TouchableOpacity>
               <TextInput
                 style={styles.input}
                 value={input}
                 onChangeText={setInput}
-                placeholder={voice.isListening ? 'Listening…' : 'Ask a question…'}
+                placeholder={voice.isListening ? 'Listening to voice…' : 'Ask a question…'}
                 placeholderTextColor={colors.muted}
                 multiline
                 returnKeyType="send"
@@ -314,12 +393,12 @@ export default function ChatModal({ visible, role, userName, onClose }: ChatModa
                 onPress={() => send(input)}
                 disabled={!canSend}
                 accessibilityRole="button"
-                accessibilityLabel="Send"
+                accessibilityLabel="Send message"
               >
                 <Ionicons name="send" size={17} color={colors.white} />
               </TouchableOpacity>
             </View>
-            <Text style={styles.offlineNote}>Answers come from the built-in knowledge base · works offline</Text>
+            <Text style={styles.offlineNote}>Voice Input & Stop Audio controls active · Krishi AI</Text>
           </KeyboardAvoidingView>
         </Animated.View>
       </View>

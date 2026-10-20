@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Layout from '../../constants/Layout';
 import Typography from '../../constants/Typography';
+import { stopSpeech, subscribeSpeechState } from '../../services/speech';
 
 export interface ChatMessageData {
   id: string;
@@ -17,11 +18,21 @@ export interface ChatMessageData {
 interface ChatMessageProps {
   message: ChatMessageData;
   onListen?: (text: string) => void;
+  onStop?: () => void;
 }
 
-export default function ChatMessage({ message, onListen }: ChatMessageProps) {
+export default function ChatMessage({ message, onListen, onStop }: ChatMessageProps) {
   const colors = useColors();
   const isUser = message.sender === 'user';
+  const [isPlayingThis, setIsPlayingThis] = useState(false);
+
+  useEffect(() => {
+    if (isUser) return;
+    const unsubscribe = subscribeSpeechState((speaking, activeText) => {
+      setIsPlayingThis(speaking && activeText === message.text);
+    });
+    return unsubscribe;
+  }, [isUser, message.text]);
 
   const styles = useMemo(
     () =>
@@ -69,19 +80,32 @@ export default function ChatMessage({ message, onListen }: ChatMessageProps) {
           fontSize: Typography.fontSize.xxs,
           color: isUser ? 'rgba(255,255,255,0.75)' : colors.muted,
         },
-        listen: {
+        listenBtn: {
           flexDirection: 'row',
           alignItems: 'center',
-          gap: 3,
+          gap: 4,
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: Layout.borderRadius.xs,
+          backgroundColor: isPlayingThis ? colors.error + '18' : 'transparent',
         },
         listenText: {
           fontSize: Typography.fontSize.xxs,
-          color: colors.primary,
+          color: isPlayingThis ? colors.error : colors.primary,
           fontWeight: Typography.fontWeight.semibold,
         },
       }),
-    [colors, isUser]
+    [colors, isUser, isPlayingThis]
   );
+
+  const handleAudioPress = () => {
+    if (isPlayingThis) {
+      stopSpeech();
+      if (onStop) onStop();
+    } else if (onListen) {
+      onListen(message.text);
+    }
+  };
 
   return (
     <View style={styles.row}>
@@ -99,10 +123,19 @@ export default function ChatMessage({ message, onListen }: ChatMessageProps) {
             {message.time}
             {!isUser && message.source === 'server' ? ' · live data' : ''}
           </Text>
-          {!isUser && onListen && (
-            <TouchableOpacity style={styles.listen} onPress={() => onListen(message.text)} accessibilityRole="button" accessibilityLabel="Read aloud">
-              <Ionicons name="volume-medium-outline" size={14} color={colors.primary} />
-              <Text style={styles.listenText}>Listen</Text>
+          {!isUser && (onListen || onStop) && (
+            <TouchableOpacity
+              style={styles.listenBtn}
+              onPress={handleAudioPress}
+              accessibilityRole="button"
+              accessibilityLabel={isPlayingThis ? 'Stop reading aloud' : 'Read aloud'}
+            >
+              <Ionicons
+                name={isPlayingThis ? 'volume-mute' : 'volume-medium-outline'}
+                size={14}
+                color={isPlayingThis ? colors.error : colors.primary}
+              />
+              <Text style={styles.listenText}>{isPlayingThis ? 'Stop' : 'Listen'}</Text>
             </TouchableOpacity>
           )}
         </View>

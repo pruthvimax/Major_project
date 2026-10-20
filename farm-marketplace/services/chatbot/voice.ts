@@ -62,13 +62,16 @@ export const useVoiceInput = ({ language, onInterim, onFinal }: UseVoiceInputOpt
       recognition.maxAlternatives = 1;
 
       let captured = '';
+      let lastTranscript = '';
+
       recognition.onresult = (event: any) => {
         let interim = '';
         for (let i = event.resultIndex; i < event.results.length; i += 1) {
           if (event.results[i].isFinal) captured += event.results[i][0].transcript;
           else interim += event.results[i][0].transcript;
         }
-        onInterim(captured || interim);
+        lastTranscript = (captured || interim).trim();
+        onInterim(lastTranscript);
       };
       recognition.onerror = (err: any) => {
         setIsListening(false);
@@ -82,7 +85,8 @@ export const useVoiceInput = ({ language, onInterim, onFinal }: UseVoiceInputOpt
       recognition.onend = () => {
         setIsListening(false);
         recognitionRef.current = null;
-        if (captured.trim()) onFinal(captured.trim());
+        const finalText = (captured.trim() || lastTranscript.trim());
+        if (finalText) onFinal(finalText);
       };
 
       setIsListening(true);

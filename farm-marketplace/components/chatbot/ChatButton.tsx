@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, PanResponder, Platform, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import useColors from '../../constants/Colors';
 import Layout from '../../constants/Layout';
@@ -11,11 +11,37 @@ interface ChatButtonProps {
   bottomOffset?: number;
 }
 
-/** Floating assistant button with a gentle pulse and an open/close rotation. */
+/** Floating assistant button with a gentle pulse, open/close rotation, and draggable pan gestures. */
 export default function ChatButton({ open, onPress, bottomOffset = 80 }: ChatButtonProps) {
   const colors = useColors();
   const pulse = useRef(new Animated.Value(1)).current;
   const rotate = useRef(new Animated.Value(0)).current;
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const [isDragging, setIsDragging] = useState(false);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
+      },
+      onPanResponderGrant: () => {
+        setIsDragging(true);
+        pan.extractOffset();
+      },
+      onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], {
+        useNativeDriver: false,
+      }),
+      onPanResponderRelease: () => {
+        setIsDragging(false);
+        pan.flattenOffset();
+      },
+      onPanResponderTerminate: () => {
+        setIsDragging(false);
+        pan.flattenOffset();
+      },
+    })
+  ).current;
 
   useEffect(() => {
     const loop = Animated.loop(
@@ -40,7 +66,8 @@ export default function ChatButton({ open, onPress, bottomOffset = 80 }: ChatBut
           position: 'absolute',
           right: Layout.spacing.lg,
           bottom: bottomOffset,
-          zIndex: 999,
+          zIndex: 9999,
+          elevation: 10,
         },
         fab: {
           width: 58,
@@ -60,9 +87,25 @@ export default function ChatButton({ open, onPress, bottomOffset = 80 }: ChatBut
   const spin = rotate.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] });
 
   return (
-    <Animated.View style={[styles.wrapper, { transform: [{ scale: pulse }, { rotate: spin }] }]}>
+    <Animated.View
+      style={[
+        styles.wrapper,
+        {
+          transform: [
+            { translateX: pan.x },
+            { translateY: pan.y },
+            { scale: pulse },
+            { rotate: spin },
+          ],
+        },
+      ]}
+      {...panResponder.panHandlers}
+    >
       <TouchableOpacity
-        style={styles.fab}
+        style={[
+          styles.fab,
+          Platform.OS === 'web' && ({ cursor: isDragging ? 'grabbing' : 'grab' } as any),
+        ]}
         onPress={onPress}
         activeOpacity={0.85}
         accessibilityRole="button"

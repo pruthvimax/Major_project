@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { usePathname } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../context/AuthContext';
 import ChatButton from './ChatButton';
 import ChatModal from './ChatModal';
@@ -13,19 +14,44 @@ import ChatModal from './ChatModal';
  * Rendered once from the root layout, exactly like the previous ChatbotWidget.
  */
 export default function AssistantHost() {
-  const { user } = useAuth();
+  const { user: authUser } = useAuth();
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [asyncUser, setAsyncUser] = useState<{ role?: string; name?: string } | null>(null);
 
-  const role = user?.role === 'farmer' || user?.role === 'buyer' ? user.role : null;
-  const inRoleArea = role !== null && (pathname === `/${role}` || pathname.startsWith(`/${role}/`));
+  useEffect(() => {
+    const syncUser = async () => {
+      try {
+        const data = await AsyncStorage.getItem('currentUser');
+        if (data) {
+          setAsyncUser(JSON.parse(data));
+        }
+      } catch (e) {}
+    };
+    syncUser();
+  }, [pathname]);
 
-  if (!role || !inRoleArea) return null;
+  const activeUser = authUser || asyncUser;
+  // Normalize role to ensure case-insensitivity
+  const normalizedRole = activeUser?.role ? activeUser.role.toLowerCase().trim() : null;
+  const role = normalizedRole === 'farmer' || normalizedRole === 'buyer' ? (normalizedRole as 'farmer' | 'buyer') : null;
+
+  // Check if current route is within the user's role portal
+  const currentPath = (pathname || '').toLowerCase();
+  const inRoleArea =
+    role !== null &&
+    (currentPath.includes(`/${role}`) ||
+      currentPath.includes(role) ||
+      currentPath === '/' ||
+      currentPath === '');
+
+  if (!activeUser || !role || !inRoleArea) return null;
 
   return (
     <>
       <ChatButton open={open} onPress={() => setOpen((v) => !v)} />
-      <ChatModal visible={open} role={role} userName={user?.name} onClose={() => setOpen(false)} />
+      <ChatModal visible={open} role={role} userName={activeUser?.name} onClose={() => setOpen(false)} />
     </>
   );
 }
+
