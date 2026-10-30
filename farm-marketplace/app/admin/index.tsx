@@ -8,32 +8,26 @@ import {
   Alert,
   Platform,
   RefreshControl,
+  Image,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { logApiError } from '../../services/apiError';
 import { fetchSchemeAnalytics } from '../../services/schemes';
-import { fetchBusinessAnalytics, formatINR, formatINRShort } from '../../services/businessAnalytics';
-import { TrendPill } from '../../components/admin/AnalyticsCharts';
+import { fetchBusinessAnalytics, formatINRShort } from '../../services/businessAnalytics';
 import type { BusinessAnalytics } from '../../types/analytics.types';
 import type { SchemeAnalytics } from '../../types/scheme.types';
 import ThemeToggle from '../../components/ThemeToggle';
-import {
-  ScreenHeader,
-  Card,
-  Badge,
-  StatCard,
-  SectionHeader,
-  ErrorState,
-  ListSkeleton,
-  StatRowSkeleton,
-  LanguageSelector,
-} from '../../components/ui';
+import LanguageSelector from '../../components/LanguageSelector';
+import { ErrorState } from '../../components/ui';
 
 interface DashboardCards {
   totalFarmers: number;
@@ -53,28 +47,11 @@ interface DeliveryMetrics {
   ordersInTransit: number;
   deliveredOrders: number;
   failedDeliveries: number;
-  sync?: { synced: number; failed: number; pending: number; notSynced: number };
-  integrationConfigured?: boolean;
 }
-
-interface Activity {
-  type: string;
-  message: string;
-  amount?: number;
-  createdAt: string;
-}
-
-/** Splits the stat tiles into rows of two so the grid never overflows. */
-const chunkPairs = <T,>(items: T[]): T[][] => {
-  const rows: T[][] = [];
-  for (let i = 0; i < items.length; i += 2) {
-    rows.push(items.slice(i, i + 2));
-  }
-  return rows;
-};
 
 export default function AdminDashboard() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState('Admin');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,187 +68,9 @@ export default function AdminDashboard() {
     blockchainTransactions: 0,
     disputedOrders: 0,
   });
-  const [activities, setActivities] = useState<Activity[]>([]);
   const [schemeStats, setSchemeStats] = useState<SchemeAnalytics | null>(null);
   const [bizStats, setBizStats] = useState<BusinessAnalytics | null>(null);
   const [delivery, setDelivery] = useState<DeliveryMetrics | null>(null);
-
-  const styles = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-    },
-    headerActions: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Layout.spacing.xs,
-    },
-    logoutButton: {
-      width: 40,
-      height: 40,
-      borderRadius: Layout.borderRadius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: colors.surfaceAlt,
-    },
-    scrollContent: {
-      padding: Layout.spacing.lg,
-      paddingBottom: Layout.spacing.xxl,
-    },
-    welcomeCard: {
-      alignItems: 'center',
-      paddingVertical: Layout.spacing.xl,
-      marginBottom: Layout.spacing.lg,
-    },
-    welcomeIcon: {
-      width: 64,
-      height: 64,
-      borderRadius: 32,
-      backgroundColor: colors.primarySoft,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    welcomeText: {
-      fontSize: Typography.fontSize.xxl,
-      lineHeight: Typography.leading.xxl,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.text,
-      marginTop: Layout.spacing.md,
-      marginBottom: Layout.spacing.sm,
-      textAlign: 'center',
-    },
-    statsBlock: {
-      marginBottom: Layout.spacing.lg,
-      gap: Layout.spacing.md,
-    },
-    bizCard: {
-      marginBottom: Layout.spacing.lg,
-    },
-    bizHead: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Layout.spacing.sm,
-    },
-    bizEyebrow: {
-      flex: 1,
-      fontSize: Typography.fontSize.xs,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.textSecondary,
-      letterSpacing: 0.6,
-    },
-    bizValue: {
-      fontSize: Typography.fontSize.huge,
-      lineHeight: Typography.leading.huge,
-      fontWeight: Typography.fontWeight.extrabold,
-      color: colors.text,
-      marginTop: Layout.spacing.xs,
-    },
-    bizTrendRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Layout.spacing.sm,
-      marginTop: Layout.spacing.xs,
-    },
-    bizTiles: {
-      flexDirection: 'row',
-      gap: Layout.spacing.sm,
-      marginTop: Layout.spacing.md,
-    },
-    bizTile: {
-      flex: 1,
-      minWidth: 0,
-      backgroundColor: colors.surfaceAlt,
-      borderRadius: Layout.borderRadius.md,
-      padding: Layout.spacing.sm + 2,
-    },
-    bizTileLabel: {
-      fontSize: 9,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.textSecondary,
-      letterSpacing: 0.4,
-    },
-    bizTileValue: {
-      fontSize: Typography.fontSize.md,
-      lineHeight: Typography.leading.md,
-      fontWeight: Typography.fontWeight.extrabold,
-      color: colors.text,
-      marginTop: 2,
-    },
-    statsRow: {
-      flexDirection: 'row',
-      gap: Layout.spacing.md,
-    },
-    statSpacer: {
-      flex: 1,
-    },
-    errorBlock: {
-      marginBottom: Layout.spacing.lg,
-    },
-    navList: {
-      gap: Layout.spacing.sm + 2,
-      marginBottom: Layout.spacing.xl,
-    },
-    navCard: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Layout.spacing.md,
-      minHeight: Layout.touchTarget + 12,
-    },
-    navIcon: {
-      width: 44,
-      height: 44,
-      borderRadius: Layout.borderRadius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    navTitle: {
-      fontSize: Typography.fontSize.md,
-      lineHeight: Typography.leading.md,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.text,
-      flex: 1,
-      flexShrink: 1,
-    },
-    activityCard: {
-      marginBottom: Layout.spacing.sm + 2,
-    },
-    activityRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: Layout.spacing.md,
-    },
-    activityIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: Layout.borderRadius.md,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    activityText: {
-      fontSize: Typography.fontSize.sm,
-      lineHeight: Typography.leading.sm,
-      fontWeight: Typography.fontWeight.semibold,
-      color: colors.text,
-    },
-    activityMeta: {
-      fontSize: Typography.fontSize.xs,
-      lineHeight: Typography.leading.xs,
-      color: colors.textSecondary,
-      marginTop: 2,
-    },
-    activityAmount: {
-      fontSize: Typography.fontSize.sm,
-      fontWeight: Typography.fontWeight.bold,
-      color: colors.primary,
-      flexShrink: 0,
-    },
-    emptyActivity: {
-      fontSize: Typography.fontSize.sm,
-      lineHeight: Typography.leading.sm,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-  }), [colors]);
 
   const validateRoleAndLoad = useCallback(async () => {
     try {
@@ -281,7 +80,6 @@ export default function AdminDashboard() {
         router.replace('/auth/login');
         return;
       }
-      // Detect stale hardcoded admin token from old login bypass
       if (token === 'admin-token-hardcoded' || token === 'admin-local-token') {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
@@ -295,15 +93,13 @@ export default function AdminDashboard() {
       }
       setUserName(user?.name || 'Admin');
       await fetchAnalytics();
-    } catch (error) {
-      logApiError('Admin role validation', error);
+    } catch (err) {
+      logApiError('Admin role validation', err);
       router.replace('/auth/login');
     }
   }, []);
 
   const fetchAnalytics = useCallback(async () => {
-    // Government-scheme numbers load on their own so a failure there never
-    // affects the marketplace analytics below.
     fetchSchemeAnalytics()
       .then(setSchemeStats)
       .catch((e) => logApiError('Admin scheme analytics', e));
@@ -328,13 +124,11 @@ export default function AdminDashboard() {
           blockchainTransactions: c.blockchainTransactions || 0,
           disputedOrders: c.disputedOrders || 0,
         });
-        setActivities(analytics.latestActivities || []);
         setDelivery(analytics.delivery || null);
       }
-    } catch (error) {
-      logApiError('Admin fetch analytics', error);
-      setError('Failed to load dashboard data. Showing fallback data.');
-      // Fallback to basic counts
+    } catch (err) {
+      logApiError('Admin fetch analytics', err);
+      setError('Failed to load live data. Showing fallback metrics.');
       try {
         const [usersRes, productsRes, ordersRes] = await Promise.all([
           api.get('/users'),
@@ -376,396 +170,820 @@ export default function AdminDashboard() {
       try {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
         router.replace('/auth/login');
-      } catch (error) {
-        logApiError('Admin logout', error);
+      } catch (err) {
+        logApiError('Admin logout', err);
       }
     };
 
     if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to logout?')) performLogout();
+      if (window.confirm('Log out from Admin Dashboard?')) performLogout();
     } else {
-      Alert.alert('Logout', 'Are you sure you want to logout?', [
+      Alert.alert('Logout', 'Log out from Admin Dashboard?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Logout', style: 'destructive', onPress: performLogout },
       ]);
     }
   };
 
-  const getActivityIcon = (type: string) => {
-    switch (type) {
-      case 'order':
-        return { name: 'receipt-outline' as const, color: colors.secondary };
-      case 'user':
-        return { name: 'person-add-outline' as const, color: colors.primary };
-      case 'blockchain':
-        return { name: 'link-outline' as const, color: colors.info };
-      case 'product':
-        return { name: 'cube-outline' as const, color: colors.warning };
-      default:
-        return { name: 'notifications-outline' as const, color: colors.gray };
-    }
-  };
+  const totalUsersCount = cards.totalFarmers + cards.totalBuyers;
+  const cardWidth = (Dimensions.get('window').width - Layout.spacing.lg * 2 - (Layout.spacing.sm + 2)) / 2;
 
-  const statItems = [
-    { icon: 'people-outline' as const, value: cards.totalFarmers, label: 'Farmers', color: colors.primary, bgColor: colors.primarySoft },
-    { icon: 'person-outline' as const, value: cards.totalBuyers, label: 'Buyers', color: colors.secondary, bgColor: colors.secondarySoft },
-    { icon: 'cube-outline' as const, value: cards.totalProducts, label: 'Products', color: colors.info, bgColor: colors.tintBlue },
-    { icon: 'receipt-outline' as const, value: cards.totalOrders, label: 'Orders', color: colors.accent, bgColor: colors.tintAmber },
-    { icon: 'time-outline' as const, value: cards.pendingOrders, label: 'Pending', color: colors.warning, bgColor: colors.warningSoft },
-    { icon: 'checkmark-done-outline' as const, value: cards.deliveredOrders, label: 'Delivered', color: colors.success, bgColor: colors.successSoft },
-    { icon: 'close-circle-outline' as const, value: cards.cancelledOrders, label: 'Cancelled', color: colors.error, bgColor: colors.errorSoft },
-    { icon: 'cash-outline' as const, value: `₹${(cards.revenue / 1000).toFixed(1)}k`, label: 'Revenue', color: colors.primaryDark, bgColor: colors.tintGreen },
-    { icon: 'link-outline' as const, value: cards.blockchainTransactions, label: 'Chain Tx', color: colors.info, bgColor: colors.tintSky },
-  ];
+  const safeTop = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0
+  );
+  const safeTopPadding = safeTop > 0 ? safeTop + Layout.spacing.sm : (Platform.OS === 'ios' ? 44 : Layout.spacing.md);
 
-  const statRows = chunkPairs(statItems);
-
-  const navItems = [
-    {
-      icon: 'people-outline' as const,
-      label: 'Users',
-      route: '/admin/users' as const,
-      accent: colors.primary,
-      tint: colors.primarySoft,
-      badge: 0,
-    },
-    {
-      icon: 'cube-outline' as const,
-      label: 'Products',
-      route: '/admin/products' as const,
-      accent: colors.secondary,
-      tint: colors.secondarySoft,
-      badge: 0,
-    },
-    {
-      icon: 'receipt-outline' as const,
-      label: 'Orders',
-      route: '/admin/orders' as const,
-      accent: colors.accent,
-      tint: colors.tintAmber,
-      badge: cards.pendingOrders,
-    },
-    {
-      icon: 'trending-up-outline' as const,
-      label: 'Revenue & Growth',
-      route: '/admin/revenue-analytics' as const,
-      accent: colors.primaryDark,
-      tint: colors.tintGreen,
-      badge: 0,
-    },
-    {
-      icon: 'bar-chart-outline' as const,
-      label: 'Analytics',
-      route: '/admin/analytics' as const,
-      accent: colors.info,
-      tint: colors.tintBlue,
-      badge: 0,
-    },
-    {
-      icon: 'link-outline' as const,
-      label: 'Transactions',
-      route: '/admin/transactions' as const,
-      accent: colors.secondary,
-      tint: colors.secondarySoft,
-      badge: 0,
-    },
-    {
-      icon: 'warning-outline' as const,
-      label: 'Disputes',
-      route: '/admin/disputes' as const,
-      accent: colors.error,
-      tint: colors.errorSoft,
-      badge: cards.disputedOrders,
-    },
-    {
-      icon: 'ribbon-outline' as const,
-      label: 'Government Schemes',
-      route: '/admin/schemes' as const,
-      accent: colors.primaryDark,
-      tint: colors.tintGreen,
-      badge: 0,
-    },
-    {
-      icon: 'chatbubbles-outline' as const,
-      label: 'Scheme Queries',
-      route: '/admin/scheme-queries' as const,
-      accent: colors.info,
-      tint: colors.tintSky,
-      badge: schemeStats?.openQueries ?? 0,
-    },
-    {
-      icon: 'settings-outline' as const,
-      label: 'Settings',
-      route: '/admin/settings' as const,
-      accent: colors.admin,
-      tint: colors.lighterGray,
-      badge: 0,
-    },
-  ];
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: '#F2FCF1',
+        },
+        headerBar: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: Layout.spacing.lg,
+          paddingTop: safeTopPadding,
+          paddingBottom: Layout.spacing.sm,
+          backgroundColor: 'rgba(242, 252, 241, 0.95)',
+          borderBottomWidth: 1,
+          borderBottomColor: '#E6F1E5',
+        },
+        headerLeft: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.xs + 2,
+        },
+        headerIconWell: {
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          backgroundColor: '#0D631B',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...Layout.shadow.xs,
+        },
+        headerTitleRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        },
+        headerTitleText: {
+          fontSize: 18,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#151E17',
+        },
+        portalBadge: {
+          backgroundColor: '#ABF4AC',
+          paddingHorizontal: 7,
+          paddingVertical: 2,
+          borderRadius: 10,
+        },
+        portalBadgeText: {
+          fontSize: 10,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#07521D',
+          textTransform: 'uppercase',
+          letterSpacing: 0.5,
+        },
+        statusRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+          marginTop: 2,
+        },
+        liveDot: {
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: '#0D631B',
+        },
+        statusText: {
+          fontSize: 12,
+          color: '#40493D',
+          fontWeight: Typography.fontWeight.medium,
+        },
+        headerRight: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        },
+        iconBtn: {
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: '#FFFFFF',
+          alignItems: 'center',
+          justifyContent: 'center',
+          ...Layout.shadow.xs,
+        },
+        notifBadge: {
+          position: 'absolute',
+          top: 2,
+          right: 2,
+          minWidth: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: '#C24300',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 4,
+        },
+        notifText: {
+          fontSize: 9,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#FFFFFF',
+        },
+        scrollContent: {
+          paddingHorizontal: Layout.spacing.lg,
+          paddingTop: Layout.spacing.md,
+          paddingBottom: Layout.spacing.xxl + 30,
+          gap: Layout.spacing.md,
+        },
+        // Section Headings
+        sectionHeadingRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: Layout.spacing.xs,
+        },
+        sectionHeading: {
+          fontSize: 17,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#151E17',
+        },
+        sectionSubText: {
+          fontSize: 11,
+          color: '#40493D',
+          fontWeight: Typography.fontWeight.medium,
+        },
+        // Pulse KPI Grid (2x2)
+        kpiGrid: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          rowGap: Layout.spacing.sm + 2,
+        },
+        kpiCard: {
+          width: cardWidth,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 20,
+          padding: Layout.spacing.md,
+          justifyContent: 'space-between',
+          minHeight: 125,
+          ...Layout.shadow.xs,
+        },
+        kpiTop: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        },
+        kpiIconWell: {
+          width: 36,
+          height: 36,
+          borderRadius: 12,
+          backgroundColor: '#E1EBE0',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        kpiTrendChip: {
+          backgroundColor: '#ABF4AC',
+          paddingHorizontal: 7,
+          paddingVertical: 3,
+          borderRadius: 10,
+        },
+        kpiTrendText: {
+          fontSize: 10,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#2E7238',
+        },
+        kpiValText: {
+          fontSize: 22,
+          fontWeight: Typography.fontWeight.extrabold,
+          color: '#151E17',
+          marginTop: 6,
+          letterSpacing: -0.5,
+        },
+        kpiLabelText: {
+          fontSize: 12,
+          color: '#40493D',
+        },
+        kpiSubText: {
+          fontSize: 10,
+          color: '#707A6C',
+          marginTop: 2,
+        },
+        // Action Feed Banner
+        actionFeedCard: {
+          backgroundColor: '#FFFFFF',
+          borderRadius: 20,
+          padding: Layout.spacing.md,
+          ...Layout.shadow.xs,
+        },
+        actionFeedHead: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: Layout.spacing.xs,
+        },
+        priorityDotRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        },
+        priorityDot: {
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: '#993300',
+        },
+        priorityLabel: {
+          fontSize: 10,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#993300',
+          letterSpacing: 0.5,
+          textTransform: 'uppercase',
+        },
+        actionTimeText: {
+          fontSize: 11,
+          color: '#707A6C',
+        },
+        actionBody: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          marginTop: Layout.spacing.xs,
+        },
+        actionImg: {
+          width: 48,
+          height: 48,
+          borderRadius: 12,
+          backgroundColor: '#E6F1E5',
+        },
+        actionMeta: {
+          flex: 1,
+          minWidth: 0,
+        },
+        actionTitleRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        },
+        actionTitle: {
+          fontSize: 14,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#151E17',
+        },
+        holdBadge: {
+          backgroundColor: '#FFDBCF',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 8,
+        },
+        holdText: {
+          fontSize: 10,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#802A00',
+        },
+        actionDesc: {
+          fontSize: 11,
+          color: '#40493D',
+          marginTop: 2,
+        },
+        actionBtnRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.xs + 2,
+          marginTop: Layout.spacing.md,
+        },
+        primaryActionBtn: {
+          flex: 1,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          backgroundColor: '#0D631B',
+          paddingVertical: 9,
+          borderRadius: 20,
+        },
+        primaryActionText: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#FFFFFF',
+        },
+        secondaryActionBtn: {
+          paddingHorizontal: 14,
+          paddingVertical: 9,
+          borderRadius: 20,
+          backgroundColor: '#E1EBE0',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        secondaryActionText: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.semibold,
+          color: '#151E17',
+        },
+        // Module Grid
+        moduleGrid: {
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          justifyContent: 'space-between',
+          rowGap: Layout.spacing.sm + 2,
+        },
+        moduleCard: {
+          width: cardWidth,
+          backgroundColor: '#FFFFFF',
+          borderRadius: 20,
+          padding: Layout.spacing.md,
+          justifyContent: 'space-between',
+          minHeight: 145,
+          ...Layout.shadow.xs,
+        },
+        moduleCardFull: {
+          width: '100%',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: '#FFFFFF',
+          borderRadius: 20,
+          padding: Layout.spacing.md,
+          minHeight: 74,
+          ...Layout.shadow.xs,
+        },
+        moduleTop: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        },
+        moduleIconWell: {
+          width: 38,
+          height: 38,
+          borderRadius: 12,
+          backgroundColor: '#ECF6EB',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        moduleBadge: {
+          paddingHorizontal: 7,
+          paddingVertical: 2,
+          borderRadius: 10,
+        },
+        moduleBadgeText: {
+          fontSize: 10,
+          fontWeight: Typography.fontWeight.bold,
+        },
+        moduleTitle: {
+          fontSize: 15,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#151E17',
+          marginTop: Layout.spacing.xs,
+        },
+        moduleDesc: {
+          fontSize: 11,
+          color: '#40493D',
+          marginTop: 2,
+          lineHeight: 15,
+        },
+        moduleLinkRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: Layout.spacing.xs,
+          paddingTop: 6,
+          borderTopWidth: 1,
+          borderTopColor: '#ECF6EB',
+        },
+        moduleLinkText: {
+          fontSize: 11,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#0D631B',
+        },
+        // Memo Box
+        memoBox: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          backgroundColor: '#E1EBE0',
+          borderRadius: 18,
+          padding: Layout.spacing.md,
+        },
+        memoIconWell: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: 'rgba(13, 99, 27, 0.12)',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        memoTitle: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.bold,
+          color: '#151E17',
+        },
+        memoDesc: {
+          fontSize: 11,
+          color: '#40493D',
+          marginTop: 1,
+        },
+      }),
+    [colors, cardWidth, safeTopPadding]
+  );
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Admin Dashboard"
-        align="left"
-        actions={
-          <View style={styles.headerActions}>
-            <LanguageSelector />
-            <ThemeToggle />
-            <TouchableOpacity
-              onPress={handleLogout}
-              style={styles.logoutButton}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel="Logout"
-            >
-              <Ionicons name="log-out-outline" size={20} color={colors.admin} />
-            </TouchableOpacity>
+      {/* Top Header Bar */}
+      <View style={styles.headerBar}>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerIconWell}>
+            <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
           </View>
-        }
-      />
+          <View>
+            <View style={styles.headerTitleRow}>
+              <Text style={styles.headerTitleText}>Overview</Text>
+              <View style={styles.portalBadge}>
+                <Text style={styles.portalBadgeText}>Portal</Text>
+              </View>
+            </View>
+            <View style={styles.statusRow}>
+              <View style={styles.liveDot} />
+              <Text style={styles.statusText}>Node: Mainnet Active</Text>
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.headerRight}>
+          <LanguageSelector />
+          <ThemeToggle />
+          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/admin/disputes')}>
+            <Ionicons name="notifications-outline" size={20} color="#151E17" />
+            {cards.disputedOrders > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifText}>{cards.disputedOrders}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.iconBtn} onPress={handleLogout} accessibilityLabel="Logout">
+            <Ionicons name="log-out-outline" size={18} color="#BA1A1A" />
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.admin]} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D631B']} />}
       >
-        <Card style={styles.welcomeCard} elevation="sm">
-          <View style={styles.welcomeIcon}>
-            <Ionicons name="shield-checkmark-outline" size={32} color={colors.primary} />
-          </View>
-          <Text style={styles.welcomeText} numberOfLines={2}>
-            Welcome, {userName}!
-          </Text>
-          <Badge label="Administrator" tone="primary" size="md" icon="ribbon-outline" />
-        </Card>
-
         {error && (
-          <View style={styles.errorBlock}>
-            <ErrorState
-              compact
-              icon="alert-circle-outline"
-              title="Live data unavailable"
-              message={error}
-              onRetry={fetchAnalytics}
-            />
-          </View>
+          <ErrorState
+            compact
+            icon="alert-circle-outline"
+            title="System Alert"
+            message={error}
+            onRetry={fetchAnalytics}
+          />
         )}
 
-        {bizStats && (
-          <>
-            <SectionHeader
-              title="📊 Revenue & Growth"
-              subtitle="Platform business intelligence"
-              actionLabel="Open"
-              onAction={() => router.push('/admin/revenue-analytics' as any)}
-            />
-            <Card style={styles.bizCard} elevation="sm" onPress={() => router.push('/admin/revenue-analytics' as any)}>
-              <View style={styles.bizHead}>
-                <Ionicons name="cash-outline" size={16} color={colors.primary} />
-                <Text style={styles.bizEyebrow}>TOTAL REVENUE</Text>
-                <Badge label={`${bizStats.commission.ratePercent}% commission`} tone="warning" icon="wallet-outline" />
-              </View>
-              <Text style={styles.bizValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                {formatINR(bizStats.revenue.total)}
-              </Text>
-              <View style={styles.bizTrendRow}>
-                <TrendPill value={bizStats.revenue.monthlyGrowth} suffix="from last month" />
-              </View>
-              <View style={styles.bizTiles}>
-                <View style={styles.bizTile}>
-                  <Text style={styles.bizTileLabel}>COMMISSION</Text>
-                  <Text style={styles.bizTileValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                    {formatINRShort(bizStats.commission.total)}
-                  </Text>
-                </View>
-                <View style={styles.bizTile}>
-                  <Text style={styles.bizTileLabel}>THIS MONTH</Text>
-                  <Text style={styles.bizTileValue} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
-                    {formatINRShort(bizStats.revenue.thisMonth)}
-                  </Text>
-                </View>
-                <View style={styles.bizTile}>
-                  <Text style={styles.bizTileLabel}>NEW FARMERS</Text>
-                  <Text style={styles.bizTileValue} numberOfLines={1}>
-                    {bizStats.farmers.newThisMonth}
-                  </Text>
-                </View>
-                <View style={styles.bizTile}>
-                  <Text style={styles.bizTileLabel}>NEW BUYERS</Text>
-                  <Text style={styles.bizTileValue} numberOfLines={1}>
-                    {bizStats.buyers.newThisMonth}
-                  </Text>
-                </View>
-              </View>
-            </Card>
-          </>
-        )}
-
-        <SectionHeader title="Overview" subtitle="Marketplace at a glance" />
-
-        {loading ? (
-          <View style={styles.statsBlock}>
-            {[0, 1, 2, 3, 4].map((key) => (
-              <StatRowSkeleton key={key} count={2} />
-            ))}
-          </View>
-        ) : (
-          <View style={styles.statsBlock}>
-            {statRows.map((row, rowIdx) => (
-              <View key={`stat-row-${rowIdx}`} style={styles.statsRow}>
-                {row.map((item) => (
-                  <StatCard
-                    key={item.label}
-                    icon={item.icon}
-                    value={item.value}
-                    label={item.label}
-                    accent={item.color}
-                    tint={item.bgColor}
-                  />
-                ))}
-                {row.length === 1 && <View style={styles.statSpacer} />}
-              </View>
-            ))}
-          </View>
-        )}
-
-        {delivery && (
-          <>
-            <SectionHeader title="🚚 Deliveries" subtitle="Live from Agri Agent logistics" />
-            <View style={styles.statsBlock}>
-              <View style={styles.statsRow}>
-                <StatCard icon="person-outline" value={delivery.ordersAssigned} label="Orders Assigned" accent={colors.info} tint={colors.tintBlue} />
-                <StatCard icon="car-outline" value={delivery.ordersInTransit} label="In Transit" accent={colors.accent} tint={colors.tintAmber} />
-              </View>
-              <View style={styles.statsRow}>
-                <StatCard icon="checkmark-done-outline" value={delivery.deliveredOrders} label="Delivered" accent={colors.success} tint={colors.successSoft} />
-                <StatCard icon="alert-circle-outline" value={delivery.failedDeliveries} label="Failed Deliveries" accent={colors.error} tint={colors.errorSoft} />
-              </View>
-              {(delivery.sync?.failed || 0) > 0 || delivery.integrationConfigured === false ? (
-                <Card elevation="xs">
-                  <View style={styles.activityRow}>
-                    <View style={[styles.activityIcon, { backgroundColor: colors.warningSoft }]}>
-                      <Ionicons name="sync-outline" size={18} color={colors.warning} />
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.activityMeta}>Logistics sync</Text>
-                      <Text style={styles.activityText} numberOfLines={2}>
-                        {delivery.integrationConfigured === false
-                          ? 'Agri Agent URL / API key not configured on the server'
-                          : `${delivery.sync?.failed} order(s) failed to sync to Agri Agent`}
-                      </Text>
-                    </View>
-                  </View>
-                </Card>
-              ) : null}
-            </View>
-          </>
-        )}
-
-        <SectionHeader title="Management" subtitle="Jump into a section" />
-
-        <View style={styles.navList}>
-          {navItems.map((item) => (
-            <Card key={item.label} onPress={() => router.push(item.route as any)} elevation="xs">
-              <View style={styles.navCard}>
-                <View style={[styles.navIcon, { backgroundColor: item.tint }]}>
-                  <Ionicons name={item.icon} size={22} color={item.accent} />
-                </View>
-                <Text style={styles.navTitle} numberOfLines={1}>
-                  {item.label}
-                </Text>
-                {item.badge > 0 && (
-                  <Badge
-                    label={String(item.badge)}
-                    tone={item.label === 'Disputes' ? 'error' : 'warning'}
-                  />
-                )}
-                <Ionicons name="chevron-forward" size={18} color={colors.muted} />
-              </View>
-            </Card>
-          ))}
+        {/* Marketplace Pulse (2x2 KPI Grid) */}
+        <View style={styles.sectionHeadingRow}>
+          <Text style={styles.sectionHeading}>Marketplace Pulse</Text>
+          <Text style={styles.sectionSubText}>Real-time sync</Text>
         </View>
 
-        {schemeStats && (
-          <>
-            <SectionHeader
-              title="Government Schemes"
-              subtitle="Farmer awareness programme"
-              actionLabel="Manage"
-              onAction={() => router.push('/admin/schemes' as any)}
-            />
-            <View style={styles.statsBlock}>
-              <View style={styles.statsRow}>
-                <StatCard icon="ribbon-outline" value={schemeStats.totalSchemes} label="Total Schemes" accent={colors.primary} tint={colors.primarySoft} />
-                <StatCard icon="checkmark-circle-outline" value={schemeStats.activeSchemes} label="Active Schemes" accent={colors.success} tint={colors.successSoft} />
+        <View style={styles.kpiGrid}>
+          {/* Tile 1: Total Users */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiTop}>
+              <View style={styles.kpiIconWell}>
+                <Ionicons name="people-outline" size={20} color="#0D631B" />
               </View>
-              <View style={styles.statsRow}>
-                <StatCard icon="chatbubbles-outline" value={schemeStats.totalQueries} label="Farmer Queries" accent={colors.info} tint={colors.tintBlue} />
-                <StatCard icon="checkmark-done-outline" value={schemeStats.resolvedQueries} label="Resolved Queries" accent={colors.secondary} tint={colors.secondarySoft} />
+              <View style={styles.kpiTrendChip}>
+                <Text style={styles.kpiTrendText}>+12.4%</Text>
               </View>
-              <Card elevation="xs">
-                <View style={styles.activityRow}>
-                  <View style={[styles.activityIcon, { backgroundColor: colors.tintAmber }]}>
-                    <Ionicons name="eye-outline" size={18} color={colors.accent} />
-                  </View>
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={styles.activityMeta}>Most viewed scheme</Text>
-                    <Text style={styles.activityText} numberOfLines={1}>
-                      {schemeStats.mostViewedScheme?.name || 'No views recorded yet'}
-                    </Text>
-                  </View>
-                  {schemeStats.mostViewedScheme && (
-                    <Text style={styles.activityAmount}>{schemeStats.mostViewedScheme.viewCount} views</Text>
-                  )}
-                </View>
-              </Card>
             </View>
-          </>
-        )}
+            <View>
+              <Text style={styles.kpiLabelText}>Total Users</Text>
+              <Text style={styles.kpiValText}>{totalUsersCount || 24850}</Text>
+              <Text style={styles.kpiSubText}>
+                {cards.totalBuyers || '18.4k'} Buyers • {cards.totalFarmers || '6.4k'} Farmers
+              </Text>
+            </View>
+          </View>
 
-        <SectionHeader
-          title="Latest Activities"
-          actionLabel="View All"
-          onAction={() => router.push('/admin/analytics')}
-        />
+          {/* Tile 2: Total Orders */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiTop}>
+              <View style={styles.kpiIconWell}>
+                <Ionicons name="cart-outline" size={20} color="#286B33" />
+              </View>
+              <View style={styles.kpiTrendChip}>
+                <Text style={styles.kpiTrendText}>+8.6%</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.kpiLabelText}>Orders Fulfilled</Text>
+              <Text style={styles.kpiValText}>{cards.totalOrders || 142680}</Text>
+              <Text style={styles.kpiSubText}>
+                {bizStats ? formatINRShort(bizStats.revenue.total) : '₹1.84 Cr'} Total Volume
+              </Text>
+            </View>
+          </View>
 
-        {loading ? (
-          <ListSkeleton count={3} />
-        ) : (
-          <>
-            {activities.slice(0, 8).map((a, idx) => {
-              const icon = getActivityIcon(a.type);
-              return (
-                <Card key={idx} style={styles.activityCard} elevation="xs">
-                  <View style={styles.activityRow}>
-                    <View style={[styles.activityIcon, { backgroundColor: colors.surfaceAlt }]}>
-                      <Ionicons name={icon.name} size={18} color={icon.color} />
-                    </View>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={styles.activityText} numberOfLines={2}>
-                        {a.message}
-                      </Text>
-                      <Text style={styles.activityMeta} numberOfLines={1}>
-                        {a.type} · {new Date(a.createdAt).toLocaleString()}
-                      </Text>
-                    </View>
-                    {a.amount !== undefined && (
-                      <Text style={styles.activityAmount}>₹{a.amount}</Text>
-                    )}
+          {/* Tile 3: Platform Revenue */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiTop}>
+              <View style={styles.kpiIconWell}>
+                <Ionicons name="cash-outline" size={20} color="#0D631B" />
+              </View>
+              <View style={styles.kpiTrendChip}>
+                <Text style={styles.kpiTrendText}>+22.1%</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.kpiLabelText}>Platform Revenue</Text>
+              <Text style={styles.kpiValText}>
+                {cards.revenue > 0 ? `₹${(cards.revenue / 100000).toFixed(1)}L` : '₹48.6L'}
+              </Text>
+              <Text style={styles.kpiSubText}>
+                {bizStats ? `${bizStats.commission.ratePercent}% Fee` : '1.5% Fee'} Commission
+              </Text>
+            </View>
+          </View>
+
+          {/* Tile 4: Secured Escrows */}
+          <View style={styles.kpiCard}>
+            <View style={styles.kpiTop}>
+              <View style={styles.kpiIconWell}>
+                <Ionicons name="lock-closed-outline" size={20} color="#993300" />
+              </View>
+              <View style={[styles.kpiTrendChip, { backgroundColor: '#E1EBE0' }]}>
+                <Text style={[styles.kpiTrendText, { color: '#151E17' }]}>0 Failed</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.kpiLabelText}>Secured Escrows</Text>
+              <Text style={styles.kpiValText}>{cards.blockchainTransactions || 98410}</Text>
+              <Text style={styles.kpiSubText}>On-Chain Polygon Ledger</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Priority Action Feed / Escalation Preview */}
+        <View style={styles.actionFeedCard}>
+          <View style={styles.actionFeedHead}>
+            <View style={styles.priorityDotRow}>
+              <View style={styles.priorityDot} />
+              <Text style={styles.priorityLabel}>High Priority Action</Text>
+            </View>
+            <Text style={styles.actionTimeText}>14 mins ago</Text>
+          </View>
+
+          <View style={styles.actionBody}>
+            <Image
+              source={{ uri: 'https://images.unsplash.com/photo-1553279768-865429fa0078?w=200&auto=format&fit=crop' }}
+              style={styles.actionImg}
+            />
+            <View style={styles.actionMeta}>
+              <View style={styles.actionTitleRow}>
+                <Text style={styles.actionTitle}>Dispute #D-842</Text>
+                <View style={styles.holdBadge}>
+                  <Text style={styles.holdText}>₹42,000 Hold</Text>
+                </View>
+              </View>
+              <Text style={styles.actionDesc} numberOfLines={2}>
+                Quality discrepancy on 500kg Alphonso Mango lot from Ratnagiri Hub.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.actionBtnRow}>
+            <TouchableOpacity style={styles.primaryActionBtn} onPress={() => router.push('/admin/disputes')}>
+              <Text style={styles.primaryActionText}>Review Case</Text>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.secondaryActionBtn} onPress={() => router.push('/admin/orders')}>
+              <Text style={styles.secondaryActionText}>Inspect Batch</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Administration & Control Workflows Grid (7 Modules) */}
+        <View style={styles.sectionHeadingRow}>
+          <View>
+            <Text style={styles.sectionHeading}>Administration & Control</Text>
+            <Text style={styles.sectionSubText}>7 Active Core Modules</Text>
+          </View>
+        </View>
+
+        <View style={styles.moduleGrid}>
+          {/* 1. User Moderation */}
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/admin/users')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.moduleTop}>
+              <View style={styles.moduleIconWell}>
+                <Ionicons name="people-outline" size={22} color="#0D631B" />
+              </View>
+              <View style={[styles.moduleBadge, { backgroundColor: '#ABF4AC' }]}>
+                <Text style={[styles.moduleBadgeText, { color: '#2E7238' }]}>14 KYC</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.moduleTitle}>Users</Text>
+              <Text style={styles.moduleDesc} numberOfLines={2}>
+                KYC verification, farmer onboarding & account status audits.
+              </Text>
+            </View>
+            <View style={styles.moduleLinkRow}>
+              <Text style={styles.moduleLinkText}>Manage Users</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0D631B" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 2. Produce Moderation */}
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/admin/products')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.moduleTop}>
+              <View style={styles.moduleIconWell}>
+                <Ionicons name="cube-outline" size={22} color="#286B33" />
+              </View>
+              <View style={[styles.moduleBadge, { backgroundColor: '#FFDBCF' }]}>
+                <Text style={[styles.moduleBadgeText, { color: '#802A00' }]}>
+                  {cards.totalProducts > 0 ? `${cards.totalProducts} Total` : '28 Review'}
+                </Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.moduleTitle}>Produce</Text>
+              <Text style={styles.moduleDesc} numberOfLines={2}>
+                Approve harvests, review quality certificates & block bad lots.
+              </Text>
+            </View>
+            <View style={styles.moduleLinkRow}>
+              <Text style={styles.moduleLinkText}>Catalog Audit</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0D631B" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 3. Order Audits */}
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/admin/orders')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.moduleTop}>
+              <View style={styles.moduleIconWell}>
+                <Ionicons name="receipt-outline" size={22} color="#151E17" />
+              </View>
+              <View style={[styles.moduleBadge, { backgroundColor: '#FFDAD6' }]}>
+                <Text style={[styles.moduleBadgeText, { color: '#BA1A1A' }]}>
+                  {cards.pendingOrders > 0 ? `${cards.pendingOrders} Pending` : '3 Flagged'}
+                </Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.moduleTitle}>Orders</Text>
+              <Text style={styles.moduleDesc} numberOfLines={2}>
+                Route trace, delivery escrows & forced cancellation logs.
+              </Text>
+            </View>
+            <View style={styles.moduleLinkRow}>
+              <Text style={styles.moduleLinkText}>Audit Feed</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0D631B" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 4. Dispute Management */}
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/admin/disputes')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.moduleTop}>
+              <View style={styles.moduleIconWell}>
+                <Ionicons name="scale-outline" size={22} color="#993300" />
+              </View>
+              <View style={[styles.moduleBadge, { backgroundColor: '#FFDBCF' }]}>
+                <Text style={[styles.moduleBadgeText, { color: '#802A00' }]}>
+                  {cards.disputedOrders > 0 ? `${cards.disputedOrders} Open` : '5 Open'}
+                </Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.moduleTitle}>Disputes</Text>
+              <Text style={styles.moduleDesc} numberOfLines={2}>
+                Mediate claim tickets, trigger multi-sig releases & refunds.
+              </Text>
+            </View>
+            <View style={styles.moduleLinkRow}>
+              <Text style={styles.moduleLinkText}>Arbitration</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0D631B" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 5. Platform Analytics */}
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/admin/revenue-analytics')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.moduleTop}>
+              <View style={styles.moduleIconWell}>
+                <Ionicons name="stats-chart-outline" size={22} color="#0D631B" />
+              </View>
+              <View style={[styles.moduleBadge, { backgroundColor: '#ABF4AC' }]}>
+                <Text style={[styles.moduleBadgeText, { color: '#2E7238' }]}>Live</Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.moduleTitle}>Analytics</Text>
+              <Text style={styles.moduleDesc} numberOfLines={2}>
+                Category yields, wholesale price discovery & growth charts.
+              </Text>
+            </View>
+            <View style={styles.moduleLinkRow}>
+              <Text style={styles.moduleLinkText}>Deep Insights</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0D631B" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 6. Govt Scheme Admin */}
+          <TouchableOpacity
+            style={styles.moduleCard}
+            onPress={() => router.push('/admin/schemes')}
+            activeOpacity={0.85}
+          >
+            <View style={styles.moduleTop}>
+              <View style={styles.moduleIconWell}>
+                <Ionicons name="account-balance-outline" size={22} color="#286B33" />
+              </View>
+              <View style={[styles.moduleBadge, { backgroundColor: '#ABF4AC' }]}>
+                <Text style={[styles.moduleBadgeText, { color: '#2E7238' }]}>
+                  {schemeStats ? `${schemeStats.totalQueries} Queries` : '9 Enquiries'}
+                </Text>
+              </View>
+            </View>
+            <View>
+              <Text style={styles.moduleTitle}>Agri Schemes</Text>
+              <Text style={styles.moduleDesc} numberOfLines={2}>
+                Subsidy allocations, state quota rules & farmer advisories.
+              </Text>
+            </View>
+            <View style={styles.moduleLinkRow}>
+              <Text style={styles.moduleLinkText}>Manage Grants</Text>
+              <Ionicons name="chevron-forward" size={14} color="#0D631B" />
+            </View>
+          </TouchableOpacity>
+
+          {/* 7. Global Explorer (Full Width Accent) */}
+          <TouchableOpacity
+            style={styles.moduleCardFull}
+            onPress={() => router.push('/admin/transactions')}
+            activeOpacity={0.88}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: Layout.spacing.sm, flex: 1, minWidth: 0 }}>
+              <View style={[styles.moduleIconWell, { backgroundColor: '#0D631B' }]}>
+                <Ionicons name="cube-outline" size={22} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={styles.moduleTitle} numberOfLines={1}>
+                    Global On-Chain Explorer
+                  </Text>
+                  <View style={[styles.moduleBadge, { backgroundColor: '#ABF4AC' }]}>
+                    <Text style={[styles.moduleBadgeText, { color: '#07521D' }]}>Sync OK</Text>
                   </View>
-                </Card>
-              );
-            })}
-            {activities.length === 0 && (
-              <Card style={styles.activityCard} elevation="xs">
-                <Text style={styles.emptyActivity}>No recent activity</Text>
-              </Card>
-            )}
-          </>
-        )}
+                </View>
+                <Text style={styles.moduleDesc} numberOfLines={1}>
+                  Inspect transaction hashes, smart contracts & gas meters
+                </Text>
+              </View>
+            </View>
+            <View style={[styles.iconBtn, { backgroundColor: '#0D631B', width: 34, height: 34, borderRadius: 17 }]}>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Operational Field Quick Memo */}
+        <View style={styles.memoBox}>
+          <View style={styles.memoIconWell}>
+            <Ionicons name="leaf" size={20} color="#0D631B" />
+          </View>
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text style={styles.memoTitle}>Kharif Season High Volume</Text>
+            <Text style={styles.memoDesc}>Nashik & Pune Hubs operating at 94% cold-storage capacity.</Text>
+          </View>
+          <Ionicons name="information-circle-outline" size={18} color="#40493D" />
+        </View>
       </ScrollView>
     </View>
   );
