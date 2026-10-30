@@ -13,10 +13,12 @@ import {
   Modal,
   TextInput,
   ActivityIndicator,
+  StatusBar,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
@@ -32,6 +34,7 @@ const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1595273670150-bd0c3c39
 
 export default function FarmerDashboard() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const [userName, setUserName] = useState('Farmer');
   const [userLocation, setUserLocation] = useState('Nashik Green Valley, MH');
   const [userMobile, setUserMobile] = useState('');
@@ -240,6 +243,12 @@ export default function FarmerDashboard() {
     }
   };
 
+  const safeTop = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0
+  );
+  const safeTopPadding = safeTop > 0 ? safeTop + Layout.spacing.sm : (Platform.OS === 'ios' ? 44 : Layout.spacing.md);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -252,7 +261,7 @@ export default function FarmerDashboard() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: Layout.spacing.lg,
-          paddingTop: Platform.OS === 'ios' ? 44 : Layout.spacing.md,
+          paddingTop: safeTopPadding,
           paddingBottom: Layout.spacing.sm,
           backgroundColor: 'rgba(242, 252, 241, 0.95)',
           borderBottomWidth: 1,
@@ -775,7 +784,7 @@ export default function FarmerDashboard() {
           color: '#FFFFFF',
         },
       }),
-    [colors]
+    [colors, safeTopPadding]
   );
 
   return (

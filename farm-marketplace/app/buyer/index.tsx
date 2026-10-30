@@ -12,10 +12,12 @@ import {
   Platform,
   Alert,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useColors from '../../constants/Colors';
 import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
@@ -62,6 +64,7 @@ const HALO_COLORS = ['#fedccf', '#f4fbce', '#e8f8ee', '#feebee', '#fef7e3', '#f4
 
 export default function BuyerDashboard() {
   const colors = useColors();
+  const insets = useSafeAreaInsets();
   const { addToCart, cart, updateQuantity, removeFromCart, summary } = useCart();
   const { t } = useLanguage();
 
@@ -223,6 +226,12 @@ export default function BuyerDashboard() {
     return result;
   }, [products, search, selectedCategory]);
 
+  const safeTop = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0
+  );
+  const safeTopPadding = safeTop > 0 ? safeTop + Layout.spacing.sm : (Platform.OS === 'ios' ? 44 : Layout.spacing.md);
+
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -235,7 +244,7 @@ export default function BuyerDashboard() {
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: Layout.spacing.lg,
-          paddingTop: Platform.OS === 'ios' ? 44 : Layout.spacing.md,
+          paddingTop: safeTopPadding,
           paddingBottom: Layout.spacing.xs,
           backgroundColor: colors.card,
         },
@@ -546,7 +555,7 @@ export default function BuyerDashboard() {
           marginTop: Layout.spacing.sm,
         },
       }),
-    [colors]
+    [colors, safeTopPadding]
   );
 
   return (
