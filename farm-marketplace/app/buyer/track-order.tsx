@@ -7,6 +7,9 @@ import {
   RefreshControl,
   Linking,
   TouchableOpacity,
+  Modal,
+  Alert,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +26,8 @@ import {
   Loading,
   ErrorState,
   friendlyError,
+  Button,
+  Input,
 } from '../../components/ui';
 import type { BadgeTone } from '../../components/ui';
 import {
@@ -70,7 +75,7 @@ interface TrackingData {
   };
   events: TrackingEvent[];
   items: {
-    product: { name: string; unit: string };
+    product: { _id?: string; name: string; unit: string };
     quantity: number;
     price: number;
   }[];
@@ -79,6 +84,15 @@ interface TrackingData {
 }
 
 const STATUS_ORDER = ['pending', 'accepted', 'packed', 'shipped', 'delivered'];
+
+const STATUS_LABELS: Record<string, string> = {
+  pending: 'Placed',
+  accepted: 'Confirmed',
+  packed: 'Packed',
+  shipped: 'Shipped',
+  delivered: 'Delivered',
+  cancelled: 'Cancelled',
+};
 
 const STATUS_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   pending: 'time-outline',
@@ -290,6 +304,75 @@ export default function TrackOrderScreen() {
           color: colors.primary,
           fontWeight: Typography.fontWeight.bold,
         },
+        itemRowContainer: {
+          paddingVertical: Layout.spacing.sm + 2,
+          borderBottomWidth: 1,
+          borderBottomColor: colors.border,
+        },
+        reviewBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          marginTop: Layout.spacing.xs,
+          backgroundColor: colors.primarySoft,
+          alignSelf: 'flex-start',
+          paddingHorizontal: Layout.spacing.md,
+          paddingVertical: 6,
+          borderRadius: Layout.borderRadius.full,
+        },
+        reviewBtnText: {
+          fontSize: Typography.fontSize.xs,
+          color: colors.primary,
+          fontWeight: Typography.fontWeight.bold,
+        },
+        modalOverlay: {
+          flex: 1,
+          backgroundColor: colors.overlay,
+          justifyContent: 'center',
+          alignItems: 'center',
+          padding: Layout.spacing.lg,
+        },
+        modalContent: {
+          width: '100%',
+          maxWidth: 400,
+          backgroundColor: colors.card,
+          borderRadius: Layout.borderRadius.xl,
+          padding: Layout.spacing.xl,
+          ...Layout.shadow.lg,
+        },
+        modalTitle: {
+          fontSize: Typography.fontSize.xl,
+          lineHeight: Typography.leading.xl,
+          fontWeight: Typography.fontWeight.bold,
+          color: colors.text,
+          textAlign: 'center',
+        },
+        modalSubtitle: {
+          fontSize: Typography.fontSize.sm,
+          lineHeight: Typography.leading.sm,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          marginTop: Layout.spacing.xs,
+        },
+        starsContainer: {
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          marginTop: Layout.spacing.lg,
+          marginBottom: Layout.spacing.lg,
+        },
+        starBtn: {
+          padding: Layout.spacing.xs,
+        },
+        modalButtons: {
+          flexDirection: 'row',
+          gap: Layout.spacing.md,
+          marginTop: Layout.spacing.md,
+        },
+        modalBtn: {
+          flex: 1,
+        },
       }),
     [colors]
   );
@@ -299,6 +382,57 @@ export default function TrackOrderScreen() {
   const [refreshing, setRefreshing] = useState(false);
   /** Display-only: renders the failure the catch block already handles. */
   const [loadError, setLoadError] = useState<unknown>(null);
+
+  // Review states
+  const [reviewProduct, setReviewProduct] = useState<{ id: string; name: string } | null>(null);
+  const [rating, setRating] = useState<number>(5);
+  const [comment, setComment] = useState<string>('');
+  const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [reviewedProductIds, setReviewedProductIds] = useState<string[]>([]);
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}: ${message}`);
+      return;
+    }
+    Alert.alert(title, message, [{ text: 'OK' }]);
+  };
+
+  const handleOpenReview = (productId: string, productName: string) => {
+    setReviewProduct({ id: productId, name: productName });
+    setRating(5);
+    setComment('');
+  };
+
+  const handleCancelReview = () => {
+    setReviewProduct(null);
+  };
+
+  const handleSubmitReview = async () => {
+    if (!reviewProduct?.id) return;
+    if (!rating || rating < 1 || rating > 5) {
+      showAlert('Error', 'Please select a rating between 1 and 5 stars');
+      return;
+    }
+    try {
+      setSubmittingReview(true);
+      const res = await api.post('/reviews', {
+        productId: reviewProduct.id,
+        rating,
+        comment: comment.trim(),
+      });
+      if (res.data.success) {
+        showAlert('Success', 'Thank you for rating this product!');
+        setReviewedProductIds((prev) => [...prev, reviewProduct.id]);
+        setReviewProduct(null);
+      }
+    } catch (err: any) {
+      const msg = err.response?.data?.message || 'Failed to submit review.';
+      showAlert('Error', msg);
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const fetchTracking = useCallback(async () => {
     try {
@@ -424,7 +558,7 @@ export default function TrackOrderScreen() {
               </Text>
             </View>
             <Badge
-              label={tracking.status.toUpperCase()}
+              label={(STATUS_LABELS[tracking.status] || tracking.status).toUpperCase()}
               tone={STATUS_TONES[tracking.status] || 'neutral'}
               size="md"
               icon={STATUS_ICONS[tracking.status]}
@@ -622,7 +756,7 @@ export default function TrackOrderScreen() {
                         ]}
                         numberOfLines={1}
                       >
-                        {step.charAt(0).toUpperCase() + step.slice(1)}
+                        {STATUS_LABELS[step] || (step.charAt(0).toUpperCase() + step.slice(1))}
                       </Text>
                       {stepEvent ? (
                         <Text style={styles.stepTime} numberOfLines={1}>
@@ -726,6 +860,68 @@ export default function TrackOrderScreen() {
           ))}
         </Card>
       </ScrollView>
+
+      {/* Product Rating & Review Modal */}
+      <Modal
+        visible={reviewProduct !== null}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={handleCancelReview}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Rate Product</Text>
+            <Text style={styles.modalSubtitle} numberOfLines={2}>
+              {reviewProduct?.name}
+            </Text>
+
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setRating(star)}
+                  style={styles.starBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                >
+                  <Ionicons
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={34}
+                    color={colors.star}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Input
+              label="Your review (optional)"
+              placeholder="Write your experience with this product..."
+              value={comment}
+              onChangeText={setComment}
+              multiline={true}
+              numberOfLines={4}
+              containerStyle={{ marginBottom: 0 }}
+            />
+
+            <View style={styles.modalButtons}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={handleCancelReview}
+                disabled={submittingReview}
+                style={styles.modalBtn}
+              />
+              <Button
+                title="Submit"
+                onPress={handleSubmitReview}
+                loading={submittingReview}
+                disabled={submittingReview}
+                style={styles.modalBtn}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

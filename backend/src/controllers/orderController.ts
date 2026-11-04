@@ -315,6 +315,15 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
       return;
     }
 
+    // Delivery transit and completion are managed exclusively by the delivery partner (Agri Agent logistics)
+    if (isFarmer && !isAdmin && ['shipped', 'delivered'].includes(status)) {
+      res.status(403).json({
+        success: false,
+        message: 'Delivery status can only be updated by the assigned delivery partner.',
+      });
+      return;
+    }
+
     if (!STATUS_FLOW[order.status]?.includes(status)) {
       res.status(400).json({
         success: false,
@@ -385,8 +394,8 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response): Promis
 
     await order.save();
 
-    // Farmer rejected an order already handed to logistics → tell Agri Agent.
-    if (status === 'cancelled' && order.syncStatus && order.syncStatus !== 'NOT_SYNCED') {
+    // Sync status update to Agri Agent (accepted, packed, or cancelled)
+    if (['accepted', 'packed', 'cancelled'].includes(status) && order.syncStatus && order.syncStatus !== 'NOT_SYNCED') {
       triggerOrderSync(order._id.toString());
     }
 

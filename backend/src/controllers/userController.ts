@@ -52,19 +52,77 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
+// @desc    Get current user profile
+// @route   GET /api/users/profile
+// @access  Private
+export const getProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?._id;
+    const user = await User.findById(userId).select('-password');
+    if (!user) {
+      res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      user,
+    });
+  } catch (error: any) {
+    console.error('Get profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
+  }
+};
+
 // @desc    Update user profile
 // @route   PUT /api/users/profile
 // @access  Private
 export const updateProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const { name, mobile, address } = req.body;
+    const { name, mobile, address, profileImage } = req.body;
     const userId = req.user?._id;
+
+    const updateData: any = {};
+    if (name !== undefined) {
+      const cleanName = name.trim();
+      if (cleanName.length < 2) {
+        res.status(400).json({ success: false, message: 'Name must be at least 2 characters' });
+        return;
+      }
+      updateData.name = cleanName;
+    }
+
+    if (mobile !== undefined) {
+      let cleanMobile = mobile.toString().replace(/\D/g, '');
+      if (cleanMobile.length === 12 && cleanMobile.startsWith('91')) {
+        cleanMobile = cleanMobile.slice(2);
+      }
+      if (cleanMobile.length !== 10) {
+        res.status(400).json({ success: false, message: 'Please provide a valid 10-digit mobile number' });
+        return;
+      }
+      updateData.mobile = cleanMobile;
+    }
+
+    if (address !== undefined) {
+      updateData.address = address.trim();
+    }
+
+    if (profileImage !== undefined) {
+      updateData.profileImage = profileImage;
+    }
 
     const user = await User.findByIdAndUpdate(
       userId,
-      { name, mobile, address },
+      updateData,
       { new: true, runValidators: true }
-    );
+    ).select('-password');
 
     if (!user) {
       res.status(404).json({
@@ -83,7 +141,7 @@ export const updateProfile = async (req: AuthRequest, res: Response): Promise<vo
     console.error('Update profile error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
+      message: error.message || 'Server error',
     });
   }
 };

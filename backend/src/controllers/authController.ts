@@ -160,6 +160,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
         role: user.role,
         mobile: user.mobile,
         address: user.address,
+        profileImage: user.profileImage || '',
       },
     });
   } catch (error: any) {

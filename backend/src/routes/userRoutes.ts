@@ -3,6 +3,7 @@ import {
   getUsers,
   getUser,
   updateProfile,
+  getProfile,
   getFarmers,
   getBuyers,
   deleteUser,
@@ -18,7 +19,7 @@ router.use(protect); // All routes require authentication
 router.get('/', restrictTo('admin'), getUsers);
 router.get('/farmers', getFarmers);
 router.get('/buyers', restrictTo('admin'), getBuyers);
-router.get('/profile', getUser);
+router.get('/profile', getProfile);
 router.put('/profile', updateProfile);
 router.put('/push-token', updatePushToken);
 router.get('/:id', getUser);

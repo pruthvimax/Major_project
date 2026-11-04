@@ -75,10 +75,10 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
     const { productId, rating, comment } = req.body;
     const buyerId = req.user?._id;
 
-    if (!productId || !rating || !comment) {
+    if (!productId || rating === undefined || rating === null) {
       res.status(400).json({
         success: false,
-        message: 'Please provide product ID, rating and comment',
+        message: 'Please provide product ID and rating',
       });
       return;
     }
@@ -96,14 +96,14 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
     // Verify if the user bought this product and order status is delivered
     const purchasedOrder = await Order.findOne({
       buyer: buyerId,
-      status: 'delivered',
+      status: { $in: ['pending', 'confirmed', 'accepted', 'packed', 'shipped', 'delivered'] },
       'items.product': productId,
     });
 
     if (!purchasedOrder) {
       res.status(403).json({
         success: false,
-        message: 'You can only review products you have purchased and had delivered.',
+        message: 'You can only review products you have purchased.',
       });
       return;
     }
@@ -122,7 +122,7 @@ export const createReview = async (req: AuthRequest, res: Response): Promise<voi
       product: productId,
       buyer: buyerId,
       rating: Number(rating),
-      comment,
+      comment: (comment || '').trim(),
     });
 
     // Recalculate average rating and review count

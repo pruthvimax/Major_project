@@ -14,6 +14,7 @@ import {
   TextInput,
   ActivityIndicator,
   StatusBar,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,17 +26,22 @@ import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { logApiError } from '../../services/apiError';
 import ThemeToggle from '../../components/ThemeToggle';
+import EditProfileModal from '../../components/profile/EditProfileModal';
 import LanguageSelector from '../../components/LanguageSelector';
 import { registerForPushNotificationsAsync, savePushToken } from '../../services/notifications';
 import { ReviewAnalytics, type FarmerReview } from '../../components/ui';
 import { friendlyError } from '../../components/ui/ErrorState';
+import { useTheme } from '../../context/ThemeContext';
 
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=200&auto=format&fit=crop';
 
 export default function FarmerDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
   const [userName, setUserName] = useState('Farmer');
+  const [userEmail, setUserEmail] = useState('');
+  const [profileMenuVisible, setProfileMenuVisible] = useState(false);
   const [userLocation, setUserLocation] = useState('Nashik Green Valley, MH');
   const [userMobile, setUserMobile] = useState('');
   const [userAvatar, setUserAvatar] = useState(DEFAULT_AVATAR);
@@ -84,93 +90,22 @@ export default function FarmerDashboard() {
         return;
       }
       setUserName(user?.name || 'Farmer');
+      if (user?.email) {
+        setUserEmail(user.email);
+      }
       if (user?.address) {
         setUserLocation(typeof user.address === 'string' ? user.address : 'Nashik Green Valley, MH');
       }
       if (user?.mobile) {
         setUserMobile(user.mobile);
       }
-      if (user?.avatar) {
-        setUserAvatar(user.avatar);
+      if (user?.profileImage || user?.avatar) {
+        setUserAvatar(user.profileImage || user.avatar);
       }
       fetchStats();
     } catch (error) {
       logApiError('Farmer role validation', error);
       router.replace('/auth/login');
-    }
-  };
-
-  const handleOpenEditProfile = () => {
-    setEditName(userName);
-    setEditLocation(userLocation);
-    setEditMobile(userMobile);
-    setEditProfileVisible(true);
-  };
-
-  const handleSaveProfile = async () => {
-    if (!editName.trim()) {
-      if (Platform.OS === 'web') window.alert('Please enter your name');
-      else Alert.alert('Error', 'Please enter your name');
-      return;
-    }
-    setSavingProfile(true);
-    const newName = editName.trim();
-    const newLocation = editLocation.trim() || userLocation;
-    const newMobile = editMobile.trim();
-
-    try {
-      const response = await api.put('/users/profile', {
-        name: newName,
-        address: newLocation,
-        mobile: newMobile,
-      });
-
-      const updatedUser = response.data?.user;
-      const finalName = updatedUser?.name || newName;
-      const finalLocation = (typeof updatedUser?.address === 'string' ? updatedUser.address : newLocation);
-      const finalMobile = updatedUser?.mobile || newMobile;
-
-      setUserName(finalName);
-      setUserLocation(finalLocation);
-      setUserMobile(finalMobile);
-
-      const storedUserData = await AsyncStorage.getItem('currentUser');
-      if (storedUserData) {
-        const userObj = JSON.parse(storedUserData);
-        const updatedObj = { ...userObj, name: finalName, address: finalLocation, mobile: finalMobile };
-        await AsyncStorage.setItem('currentUser', JSON.stringify(updatedObj));
-        await AsyncStorage.setItem('user', JSON.stringify(updatedObj));
-      }
-
-      setEditProfileVisible(false);
-      if (Platform.OS === 'web') {
-        window.alert('Profile details updated successfully!');
-      } else {
-        Alert.alert('Success', 'Profile details updated successfully!');
-      }
-    } catch (error) {
-      logApiError('Update profile', error);
-      // Fallback local update
-      setUserName(newName);
-      setUserLocation(newLocation);
-      setUserMobile(newMobile);
-      try {
-        const storedUserData = await AsyncStorage.getItem('currentUser');
-        if (storedUserData) {
-          const userObj = JSON.parse(storedUserData);
-          const updatedObj = { ...userObj, name: newName, address: newLocation, mobile: newMobile };
-          await AsyncStorage.setItem('currentUser', JSON.stringify(updatedObj));
-          await AsyncStorage.setItem('user', JSON.stringify(updatedObj));
-        }
-      } catch (e) {}
-      setEditProfileVisible(false);
-      if (Platform.OS === 'web') {
-        window.alert('Profile updated!');
-      } else {
-        Alert.alert('Updated', 'Profile updated!');
-      }
-    } finally {
-      setSavingProfile(false);
     }
   };
 
@@ -222,6 +157,7 @@ export default function FarmerDashboard() {
   }, []);
 
   const handleLogout = () => {
+    setProfileMenuVisible(false);
     const performLogout = async () => {
       try {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
@@ -236,9 +172,9 @@ export default function FarmerDashboard() {
         performLogout();
       }
     } else {
-      Alert.alert('Logout', 'Log out from Farmer Dashboard?', [
+      Alert.alert('Sign Out', 'Log out from Farmer Dashboard?', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: performLogout },
+        { text: 'Sign Out', style: 'destructive', onPress: performLogout },
       ]);
     }
   };
@@ -254,7 +190,7 @@ export default function FarmerDashboard() {
       StyleSheet.create({
         container: {
           flex: 1,
-          backgroundColor: '#F2FCF1',
+          backgroundColor: isDark ? colors.background : '#F2FCF1',
         },
         headerBar: {
           flexDirection: 'row',
@@ -262,35 +198,19 @@ export default function FarmerDashboard() {
           justifyContent: 'space-between',
           paddingHorizontal: Layout.spacing.lg,
           paddingTop: safeTopPadding,
-          paddingBottom: Layout.spacing.sm,
-          backgroundColor: 'rgba(242, 252, 241, 0.95)',
+          paddingBottom: Layout.spacing.xs,
+          backgroundColor: colors.card,
           borderBottomWidth: 1,
-          borderBottomColor: '#E6F1E5',
+          borderBottomColor: colors.border,
         },
-        headerLeft: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: Layout.spacing.xs + 2,
-        },
-        headerIconWell: {
-          width: 40,
-          height: 40,
-          borderRadius: 20,
-          backgroundColor: '#ABF4AC',
-          alignItems: 'center',
-          justifyContent: 'center',
-        },
-        headerSubTag: {
-          fontSize: 10,
+        greetingTitle: {
+          fontSize: Typography.fontSize.lg,
           fontWeight: Typography.fontWeight.bold,
-          color: '#286B33',
-          letterSpacing: 0.5,
-          textTransform: 'uppercase',
+          color: colors.text,
         },
-        headerTitleText: {
-          fontSize: 18,
-          fontWeight: Typography.fontWeight.bold,
-          color: '#151E17',
+        greetingSub: {
+          fontSize: Typography.fontSize.xs,
+          color: colors.textSecondary,
         },
         headerRight: {
           flexDirection: 'row',
@@ -301,10 +221,15 @@ export default function FarmerDashboard() {
           width: 36,
           height: 36,
           borderRadius: 18,
-          backgroundColor: '#FFFFFF',
           alignItems: 'center',
           justifyContent: 'center',
-          ...Layout.shadow.xs,
+          backgroundColor: isDark ? '#1C261F' : '#F1F5F2',
+          position: 'relative',
+        },
+        topAvatarImg: {
+          width: 33,
+          height: 33,
+          borderRadius: 16.5,
         },
         scrollContent: {
           paddingHorizontal: Layout.spacing.lg,
@@ -693,116 +618,290 @@ export default function FarmerDashboard() {
           fontWeight: Typography.fontWeight.bold,
           color: '#0D631B',
         },
+        // Header Profile Button
+        profileAvatarBtn: {
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: isDark ? '#1C261F' : '#FFFFFF',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1.5,
+          borderColor: isDark ? '#2E7D32' : '#ABF4AC',
+          overflow: 'hidden',
+          position: 'relative',
+          ...Layout.shadow.xs,
+        },
+        profileAvatarBtnActive: {
+          borderColor: '#0D631B',
+          backgroundColor: isDark ? '#283D2C' : '#E6F8E5',
+        },
+        profileAvatarDot: {
+          position: 'absolute',
+          bottom: 1,
+          right: 1,
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: '#0D631B',
+          borderWidth: 1.5,
+          borderColor: isDark ? '#1C261F' : '#FFFFFF',
+        },
+        // Profile Menu Button in Strip
+        profileMenuBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 9,
+          paddingVertical: 6,
+          borderRadius: 14,
+          backgroundColor: isDark ? '#223226' : '#FFFFFF',
+          borderWidth: 1,
+          borderColor: isDark ? '#2F4934' : '#CCE6CA',
+        },
+        profileMenuBtnText: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#81C784' : '#0D631B',
+        },
+        directSignOutBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 9,
+          paddingVertical: 6,
+          borderRadius: 14,
+          backgroundColor: isDark ? '#3E1C1C' : '#FEF2F2',
+          borderWidth: 1,
+          borderColor: isDark ? '#5C2828' : '#FECACA',
+        },
+        directSignOutText: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#EF5350' : '#BA1A1A',
+        },
+        notifBadge: {
+          position: 'absolute',
+          top: -2,
+          right: -2,
+          backgroundColor: '#E53E3E',
+          minWidth: 16,
+          height: 16,
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: 3,
+        },
+        notifText: {
+          color: '#FFFFFF',
+          fontSize: 9,
+          fontWeight: Typography.fontWeight.bold,
+        },
+        // Modal Dropdown
         modalBackdrop: {
           flex: 1,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          justifyContent: 'center',
-          alignItems: 'center',
-          padding: Layout.spacing.lg,
+          backgroundColor: 'rgba(15, 23, 42, 0.3)',
         },
-        modalCard: {
-          width: '100%',
-          maxWidth: 420,
-          backgroundColor: '#FFFFFF',
-          borderRadius: 24,
-          padding: Layout.spacing.lg,
-          ...Layout.shadow.md,
+        dropdownAnchor: {
+          position: 'absolute',
+          top: safeTopPadding + 50,
+          right: Layout.spacing.md,
+          width: Math.min(Dimensions.get('window').width - Layout.spacing.md * 2, 290),
+          maxWidth: '100%',
         },
-        modalHeader: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: Layout.spacing.md,
-          paddingBottom: Layout.spacing.xs,
-          borderBottomWidth: 1,
-          borderBottomColor: '#E6F1E5',
-        },
-        modalHeaderTitleRow: {
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-        },
-        modalTitle: {
-          fontSize: 17,
-          fontWeight: Typography.fontWeight.bold,
-          color: '#151E17',
-        },
-        modalBody: {
-          maxHeight: 300,
-        },
-        inputLabel: {
-          fontSize: 12,
-          fontWeight: Typography.fontWeight.bold,
-          color: '#40493D',
-          marginTop: Layout.spacing.xs,
-          marginBottom: 4,
-        },
-        modalInput: {
-          backgroundColor: '#F2FCF1',
+        dropdownCard: {
+          backgroundColor: isDark ? '#1C261F' : '#FFFFFF',
+          borderRadius: 18,
+          padding: Layout.spacing.md,
           borderWidth: 1,
-          borderColor: '#BFCABA',
-          borderRadius: 12,
-          paddingHorizontal: Layout.spacing.md,
-          paddingVertical: 10,
-          fontSize: 14,
-          color: '#151E17',
-          marginBottom: Layout.spacing.sm,
+          borderColor: isDark ? '#2A3A2C' : '#E6F1E5',
+          ...Layout.shadow.lg,
+          elevation: 12,
         },
-        modalFooter: {
+        profileHeaderRow: {
           flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'flex-end',
           gap: Layout.spacing.sm,
-          marginTop: Layout.spacing.md,
-          paddingTop: Layout.spacing.xs,
-          borderTopWidth: 1,
-          borderTopColor: '#E6F1E5',
+          paddingBottom: 2,
         },
-        cancelBtn: {
-          paddingHorizontal: 16,
-          paddingVertical: 10,
-          borderRadius: 16,
-          backgroundColor: '#ECF6EB',
+        dropdownAvatarImg: {
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: '#ABF4AC',
         },
-        cancelBtnText: {
-          fontSize: 13,
-          fontWeight: Typography.fontWeight.semibold,
-          color: '#40493D',
+        dropdownHeaderMeta: {
+          flex: 1,
+          minWidth: 0,
         },
-        saveBtn: {
+        dropdownNameRow: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 6,
-          paddingHorizontal: 18,
-          paddingVertical: 10,
-          borderRadius: 16,
+        },
+        dropdownNameText: {
+          fontSize: 15,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#F1F5F2' : '#151E17',
+        },
+        dropdownRoleTag: {
+          backgroundColor: isDark ? '#254B2A' : '#ABF4AC',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 6,
+        },
+        dropdownEditBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 5,
+          backgroundColor: isDark ? '#223826' : '#E8F8EE',
+          borderRadius: 8,
+          paddingVertical: 5,
+          paddingHorizontal: 10,
+          marginTop: 6,
+          borderWidth: 1,
+          borderColor: isDark ? '#2E5033' : '#C8F0D3',
+          alignSelf: 'flex-start',
+        },
+        dropdownEditBtnText: {
+          fontSize: 11,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#81C784' : '#0D631B',
+        },
+        dropdownRoleTagText: {
+          fontSize: 9,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#A1F0A2' : '#07521D',
+        },
+        dropdownEmailText: {
+          fontSize: 11,
+          color: isDark ? '#A0AFA2' : '#40493D',
+          marginTop: 1,
+        },
+        dropdownActiveRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          marginTop: 3,
+        },
+        dropdownActiveDot: {
+          width: 7,
+          height: 7,
+          borderRadius: 3.5,
           backgroundColor: '#0D631B',
         },
-        saveBtnText: {
+        dropdownActiveText: {
+          fontSize: 11,
+          color: isDark ? '#81C784' : '#0D631B',
+          fontWeight: Typography.fontWeight.medium,
+        },
+        menuDivider: {
+          height: 1,
+          backgroundColor: isDark ? '#2A3A2C' : '#E6F1E5',
+          marginVertical: Layout.spacing.sm + 2,
+        },
+        dropdownMenuItem: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          paddingVertical: 9,
+          paddingHorizontal: 6,
+          borderRadius: 10,
+        },
+        menuItemIconWell: {
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        menuItemTextCol: {
+          flex: 1,
+          minWidth: 0,
+        },
+        menuItemTitle: {
           fontSize: 13,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#F1F5F2' : '#151E17',
+        },
+        menuItemSub: {
+          fontSize: 11,
+          color: isDark ? '#A0AFA2' : '#40493D',
+        },
+        dropdownLogoutBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          backgroundColor: isDark ? '#3E1C1C' : '#FEF2F2',
+          borderRadius: 12,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderWidth: 1,
+          borderColor: isDark ? '#5C2828' : '#FEE2E2',
+          marginTop: 2,
+        },
+        dropdownLogoutIconWell: {
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: isDark ? '#522323' : '#FEE2E2',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        dropdownLogoutTitle: {
+          fontSize: 14,
           fontWeight: Typography.fontWeight.bold,
-          color: '#FFFFFF',
+          color: isDark ? '#EF5350' : '#BA1A1A',
+        },
+        dropdownLogoutSub: {
+          fontSize: 11,
+          color: isDark ? '#E57373' : '#DC2626',
+          marginTop: 1,
         },
       }),
-    [colors, safeTopPadding]
+    [colors, safeTopPadding, isDark]
   );
 
   return (
     <View style={styles.container}>
       {/* Header Bar */}
       <View style={styles.headerBar}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerIconWell}>
-            <Ionicons name="leaf-outline" size={22} color="#0D631B" />
-          </View>
-          <View>
-            <Text style={styles.headerSubTag}>Farm Operations</Text>
-            <Text style={styles.headerTitleText}>Dashboard</Text>
-          </View>
+        <View style={{ flex: 1, minWidth: 0, paddingRight: Layout.spacing.xs }}>
+          <Text style={styles.greetingTitle} numberOfLines={1}>
+            Hi, {userName}
+          </Text>
+          <Text style={styles.greetingSub} numberOfLines={1}>
+            🌾 {userLocation || 'Farm Operations & Management'}
+          </Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/farmer/orders')} accessibilityLabel="Notifications">
-            <Ionicons name="notifications-outline" size={20} color="#151E17" />
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push('/farmer/orders')}
+            accessibilityLabel="Orders & Notifications"
+          >
+            <Ionicons name="notifications-outline" size={19} color={isDark ? '#F1F5F2' : '#151E17'} />
+            {ordersCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifText}>{ordersCount}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          <LanguageSelector />
+          <ThemeToggle />
+          <TouchableOpacity
+            style={[styles.profileAvatarBtn, profileMenuVisible && styles.profileAvatarBtnActive]}
+            onPress={() => setProfileMenuVisible((prev) => !prev)}
+            accessibilityLabel="Farmer Profile & Menu"
+            accessibilityState={{ expanded: profileMenuVisible }}
+          >
+            {userAvatar ? (
+              <Image source={{ uri: userAvatar }} style={styles.topAvatarImg} />
+            ) : (
+              <Ionicons name="person-circle" size={24} color="#0D631B" />
+            )}
+            <View style={styles.profileAvatarDot} />
           </TouchableOpacity>
         </View>
       </View>
@@ -812,46 +911,6 @@ export default function FarmerDashboard() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D631B']} />}
       >
-        {/* User Greeting & Utility Strip */}
-        <View style={styles.userStrip}>
-          <TouchableOpacity
-            style={styles.userLeft}
-            onPress={() => router.push('/farmer/profile')}
-            activeOpacity={0.8}
-            accessibilityLabel="Edit Profile"
-          >
-            <View style={styles.avatarContainer}>
-              <Image
-                source={{ uri: userAvatar }}
-                style={styles.avatarImg}
-              />
-              <View style={styles.onlineDot} />
-            </View>
-            <View style={styles.userMeta}>
-              <View style={styles.userNameRow}>
-                <Text style={styles.userNameText} numberOfLines={1}>
-                  Hi, {userName}
-                </Text>
-                <Ionicons name="checkmark-circle" size={16} color="#0D631B" />
-                <View style={styles.editProfilePill}>
-                  <Ionicons name="create-outline" size={12} color="#0D631B" />
-                  <Text style={styles.editProfilePillText}>Edit Profile</Text>
-                </View>
-              </View>
-              <Text style={styles.userLocText} numberOfLines={1}>
-                📍 {userLocation}
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.utilityGroup}>
-            <LanguageSelector />
-            <ThemeToggle />
-            <TouchableOpacity style={styles.iconBtn} onPress={handleLogout} accessibilityLabel="Logout">
-              <Ionicons name="log-out-outline" size={18} color="#BA1A1A" />
-            </TouchableOpacity>
-          </View>
-        </View>
 
         {/* Harvest Hero Banner (Revenue & Live Pulse) */}
         <View style={styles.heroCard}>
@@ -1135,81 +1194,160 @@ export default function FarmerDashboard() {
         </View>
       </ScrollView>
 
-      {/* Edit Profile Modal */}
+      {/* Profile & Sign Out Dropdown Menu */}
       <Modal
-        visible={editProfileVisible}
+        visible={profileMenuVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setEditProfileVisible(false)}
+        onRequestClose={() => setProfileMenuVisible(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <View style={styles.modalHeaderTitleRow}>
-                <Ionicons name="person-circle-outline" size={24} color="#0D631B" />
-                <Text style={styles.modalTitle}>Edit Profile Details</Text>
+        <TouchableWithoutFeedback onPress={() => setProfileMenuVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={styles.dropdownAnchor}>
+                <View style={styles.dropdownCard}>
+                  {/* Profile Header */}
+                  <View style={styles.profileHeaderRow}>
+                    <Image source={{ uri: userAvatar }} style={styles.dropdownAvatarImg} />
+                    <View style={styles.dropdownHeaderMeta}>
+                      <View style={styles.dropdownNameRow}>
+                        <Text style={styles.dropdownNameText} numberOfLines={1}>
+                          {userName}
+                        </Text>
+                        <View style={styles.dropdownRoleTag}>
+                          <Text style={styles.dropdownRoleTagText}>FARMER</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.dropdownEmailText} numberOfLines={1}>
+                        📍 {userLocation}
+                      </Text>
+                      {userEmail ? (
+                        <Text style={[styles.dropdownEmailText, { marginTop: 0 }]} numberOfLines={1}>
+                          ✉️ {userEmail}
+                        </Text>
+                      ) : null}
+                      <View style={styles.dropdownActiveRow}>
+                        <View style={styles.dropdownActiveDot} />
+                        <Text style={styles.dropdownActiveText}>Farm Profile Verified</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.dropdownEditBtn}
+                        onPress={() => {
+                          setProfileMenuVisible(false);
+                          setEditProfileVisible(true);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="create-outline" size={13} color="#0D631B" />
+                        <Text style={styles.dropdownEditBtnText}>Edit Profile</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* Quick Farmer Actions */}
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      setEditProfileVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#1E3322' : '#F0FDF4' }]}>
+                      <Ionicons name="person-circle-outline" size={18} color="#0D631B" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>Edit Profile</Text>
+                      <Text style={styles.menuItemSub}>Update picture, contact & address</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      router.push('/farmer/orders');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#1C2E4A' : '#EFF6FF' }]}>
+                      <Ionicons name="receipt-outline" size={17} color="#2563EB" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>Orders & Fulfilment</Text>
+                      <Text style={styles.menuItemSub}>
+                        {ordersCount > 0 ? `${ordersCount} active orders` : 'Track incoming orders'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      router.push('/farmer/products');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#3D2F18' : '#FEF3C7' }]}>
+                      <Ionicons name="pricetags-outline" size={17} color="#D97706" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>My Produce Listings</Text>
+                      <Text style={styles.menuItemSub}>{productsCount} active listings</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* Sign Out / Logout Option */}
+                  <TouchableOpacity
+                    style={styles.dropdownLogoutBtn}
+                    onPress={handleLogout}
+                    activeOpacity={0.8}
+                    accessibilityLabel="Sign Out / Logout"
+                  >
+                    <View style={styles.dropdownLogoutIconWell}>
+                      <Ionicons name="log-out-outline" size={18} color="#BA1A1A" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.dropdownLogoutTitle}>Sign Out</Text>
+                      <Text style={styles.dropdownLogoutSub}>Exit farmer dashboard</Text>
+                    </View>
+                    <Ionicons name="arrow-forward" size={16} color="#BA1A1A" />
+                  </TouchableOpacity>
+                </View>
               </View>
-              <TouchableOpacity onPress={() => setEditProfileVisible(false)}>
-                <Ionicons name="close" size={22} color="#40493D" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <Text style={styles.inputLabel}>Full Name</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editName}
-                onChangeText={setEditName}
-                placeholder="Enter your name"
-                placeholderTextColor="#707A6C"
-              />
-
-              <Text style={styles.inputLabel}>Location / Farm Address</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editLocation}
-                onChangeText={setEditLocation}
-                placeholder="e.g. Nashik Green Valley, MH"
-                placeholderTextColor="#707A6C"
-              />
-
-              <Text style={styles.inputLabel}>Mobile Phone Number</Text>
-              <TextInput
-                style={styles.modalInput}
-                value={editMobile}
-                onChangeText={setEditMobile}
-                placeholder="e.g. +91 9876543210"
-                keyboardType="phone-pad"
-                placeholderTextColor="#707A6C"
-              />
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setEditProfileVisible(false)}
-                disabled={savingProfile}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.saveBtn}
-                onPress={handleSaveProfile}
-                disabled={savingProfile}
-              >
-                {savingProfile ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-                    <Text style={styles.saveBtnText}>Save Changes</Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        visible={editProfileVisible}
+        onClose={() => setEditProfileVisible(false)}
+        initialData={{
+          name: userName,
+          email: userEmail,
+          mobile: userMobile,
+          address: userLocation,
+          profileImage: userAvatar,
+          role: 'farmer',
+        }}
+        onProfileUpdated={(updated) => {
+          setUserName(updated.name);
+          if (updated.mobile) setUserMobile(updated.mobile);
+          if (updated.address) setUserLocation(updated.address);
+          if (updated.profileImage) setUserAvatar(updated.profileImage);
+        }}
+        roleLabel="FARMER"
+      />
     </View>
   );
 }

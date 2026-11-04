@@ -29,7 +29,8 @@ const ReviewSchema = new Schema<IReview>(
     },
     comment: {
       type: String,
-      required: [true, 'Please provide a comment'],
+      required: false,
+      default: '',
       trim: true,
       maxlength: [500, 'Comment cannot exceed 500 characters'],
     },

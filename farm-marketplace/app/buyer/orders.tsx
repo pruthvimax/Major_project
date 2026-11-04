@@ -292,8 +292,8 @@ export default function OrdersScreen() {
   };
 
   const handleSubmitReview = async () => {
-    if (!comment.trim()) {
-      showAlert('Error', 'Please enter a review comment');
+    if (!rating || rating < 1 || rating > 5) {
+      showAlert('Error', 'Please select a rating between 1 and 5 stars');
       return;
     }
 
@@ -344,7 +344,7 @@ export default function OrdersScreen() {
   };
 
   const renderOrderItem = (item: OrderItem, index: number, orderStatus: string) => {
-    const showReviewBtn = orderStatus === 'delivered' && item.product?._id;
+    const showReviewBtn = ['pending', 'accepted', 'confirmed', 'packed', 'processing', 'shipped', 'delivered'].includes(orderStatus) && Boolean(item.product?._id);
     return (
       <View key={index} style={styles.itemRowContainer}>
         <View style={styles.itemRow}>
@@ -523,7 +523,7 @@ export default function OrdersScreen() {
 
             <Input
               label="Your review"
-              placeholder="Write your experience with this product..."
+              placeholder="Write your experience with this product (optional)..."
               value={comment}
               onChangeText={setComment}
               multiline={true}
