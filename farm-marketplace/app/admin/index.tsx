@@ -11,6 +11,8 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Modal,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,8 +28,10 @@ import { fetchBusinessAnalytics, formatINRShort } from '../../services/businessA
 import type { BusinessAnalytics } from '../../types/analytics.types';
 import type { SchemeAnalytics } from '../../types/scheme.types';
 import ThemeToggle from '../../components/ThemeToggle';
+import EditProfileModal from '../../components/profile/EditProfileModal';
 import LanguageSelector from '../../components/LanguageSelector';
 import { ErrorState } from '../../components/ui';
+import { useTheme } from '../../context/ThemeContext';
 
 interface DashboardCards {
   totalFarmers: number;
@@ -52,7 +56,14 @@ interface DeliveryMetrics {
 export default function AdminDashboard() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { isDark } = useTheme();
   const [userName, setUserName] = useState('Admin');
+  const [userEmail, setUserEmail] = useState('admin@farm.com');
+  const [userLocation, setUserLocation] = useState('');
+  const [userMobile, setUserMobile] = useState('');
+  const [userAvatar, setUserAvatar] = useState('');
+  const [editProfileVisible, setEditProfileVisible] = useState(false);
+  const [profileMenuVisible, setProfileMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +102,11 @@ export default function AdminDashboard() {
         router.replace('/auth/login');
         return;
       }
-      setUserName(user?.name || 'Admin');
+      setUserName(user?.name || 'Administrator');
+      if (user?.email) setUserEmail(user.email);
+      if (user?.mobile) setUserMobile(user.mobile);
+      if (user?.address) setUserLocation(typeof user.address === 'string' ? user.address : '');
+      if (user?.profileImage || user?.avatar) setUserAvatar(user.profileImage || user.avatar);
       await fetchAnalytics();
     } catch (err) {
       logApiError('Admin role validation', err);
@@ -166,6 +181,7 @@ export default function AdminDashboard() {
   }, [fetchAnalytics]);
 
   const handleLogout = () => {
+    setProfileMenuVisible(false);
     const performLogout = async () => {
       try {
         await AsyncStorage.multiRemove(['currentUser', 'token', 'user']);
@@ -178,9 +194,9 @@ export default function AdminDashboard() {
     if (Platform.OS === 'web') {
       if (window.confirm('Log out from Admin Dashboard?')) performLogout();
     } else {
-      Alert.alert('Logout', 'Log out from Admin Dashboard?', [
+      Alert.alert('Sign Out', 'Log out from Admin Dashboard?', [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Logout', style: 'destructive', onPress: performLogout },
+        { text: 'Sign Out', style: 'destructive', onPress: performLogout },
       ]);
     }
   };
@@ -216,6 +232,8 @@ export default function AdminDashboard() {
           flexDirection: 'row',
           alignItems: 'center',
           gap: Layout.spacing.xs + 2,
+          flexShrink: 1,
+          minWidth: 0,
         },
         headerIconWell: {
           width: 44,
@@ -589,8 +607,314 @@ export default function AdminDashboard() {
           color: '#40493D',
           marginTop: 1,
         },
+        // Header Profile Button
+        profileAvatarBtn: {
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          backgroundColor: isDark ? '#1C261F' : '#FFFFFF',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderWidth: 1.5,
+          borderColor: isDark ? '#2E7D32' : '#ABF4AC',
+          position: 'relative',
+          ...Layout.shadow.xs,
+        },
+        profileAvatarBtnActive: {
+          borderColor: '#0D631B',
+          backgroundColor: isDark ? '#283D2C' : '#E6F8E5',
+        },
+        profileAvatarDot: {
+          position: 'absolute',
+          bottom: 1,
+          right: 1,
+          width: 9,
+          height: 9,
+          borderRadius: 4.5,
+          backgroundColor: '#0D631B',
+          borderWidth: 1.5,
+          borderColor: isDark ? '#1C261F' : '#FFFFFF',
+        },
+        // In-Page Admin Profile Strip
+        adminProfileStrip: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: isDark ? '#18241B' : '#ECF6EB',
+          borderRadius: 20,
+          paddingVertical: Layout.spacing.sm + 2,
+          paddingHorizontal: Layout.spacing.md,
+          ...Layout.shadow.xs,
+          borderWidth: 1,
+          borderColor: isDark ? '#253B2A' : '#E0EFE0',
+          gap: Layout.spacing.sm,
+        },
+        adminProfileLeft: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.xs + 4,
+          flex: 1,
+          minWidth: 0,
+        },
+        adminAvatarWell: {
+          width: 42,
+          height: 42,
+          borderRadius: 21,
+          backgroundColor: '#0D631B',
+          alignItems: 'center',
+          justifyContent: 'center',
+          position: 'relative',
+        },
+        adminOnlineDot: {
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          width: 12,
+          height: 12,
+          borderRadius: 6,
+          backgroundColor: '#ABF4AC',
+          borderWidth: 2,
+          borderColor: isDark ? '#18241B' : '#ECF6EB',
+        },
+        adminProfileMeta: {
+          flex: 1,
+          minWidth: 0,
+        },
+        adminNameRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        },
+        adminNameText: {
+          fontSize: 15,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#F1F5F2' : '#151E17',
+        },
+        superAdminBadge: {
+          backgroundColor: isDark ? '#254B2A' : '#ABF4AC',
+          paddingHorizontal: 6,
+          paddingVertical: 1.5,
+          borderRadius: 8,
+        },
+        superAdminBadgeText: {
+          fontSize: 9,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#A1F0A2' : '#07521D',
+        },
+        adminEmailText: {
+          fontSize: 11,
+          color: isDark ? '#A0AFA2' : '#40493D',
+          marginTop: 1,
+        },
+        adminProfileActions: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        },
+        profileMenuBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 10,
+          paddingVertical: 7,
+          borderRadius: 14,
+          backgroundColor: isDark ? '#223226' : '#FFFFFF',
+          borderWidth: 1,
+          borderColor: isDark ? '#2F4934' : '#CCE6CA',
+        },
+        profileMenuBtnText: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#81C784' : '#0D631B',
+        },
+        directSignOutBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 10,
+          paddingVertical: 7,
+          borderRadius: 14,
+          backgroundColor: isDark ? '#3E1C1C' : '#FEF2F2',
+          borderWidth: 1,
+          borderColor: isDark ? '#5C2828' : '#FECACA',
+        },
+        directSignOutText: {
+          fontSize: 12,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#EF5350' : '#BA1A1A',
+        },
+        // Modal Dropdown
+        modalBackdrop: {
+          flex: 1,
+          backgroundColor: 'rgba(15, 23, 42, 0.3)',
+        },
+        dropdownAnchor: {
+          position: 'absolute',
+          top: safeTopPadding + 52,
+          right: Layout.spacing.md,
+          width: Math.min(Dimensions.get('window').width - Layout.spacing.md * 2, 290),
+          maxWidth: '100%',
+        },
+        dropdownCard: {
+          backgroundColor: isDark ? '#1C261F' : '#FFFFFF',
+          borderRadius: 18,
+          padding: Layout.spacing.md,
+          borderWidth: 1,
+          borderColor: isDark ? '#2A3A2C' : '#E6F1E5',
+          ...Layout.shadow.lg,
+          elevation: 12,
+        },
+        profileHeaderRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          paddingBottom: 2,
+        },
+        topAvatarImg: {
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+        },
+        dropdownAvatarImg: {
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          borderWidth: 1.5,
+          borderColor: '#6CC51D',
+        },
+        dropdownEditBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 5,
+          backgroundColor: isDark ? '#223826' : '#E8F8EE',
+          borderRadius: 8,
+          paddingVertical: 5,
+          paddingHorizontal: 10,
+          marginTop: 6,
+          borderWidth: 1,
+          borderColor: isDark ? '#2E5033' : '#C8F0D3',
+          alignSelf: 'flex-start',
+        },
+        dropdownEditBtnText: {
+          fontSize: 11,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#81C784' : '#0D631B',
+        },
+        dropdownAvatarWell: {
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          backgroundColor: '#0D631B',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        dropdownHeaderMeta: {
+          flex: 1,
+          minWidth: 0,
+        },
+        dropdownNameRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 6,
+        },
+        dropdownNameText: {
+          fontSize: 15,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#F1F5F2' : '#151E17',
+        },
+        dropdownRoleTag: {
+          backgroundColor: isDark ? '#254B2A' : '#ABF4AC',
+          paddingHorizontal: 6,
+          paddingVertical: 2,
+          borderRadius: 6,
+        },
+        dropdownRoleTagText: {
+          fontSize: 9,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#A1F0A2' : '#07521D',
+        },
+        dropdownEmailText: {
+          fontSize: 11,
+          color: isDark ? '#A0AFA2' : '#40493D',
+          marginTop: 1,
+        },
+        dropdownActiveRow: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 5,
+          marginTop: 3,
+        },
+        dropdownActiveText: {
+          fontSize: 11,
+          color: isDark ? '#81C784' : '#0D631B',
+          fontWeight: Typography.fontWeight.medium,
+        },
+        menuDivider: {
+          height: 1,
+          backgroundColor: isDark ? '#2A3A2C' : '#E6F1E5',
+          marginVertical: Layout.spacing.sm + 2,
+        },
+        dropdownMenuItem: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          paddingVertical: 9,
+          paddingHorizontal: 6,
+          borderRadius: 10,
+        },
+        menuItemIconWell: {
+          width: 32,
+          height: 32,
+          borderRadius: 16,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        menuItemTextCol: {
+          flex: 1,
+          minWidth: 0,
+        },
+        menuItemTitle: {
+          fontSize: 13,
+          fontWeight: Typography.fontWeight.semibold,
+          color: isDark ? '#F1F5F2' : '#151E17',
+        },
+        menuItemSub: {
+          fontSize: 11,
+          color: isDark ? '#A0AFA2' : '#40493D',
+        },
+        dropdownLogoutBtn: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: Layout.spacing.sm,
+          backgroundColor: isDark ? '#3E1C1C' : '#FEF2F2',
+          borderRadius: 12,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderWidth: 1,
+          borderColor: isDark ? '#5C2828' : '#FEE2E2',
+          marginTop: 2,
+        },
+        dropdownLogoutIconWell: {
+          width: 34,
+          height: 34,
+          borderRadius: 17,
+          backgroundColor: isDark ? '#522323' : '#FEE2E2',
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        dropdownLogoutTitle: {
+          fontSize: 14,
+          fontWeight: Typography.fontWeight.bold,
+          color: isDark ? '#EF5350' : '#BA1A1A',
+        },
+        dropdownLogoutSub: {
+          fontSize: 11,
+          color: isDark ? '#E57373' : '#DC2626',
+          marginTop: 1,
+        },
       }),
-    [colors, cardWidth, safeTopPadding]
+    [colors, cardWidth, safeTopPadding, isDark]
   );
 
   return (
@@ -618,16 +942,30 @@ export default function AdminDashboard() {
         <View style={styles.headerRight}>
           <LanguageSelector />
           <ThemeToggle />
-          <TouchableOpacity style={styles.iconBtn} onPress={() => router.push('/admin/disputes')}>
-            <Ionicons name="notifications-outline" size={20} color="#151E17" />
+          <TouchableOpacity
+            style={styles.iconBtn}
+            onPress={() => router.push('/admin/disputes')}
+            accessibilityLabel="Disputes & Notifications"
+          >
+            <Ionicons name="notifications-outline" size={20} color={isDark ? '#F1F5F2' : '#151E17'} />
             {cards.disputedOrders > 0 && (
               <View style={styles.notifBadge}>
                 <Text style={styles.notifText}>{cards.disputedOrders}</Text>
               </View>
             )}
           </TouchableOpacity>
-          <TouchableOpacity style={styles.iconBtn} onPress={handleLogout} accessibilityLabel="Logout">
-            <Ionicons name="log-out-outline" size={18} color="#BA1A1A" />
+          <TouchableOpacity
+            style={[styles.profileAvatarBtn, profileMenuVisible && styles.profileAvatarBtnActive]}
+            onPress={() => setProfileMenuVisible((prev) => !prev)}
+            accessibilityLabel="Admin Profile & Menu"
+            accessibilityState={{ expanded: profileMenuVisible }}
+          >
+            {userAvatar ? (
+            <Image source={{ uri: userAvatar }} style={styles.topAvatarImg} />
+          ) : (
+            <Ionicons name="person-circle" size={24} color="#0D631B" />
+          )}
+            <View style={styles.profileAvatarDot} />
           </TouchableOpacity>
         </View>
       </View>
@@ -637,6 +975,56 @@ export default function AdminDashboard() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#0D631B']} />}
       >
+        {/* Admin Profile & Session Strip */}
+        <View style={styles.adminProfileStrip}>
+          <TouchableOpacity
+            style={styles.adminProfileLeft}
+            onPress={() => setProfileMenuVisible(true)}
+            activeOpacity={0.8}
+            accessibilityLabel="Admin Profile Details"
+          >
+            <View style={styles.adminAvatarWell}>
+              <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
+              <View style={styles.adminOnlineDot} />
+            </View>
+            <View style={styles.adminProfileMeta}>
+              <View style={styles.adminNameRow}>
+                <Text style={styles.adminNameText} numberOfLines={1}>
+                  Hi, {userName}
+                </Text>
+                <View style={styles.superAdminBadge}>
+                  <Text style={styles.superAdminBadgeText}>Super Admin</Text>
+                </View>
+              </View>
+              <Text style={styles.adminEmailText} numberOfLines={1}>
+                🛡️ {userEmail}
+              </Text>
+            </View>
+          </TouchableOpacity>
+
+          <View style={styles.adminProfileActions}>
+            <TouchableOpacity
+              style={styles.profileMenuBtn}
+              onPress={() => setProfileMenuVisible(true)}
+              activeOpacity={0.7}
+              accessibilityLabel="Open Profile Menu"
+            >
+              <Ionicons name="person-outline" size={14} color={isDark ? '#81C784' : '#0D631B'} />
+              <Text style={styles.profileMenuBtnText}>Menu</Text>
+              <Ionicons name="chevron-down" size={12} color={isDark ? '#81C784' : '#0D631B'} />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.directSignOutBtn}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+              accessibilityLabel="Sign Out"
+            >
+              <Ionicons name="log-out-outline" size={14} color={isDark ? '#EF5350' : '#BA1A1A'} />
+              <Text style={styles.directSignOutText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
         {error && (
           <ErrorState
             compact
@@ -923,7 +1311,7 @@ export default function AdminDashboard() {
           >
             <View style={styles.moduleTop}>
               <View style={styles.moduleIconWell}>
-                <Ionicons name="account-balance-outline" size={22} color="#286B33" />
+                <Ionicons name="business-outline" size={22} color="#286B33" />
               </View>
               <View style={[styles.moduleBadge, { backgroundColor: '#ABF4AC' }]}>
                 <Text style={[styles.moduleBadgeText, { color: '#2E7238' }]}>
@@ -985,6 +1373,190 @@ export default function AdminDashboard() {
           <Ionicons name="information-circle-outline" size={18} color="#40493D" />
         </View>
       </ScrollView>
+
+      {/* Profile & Sign Out Dropdown Menu */}
+      <Modal
+        visible={profileMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setProfileMenuVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setProfileMenuVisible(false)}>
+          <View style={styles.modalBackdrop}>
+            <TouchableWithoutFeedback onPress={(e) => e.stopPropagation()}>
+              <View style={styles.dropdownAnchor}>
+                <View style={styles.dropdownCard}>
+                  {/* Profile Header */}
+                  <View style={styles.profileHeaderRow}>
+                    {userAvatar ? (
+                      <Image source={{ uri: userAvatar }} style={styles.dropdownAvatarImg} />
+                    ) : (
+                      <View style={styles.dropdownAvatarWell}>
+                        <Ionicons name="shield-checkmark" size={22} color="#FFFFFF" />
+                      </View>
+                    )}
+                    <View style={styles.dropdownHeaderMeta}>
+                      <View style={styles.dropdownNameRow}>
+                        <Text style={styles.dropdownNameText} numberOfLines={1}>
+                          {userName}
+                        </Text>
+                        <View style={styles.dropdownRoleTag}>
+                          <Text style={styles.dropdownRoleTagText}>ADMIN</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.dropdownEmailText} numberOfLines={1}>
+                        {userEmail}
+                      </Text>
+                      {userLocation ? (
+                        <Text style={styles.dropdownEmailText} numberOfLines={1}>
+                          📍 {userLocation}
+                        </Text>
+                      ) : null}
+                      {userMobile ? (
+                        <Text style={styles.dropdownEmailText} numberOfLines={1}>
+                          📞 {userMobile}
+                        </Text>
+                      ) : null}
+                      <View style={styles.dropdownActiveRow}>
+                        <View style={styles.liveDot} />
+                        <Text style={styles.dropdownActiveText}>Session Active</Text>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.dropdownEditBtn}
+                        onPress={() => {
+                          setProfileMenuVisible(false);
+                          setEditProfileVisible(true);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="create-outline" size={13} color="#0D631B" />
+                        <Text style={styles.dropdownEditBtnText}>Edit Profile</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* Quick Admin Actions */}
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      setEditProfileVisible(true);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#1E3322' : '#F0FDF4' }]}>
+                      <Ionicons name="person-circle-outline" size={18} color="#0D631B" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>Edit Profile</Text>
+                      <Text style={styles.menuItemSub}>Update picture, contact & address</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      router.push('/admin/settings');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#1E3322' : '#F0FDF4' }]}>
+                      <Ionicons name="settings-outline" size={17} color="#0D631B" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>System Settings</Text>
+                      <Text style={styles.menuItemSub}>Network & configs</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      router.push('/admin/disputes');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#3D2F18' : '#FEF3C7' }]}>
+                      <Ionicons name="notifications-outline" size={17} color="#D97706" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>Disputes & Alerts</Text>
+                      <Text style={styles.menuItemSub}>
+                        {cards.disputedOrders > 0 ? `${cards.disputedOrders} open disputes` : 'System notices'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.dropdownMenuItem}
+                    onPress={() => {
+                      setProfileMenuVisible(false);
+                      router.push('/admin/revenue-analytics');
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={[styles.menuItemIconWell, { backgroundColor: isDark ? '#1C2E4A' : '#EFF6FF' }]}>
+                      <Ionicons name="bar-chart-outline" size={17} color="#2563EB" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.menuItemTitle}>Revenue & Reports</Text>
+                      <Text style={styles.menuItemSub}>Financial metrics</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={15} color="#94A3B8" />
+                  </TouchableOpacity>
+
+                  <View style={styles.menuDivider} />
+
+                  {/* Sign Out / Logout Option */}
+                  <TouchableOpacity
+                    style={styles.dropdownLogoutBtn}
+                    onPress={handleLogout}
+                    activeOpacity={0.8}
+                    accessibilityLabel="Sign Out / Logout"
+                  >
+                    <View style={styles.dropdownLogoutIconWell}>
+                      <Ionicons name="log-out-outline" size={18} color="#BA1A1A" />
+                    </View>
+                    <View style={styles.menuItemTextCol}>
+                      <Text style={styles.dropdownLogoutTitle}>Sign Out</Text>
+                      <Text style={styles.dropdownLogoutSub}>Exit admin dashboard</Text>
+                    </View>
+                    <Ionicons name="arrow-forward" size={16} color="#BA1A1A" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Edit Profile Modal */}
+      <EditProfileModal
+        visible={editProfileVisible}
+        onClose={() => setEditProfileVisible(false)}
+        initialData={{
+          name: userName,
+          email: userEmail,
+          mobile: userMobile,
+          address: userLocation,
+          profileImage: userAvatar,
+          role: 'admin',
+        }}
+        onProfileUpdated={(updated) => {
+          setUserName(updated.name);
+          if (updated.mobile) setUserMobile(updated.mobile);
+          if (updated.address) setUserLocation(updated.address);
+          if (updated.profileImage) setUserAvatar(updated.profileImage);
+        }}
+        roleLabel="ADMIN"
+      />
     </View>
   );
 }

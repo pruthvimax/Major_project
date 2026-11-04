@@ -409,7 +409,13 @@ export default function CheckoutScreen() {
           if (paymentMethod === 'blockchain' && lastOrder.blockchainTxHash) {
             successMessage += `\n\n⛓️ Escrow Transaction Verified!\nTx: ${lastOrder.blockchainTxHash.substring(0, 20)}...`;
           }
-          showAlert('Success', successMessage, () => router.replace('/buyer/orders'));
+          showAlert('Success', successMessage, () => {
+            if (lastOrder?._id) {
+              router.replace({ pathname: '/buyer/track-order', params: { orderId: lastOrder._id } });
+            } else {
+              router.replace('/buyer/orders');
+            }
+          });
         }
       }
     } catch (error: any) {

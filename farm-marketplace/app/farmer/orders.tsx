@@ -56,9 +56,7 @@ interface Order {
 
 const NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
   pending: 'accepted',
-  accepted: 'packed',
-  packed: 'shipped',
-  shipped: 'delivered',
+  accepted: 'packed', // Shipping and delivery are updated by the delivery partner (Agri Agent driver)
 };
 
 const STATUS_TONES: Record<string, BadgeTone> = {
@@ -273,13 +271,13 @@ export default function FarmerOrdersScreen() {
             )}
             {next && item.status !== 'pending' && (
               <Button
-                title={`Mark ${next}`}
+                title={next === 'packed' ? 'Ready for Pickup' : `Mark ${next}`}
                 variant="primary"
                 size="sm"
                 icon="arrow-forward"
                 fullWidth={false}
                 loading={busy}
-                onPress={() => confirmAction(item, next, `Mark ${next}`)}
+                onPress={() => confirmAction(item, next, next === 'packed' ? 'Mark Ready for Pickup' : `Mark ${next}`)}
               />
             )}
           </View>

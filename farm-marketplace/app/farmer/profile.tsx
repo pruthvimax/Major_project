@@ -21,6 +21,7 @@ import Typography from '../../constants/Typography';
 import Layout from '../../constants/Layout';
 import api from '../../services/api';
 import { logApiError } from '../../services/apiError';
+import { uploadImageToCloudinary } from '../../services/cloudinary';
 import { ScreenHeader, Card, Input, Button } from '../../components/ui';
 
 export default function FarmerEditProfileScreen() {
@@ -94,28 +95,52 @@ export default function FarmerEditProfileScreen() {
   };
 
   const handleSaveProfile = async () => {
-    if (!name.trim()) {
-      showAlert('Error', 'Full Name cannot be empty.');
+    const cleanName = name.trim();
+    if (!cleanName || cleanName.length < 2) {
+      showAlert('Error', 'Full Name must be at least 2 characters.');
+      return;
+    }
+
+    let cleanMobile = mobile.trim().replace(/\D/g, '');
+    if (cleanMobile.length === 12 && cleanMobile.startsWith('91')) {
+      cleanMobile = cleanMobile.slice(2);
+    }
+    if (!cleanMobile || cleanMobile.length !== 10) {
+      showAlert('Error', 'Please enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    const cleanAddress = address.trim();
+    if (!cleanAddress) {
+      showAlert('Error', 'Address cannot be empty.');
       return;
     }
 
     setIsSaving(true);
-    const cleanName = name.trim();
-    const cleanAddress = address.trim();
-    const cleanMobile = mobile.trim();
+    let finalImageUrl = avatarUri;
 
     try {
+      if (avatarUri && !avatarUri.startsWith('http')) {
+        try {
+          finalImageUrl = await uploadImageToCloudinary(avatarUri);
+        } catch (uploadErr) {
+          logApiError('Cloudinary upload in profile screen', uploadErr);
+        }
+      }
+
       const response = await api.put('/users/profile', {
         name: cleanName,
         address: cleanAddress,
         mobile: cleanMobile,
         farmName: farmName.trim(),
+        profileImage: finalImageUrl,
       });
 
       const updatedUser = response.data?.user;
       const finalName = updatedUser?.name || cleanName;
       const finalAddress = (typeof updatedUser?.address === 'string' ? updatedUser.address : cleanAddress);
       const finalMobile = updatedUser?.mobile || cleanMobile;
+      const finalAvatar = updatedUser?.profileImage || finalImageUrl;
 
       const storedUserData = await AsyncStorage.getItem('currentUser');
       if (storedUserData) {
@@ -126,7 +151,8 @@ export default function FarmerEditProfileScreen() {
           address: finalAddress,
           mobile: finalMobile,
           farmName: farmName.trim(),
-          avatar: avatarUri,
+          avatar: finalAvatar,
+          profileImage: finalAvatar,
         };
         await AsyncStorage.setItem('currentUser', JSON.stringify(updatedObj));
         await AsyncStorage.setItem('user', JSON.stringify(updatedObj));

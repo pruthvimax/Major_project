@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import Order from '../models/Order';
 import { createRazorpayOrder, verifyRazorpayPayment } from '../services/paymentService';
 import { sendPushNotification } from '../services/notificationService';
-import { idOf } from '../services/logisticsIntegrationService';
+import { idOf, triggerOrderSync } from '../services/logisticsIntegrationService';
 
 interface AuthRequest extends Request {
   user?: any;
@@ -105,6 +105,9 @@ export const verifyRazorpayPaymentHandler = async (req: AuthRequest, res: Respon
 
     await order.save();
 
+    // Hand/sync order update to Agri Agent logistics
+    triggerOrderSync(order._id.toString());
+
     // Notify farmer about confirmed payment
     if (order.farmer) {
       sendPushNotification(
@@ -196,7 +199,7 @@ export const getOrderTracking = async (req: AuthRequest, res: Response): Promise
     const order = await Order.findById(req.params.orderId)
       .populate('buyer', 'name email')
       .populate('farmer', 'name email')
-      .populate('items.product', 'name unit');
+      .populate('items.product', '_id name unit images');
 
     if (!order) {
       res.status(404).json({ success: false, message: 'Order not found' });
