@@ -3,11 +3,36 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { getApiErrorMessage } from './apiError';
 
-// Set EXPO_PUBLIC_API_URL in farm-marketplace/.env
-// For physical Android device: http://<your-PC-LAN-IP>:5000/api
-// For Android emulator:        http://10.0.2.2:5000/api
-// Run `ipconfig` on your PC to find the correct LAN IP.
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://172.17.6.232:5000/api';
+import { Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+export const getBaseApiUrl = (): string => {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname || 'localhost';
+    return `http://${host}:5000/api`;
+  }
+
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as any).manifest?.debuggerHost ||
+    (Constants as any).manifest2?.extra?.expoClient?.hostUri;
+
+  if (hostUri) {
+    const metroIp = hostUri.split(':')[0];
+    if (metroIp && metroIp !== 'localhost' && metroIp !== '127.0.0.1') {
+      return `http://${metroIp}:5000/api`;
+    }
+  }
+
+  const envUrl = (process.env.EXPO_PUBLIC_API_URL || '').trim().replace(/\/+$/, '');
+  if (envUrl && !envUrl.includes('172.17.6.232')) {
+    return envUrl;
+  }
+
+  return 'http://172.17.5.232:5000/api';
+};
+
+const BASE_URL = getBaseApiUrl();
 
 console.log('📡 API Base URL:', BASE_URL);
 

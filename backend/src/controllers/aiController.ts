@@ -112,3 +112,60 @@ export const handleChatbotQuery = async (req: AuthRequest, res: Response): Promi
     });
   }
 };
+
+export const handleTranscribeAudio = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { audioData, languageCode = 'en' } = req.body;
+    const sarvamKey = process.env.SARVAM_API_KEY || 'sk_ja34rucm_Pydoocans84tQbiaIiso0B7B';
+
+    if (!audioData || typeof audioData !== 'string') {
+      res.status(400).json({ success: false, message: 'audioData base64 is required' });
+      return;
+    }
+
+    const bytes = Buffer.from(audioData, 'base64');
+    let mimeType = 'audio/x-m4a';
+    let filename = 'audio.m4a';
+    if (bytes.length > 4 && bytes.slice(0, 4).toString('ascii') === 'RIFF') {
+      mimeType = 'audio/wav';
+      filename = 'audio.wav';
+    } else if (bytes.length > 3 && bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) {
+      mimeType = 'audio/mpeg';
+      filename = 'audio.mp3';
+    } else if (bytes.length > 4 && bytes.slice(0, 4).toString('hex') === '1a45dfa3') {
+      mimeType = 'audio/webm';
+      filename = 'audio.webm';
+    } else if (bytes.length > 4 && bytes.slice(0, 4).toString('ascii') === 'OggS') {
+      mimeType = 'audio/ogg';
+      filename = 'audio.ogg';
+    }
+
+    const form = new FormData();
+    form.append('file', new Blob([bytes], { type: mimeType }), filename);
+    form.append('model', 'saaras:v3');
+
+    const sarvamRes = await fetch('https://api.sarvam.ai/speech-to-text-translate', {
+      method: 'POST',
+      headers: { 'api-subscription-key': sarvamKey },
+      body: form,
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!sarvamRes.ok) {
+      const errTxt = await sarvamRes.text().catch(() => '');
+      console.error('[aiController] Sarvam STT error:', sarvamRes.status, errTxt);
+      res.status(502).json({ success: false, message: 'Speech service failed to transcribe audio' });
+      return;
+    }
+
+    const result: any = await sarvamRes.json();
+    res.json({
+      success: true,
+      transcription: result.transcript || '',
+      detectedLanguage: result.language_code || languageCode || 'en-IN',
+    });
+  } catch (error: any) {
+    console.error('[aiController] transcribe error:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to process voice audio' });
+  }
+};

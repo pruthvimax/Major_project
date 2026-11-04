@@ -52,6 +52,7 @@ export default function ChatbotWidget() {
   
   const scrollViewRef = useRef<ScrollView>(null);
   const recognitionRef = useRef<any>(null);
+  const recordingRef = useRef<any>(null);
 
   const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
 
@@ -322,7 +323,7 @@ export default function ChatbotWidget() {
     }
   };
 
-  const stopListening = () => {
+  const stopListening = async () => {
     try {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
@@ -331,98 +332,156 @@ export default function ChatbotWidget() {
     } catch {
       // ignore
     }
+
+    if (recordingRef.current) {
+      const recorder = recordingRef.current;
+      recordingRef.current = null;
+      setIsListening(false);
+      setInterimTranscript('Transcribing speech...');
+
+      try {
+        await recorder.stop();
+        const uri = recorder.uri;
+        if (uri) {
+          let FileSystem: any;
+          try {
+            FileSystem = await import('expo-file-system/legacy');
+          } catch {
+            FileSystem = await import('expo-file-system');
+          }
+
+          const fileInfo = await FileSystem.getInfoAsync(uri);
+          if (fileInfo.exists) {
+            const base64Audio = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
+            const res = await api.post('/ai/transcribe', {
+              audioData: base64Audio,
+              languageCode: language || 'en',
+            });
+
+            const transcript = res.data?.transcription?.trim() || '';
+            setInterimTranscript('');
+            if (transcript) {
+              setInputText(transcript);
+              sendMessage(transcript);
+            } else {
+              Alert.alert('Voice Input', 'Could not detect any speech. Please try speaking again.');
+            }
+          }
+        }
+      } catch (err: any) {
+        console.error('Failed to process native audio:', err);
+        setInterimTranscript('');
+      }
+      return;
+    }
+
     setIsListening(false);
   };
 
-  const handleMicInput = () => {
+  const handleMicInput = async () => {
     stopSpeech();
 
     // Toggle off if currently listening
     if (isListening) {
-      stopListening();
+      await stopListening();
       return;
     }
 
-    // Check for Browser Web Speech API (Google Chrome / Edge / Safari / Android Webview)
-    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      try {
-        const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognitionRef.current = recognition;
+    // Check for Browser Web Speech API on Web
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognitionRef.current = recognition;
 
-        const langLocaleMap: Record<string, string> = {
-          en: 'en-IN',
-          hi: 'hi-IN',
-          kn: 'kn-IN',
-          ml: 'ml-IN',
-        };
+          const langLocaleMap: Record<string, string> = {
+            en: 'en-IN',
+            hi: 'hi-IN',
+            kn: 'kn-IN',
+            ml: 'ml-IN',
+          };
 
-        recognition.lang = langLocaleMap[language] || 'en-IN';
-        recognition.interimResults = true; // Live speech feedback
-        recognition.continuous = false; // Auto-stop when user finishes speaking sentence
-        recognition.maxAlternatives = 1;
+          recognition.lang = langLocaleMap[language] || 'en-IN';
+          recognition.interimResults = true;
+          recognition.continuous = false;
+          recognition.maxAlternatives = 1;
 
-        setIsListening(true);
-        setInterimTranscript('');
-
-        let capturedSentence = '';
-
-        recognition.onresult = (event: any) => {
-          let interimText = '';
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            if (event.results[i].isFinal) {
-              capturedSentence += event.results[i][0].transcript;
-            } else {
-              interimText += event.results[i][0].transcript;
-            }
-          }
-
-          const currentLiveText = capturedSentence || interimText;
-          if (currentLiveText) {
-            setInterimTranscript(currentLiveText);
-            setInputText(currentLiveText);
-          }
-        };
-
-        recognition.onerror = (err: any) => {
-          console.log('Voice dictation error:', err?.error || err);
-          setIsListening(false);
+          setIsListening(true);
           setInterimTranscript('');
-          if (err?.error === 'not-allowed') {
-            if (Platform.OS === 'web') {
-              window.alert('Microphone permission is required. Please allow microphone access in your browser settings.');
-            } else {
-              Alert.alert('Microphone Error', 'Microphone access was denied.');
+
+          let capturedSentence = '';
+
+          recognition.onresult = (event: any) => {
+            let interimText = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) {
+                capturedSentence += event.results[i][0].transcript;
+              } else {
+                interimText += event.results[i][0].transcript;
+              }
             }
-          }
-        };
 
-        recognition.onend = () => {
+            const currentLiveText = capturedSentence || interimText;
+            if (currentLiveText) {
+              setInterimTranscript(currentLiveText);
+              setInputText(currentLiveText);
+            }
+          };
+
+          recognition.onerror = (err: any) => {
+            console.log('Voice dictation error:', err?.error || err);
+            setIsListening(false);
+            setInterimTranscript('');
+            if (err?.error === 'not-allowed') {
+              Alert.alert('Microphone Access', 'Microphone access was denied. Please allow microphone permissions.');
+            }
+          };
+
+          recognition.onend = () => {
+            setIsListening(false);
+            recognitionRef.current = null;
+            if (capturedSentence && capturedSentence.trim()) {
+              sendMessage(capturedSentence.trim());
+            } else if (inputText && inputText.trim()) {
+              sendMessage(inputText.trim());
+            }
+          };
+
+          recognition.start();
+          return;
+        } catch (err) {
           setIsListening(false);
-          recognitionRef.current = null;
-
-          // Dispatch the captured spoken input automatically!
-          if (capturedSentence && capturedSentence.trim()) {
-            sendMessage(capturedSentence.trim());
-          } else if (inputText && inputText.trim()) {
-            sendMessage(inputText.trim());
-          }
-        };
-
-        recognition.start();
-      } catch (err) {
-        setIsListening(false);
-        console.error('Failed to start speech recognition:', err);
+          console.error('Failed to start web speech recognition:', err);
+        }
       }
-    } else {
-      if (Platform.OS === 'web') {
-        window.alert('Speech recognition is supported in Chrome, Edge, and Safari browsers. Please type your query or open in Chrome.');
-      } else {
-        Alert.alert(
-          'Speech Recognition',
-          'Live voice dictation requires Web Speech API supported browsers (Google Chrome / Safari / Edge). You can type your query in the input box below!'
-        );
+    }
+
+    // Native (Android / iOS / Expo Go) Audio Recording
+    try {
+      const { AudioModule, requestRecordingPermissionsAsync, setAudioModeAsync, RecordingPresets } = await import('expo-audio');
+      const permission = await requestRecordingPermissionsAsync();
+      if (permission.status !== 'granted') {
+        Alert.alert('Microphone Permission', 'Please grant microphone access in settings to speak with Krishi Assistant.');
+        return;
       }
+
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
+      });
+
+      const recorder = new AudioModule.AudioRecorder(RecordingPresets.HIGH_QUALITY);
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+      recordingRef.current = recorder;
+
+      setIsListening(true);
+      setInterimTranscript('Listening... speak now');
+    } catch (err: any) {
+      console.error('Failed to start native audio recording:', err);
+      setIsListening(false);
+      Alert.alert('Voice Input Unavailable', err?.message || 'Audio recording could not be started on this device.');
     }
   };
 
